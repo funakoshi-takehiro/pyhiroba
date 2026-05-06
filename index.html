@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PyHiroba（ぱいひろば）| 日本の学校現場向けPython実行環境</title>
+
+  <!-- CodeMirror 5 (コードエディタ) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Inter:wght@400;500;600&family=Source+Code+Pro:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== LP画面 ===== -->
+  <div id="lp-screen">
+    <div class="lp-wrap">
+
+      <!-- ヒーロー -->
+      <div class="lp-hero">
+        <div class="lp-badge">日本の学校現場向け · 完全無料</div>
+        <div class="lp-logo">🐍</div>
+        <h1 class="lp-title">PyHiroba</h1>
+        <p class="lp-kana">ぱいひろば</p>
+        <p class="lp-lead">日本の生徒が安心して、<br>Pythonプログラミングを学べる広場</p>
+      </div>
+
+      <!-- 5つの特徴 -->
+      <p class="lp-section-label">5つの特徴</p>
+      <div class="lp-features">
+
+        <div class="lp-feat">
+          <span class="lp-feat-icon">💰</span>
+          <div class="lp-feat-body">
+            <strong>完全無料</strong>
+            <p>広告ゼロ。人数・利用制限なし。学校予算ゼロで全生徒に提供できます。</p>
+          </div>
+        </div>
+
+        <div class="lp-feat">
+          <span class="lp-feat-icon">🔒</span>
+          <div class="lp-feat-body">
+            <strong>生徒を守る安心設計</strong>
+            <p>登録・ログイン不要。生徒のコードも個人情報も、一切外部サーバーに送信しない完全ローカル動作。</p>
+          </div>
+        </div>
+
+        <div class="lp-feat">
+          <span class="lp-feat-icon">⚡</span>
+          <div class="lp-feat-body">
+            <strong>ゼロ設定で即使える</strong>
+            <p>URLを開くだけ。インストール・管理者権限不要。クラス全員の一斉実行でも校内WiFiに負荷をかけません。</p>
+          </div>
+        </div>
+
+        <div class="lp-feat">
+          <span class="lp-feat-icon">📖</span>
+          <div class="lp-feat-body">
+            <strong>生徒の学びをサポート</strong>
+            <p>URLひとつで教材配布。エラーを日本語でやさしく表示。授業スライドやテキストもコードと一体で使用可能。</p>
+          </div>
+        </div>
+
+        <div class="lp-feat lp-feat--wide">
+          <span class="lp-feat-icon">👩‍🏫</span>
+          <div class="lp-feat-body">
+            <strong>先生の準備・負担ゼロ</strong>
+            <p>アカウント管理不要。URLを共有するだけで授業スタート。ソフトウェア更新作業も一切不要です。</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- CTA -->
+      <div class="lp-cta">
+        <button class="lp-start-btn" onclick="startApp()">
+          Pythonをはじめる →
+        </button>
+        <p class="lp-note">初回のみPython環境の読み込みが必要です（30秒〜1分程度）<br>2回目以降はすぐに起動します</p>
+      </div>
+
+      <footer class="lp-footer">PyHiroba · 日本の学校現場のためのPython実行環境</footer>
+    </div>
+  </div>
+
+  <!-- ===== 読み込み画面 ===== -->
+  <div id="loading-overlay" class="hidden">
+    <div class="loading-box">
+      <div class="loading-logo">🐍</div>
+      <h2>Python環境を準備しています</h2>
+      <div class="loading-bar-outer">
+        <div class="loading-bar-inner" id="loading-bar"></div>
+      </div>
+      <p id="loading-status">起動中...</p>
+      <p class="loading-note">初回は少し時間がかかります（30秒〜1分程度）</p>
+    </div>
+  </div>
+
+  <!-- ===== ヘッダー ===== -->
+  <header id="app-header">
+    <div class="header-left">
+      <span class="header-logo">🐍</span>
+      <div class="header-title-group">
+        <h1>PyHiroba</h1>
+        <span class="header-subtitle">ぱいひろば</span>
+      </div>
+    </div>
+    <div class="header-right">
+      <button class="btn-header btn-run-all" onclick="runAllCells()" title="すべてのコードセルを順番に実行します">
+        ▶▶ すべて実行
+      </button>
+      <button class="btn-header btn-clear" onclick="clearAllOutputs()" title="すべての実行結果を消去します">
+        🗑 出力をクリア
+      </button>
+      <div class="header-help" title="ヘルプ" onclick="toggleHelp()">？</div>
+    </div>
+  </header>
+
+  <!-- ===== ヘルプパネル ===== -->
+  <div id="help-panel" class="hidden">
+    <div class="help-content">
+      <button class="help-close" onclick="toggleHelp()">✕ 閉じる</button>
+      <h3>📖 使い方ガイド</h3>
+      <table class="help-table">
+        <tr><th>操作</th><th>方法</th></tr>
+        <tr><td>コードを実行</td><td>▶ 実行 ボタン　または　<kbd>Shift</kbd>+<kbd>Enter</kbd></td></tr>
+        <tr><td>新しいセルを追加</td><td>セル下の ＋ ボタン、または画面下のボタン</td></tr>
+        <tr><td>セルを削除</td><td>セル右上の ✕ ボタン</td></tr>
+        <tr><td>セルの順番を変える</td><td>↑ ↓ ボタン</td></tr>
+        <tr><td>テキストを確定</td><td><kbd>Shift</kbd>+<kbd>Enter</kbd>　または　<kbd>Esc</kbd></td></tr>
+        <tr><td>インデント（字下げ）</td><td><kbd>Tab</kbd> キー（スペース4つ分）</td></tr>
+      </table>
+      <h3 style="margin-top:16px;">📚 使えるライブラリ</h3>
+      <p>import 文を書くと自動で読み込みます：</p>
+      <code>numpy, pandas, matplotlib, scikit-learn, Pillow, random, math, ...</code>
+      <h3 style="margin-top:16px;">💡 ポイント</h3>
+      <ul>
+        <li>上のセルで作った変数は、下のセルでも使えます</li>
+        <li>グラフはセルの下に自動で表示されます</li>
+        <li>エラーが出たら日本語の説明を参考に直しましょう</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== ノートブック本体 ===== -->
+  <main id="main-content">
+    <div id="notebook-container"></div>
+
+    <!-- セル追加ボタン（画面下） -->
+    <div id="bottom-add-bar">
+      <button class="btn-add-bottom" onclick="appendCell('code')">
+        ＋ コードセルを追加
+      </button>
+      <button class="btn-add-bottom" onclick="appendCell('text')">
+        ＋ テキストセルを追加
+      </button>
+      <button class="btn-add-bottom" onclick="appendCell('slide')">
+        ＋ スライドセルを追加
+      </button>
+    </div>
+  </main>
+
+  <!-- ===== スライドライトボックス ===== -->
+  <div id="slide-lightbox" class="slide-lightbox hidden" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <button class="lightbox-prev" onclick="lightboxNav(-1)">‹</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="">
+    <button class="lightbox-next" onclick="lightboxNav(1)">›</button>
+    <div class="lightbox-counter" id="lightbox-counter"></div>
+  </div>
+
+  <!-- ===== スクリプト ===== -->
+  <!-- CodeMirror -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+
+  <!-- Marked.js (Markdown変換) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+
+  <!-- Pyodide (ブラウザ内Python実行エンジン) -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+
+  <!-- アプリ本体 -->
+  <script src="js/app.js"></script>
+
+</body>
+</html>
