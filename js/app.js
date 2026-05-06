@@ -78,7 +78,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // Pythonセットアップコード
 // ============================================================
 const PYTHON_SETUP_CODE = `
-import sys, io, base64, traceback, builtins
+import sys, io, base64, traceback, builtins, ast as _ast
 
 # matplotlibを設定（画像として出力できるようにする）
 import matplotlib
@@ -1395,16 +1395,18 @@ async function runCell(id) {
     await pyodide.runPythonAsync(PYTHON_EXEC_CODE);
 
     // 結果を取得
-    const stdout  = pyodide.globals.get('_out_text')   || '';
-    const stderr  = pyodide.globals.get('_err_text')   || '';
-    const errType = pyodide.globals.get('_err_type');
-    const errMsg  = pyodide.globals.get('_err_msg');
-    const errTb   = pyodide.globals.get('_err_tb');
-    const figsProxy = pyodide.globals.get('_figures');
+    const stdout      = pyodide.globals.get('_out_text')    || '';
+    const stderr      = pyodide.globals.get('_err_text')    || '';
+    const errType     = pyodide.globals.get('_err_type');
+    const errMsg      = pyodide.globals.get('_err_msg');
+    const errTb       = pyodide.globals.get('_err_tb');
+    const displayHtml = pyodide.globals.get('_display_html') || '';
+    const lastDisplay = pyodide.globals.get('_last_display') || '';
+    const figsProxy   = pyodide.globals.get('_figures');
     const figs = figsProxy ? figsProxy.toJs() : [];
     if (figsProxy?.destroy) figsProxy.destroy();
 
-    const result = { status: 'done', stdout, stderr, errType, errMsg, errTb, figs };
+    const result = { status: 'done', stdout, stderr, errType, errMsg, errTb, figs, displayHtml, lastDisplay };
     outputs[id] = result;
     renderOutput(id, result);
 
@@ -1450,15 +1452,37 @@ _old_err = sys.stderr
 sys.stdout = _out_cap
 sys.stderr = _err_cap
 
-_err_type = None
-_err_msg  = None
-_err_tb   = None
+_err_type    = None
+_err_msg     = None
+_err_tb      = None
+_display_html = None   # DataFrame などの HTML repr
+_last_display = None   # その他の値の text repr
 
 # 前のグラフをクリア
 plt.close('all')
 
 try:
-    exec(compile(_cell_code, '<セル>', 'exec'), _nb_globals)
+    _tree = _ast.parse(_cell_code)
+    # 最後の文が「式」かどうか判定（Jupyter と同じ自動表示ロジック）
+    if _tree.body and isinstance(_tree.body[-1], _ast.Expr):
+        # 最後の式より前の行を exec
+        _exec_part = _tree.body[:-1]
+        if _exec_part:
+            _mod = _ast.Module(body=_exec_part, type_ignores=[])
+            _ast.fix_missing_locations(_mod)
+            exec(compile(_mod, '<セル>', 'exec'), _nb_globals)
+        # 最後の式を eval
+        _expr_node = _ast.Expression(body=_tree.body[-1].value)
+        _ast.fix_missing_locations(_expr_node)
+        _last_val = eval(compile(_expr_node, '<セル>', 'eval'), _nb_globals)
+        # None 以外なら表示
+        if _last_val is not None:
+            if hasattr(_last_val, '_repr_html_'):
+                _display_html = _last_val._repr_html_()
+            else:
+                _last_display = repr(_last_val)
+    else:
+        exec(compile(_cell_code, '<セル>', 'exec'), _nb_globals)
 except SystemExit:
     pass
 except Exception as _e:
@@ -1540,11 +1564,17 @@ function renderOutput(id, result) {
     });
   }
 
-  // 何も出力がない場合
-  if (!html) {
-    html = '<div class="output-empty">（出力なし）</div>';
+  // DataFrame など _repr_html_() を持つオブジェクト
+  if (result.displayHtml) {
+    html += `<div class="output-html">${result.displayHtml}</div>`;
   }
 
+  // その他の値の text repr（数値・リスト・文字列など）
+  if (result.lastDisplay && !result.displayHtml) {
+    html += `<div class="output-text"><pre>${escHtml(result.lastDisplay)}</pre></div>`;
+  }
+
+  // 出力なしは何も表示しない（Jupyter と同じ挙動）
   el.innerHTML = html;
 }
 
