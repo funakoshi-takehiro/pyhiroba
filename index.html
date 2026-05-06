@@ -23,8 +23,6 @@
 
       <!-- ヒーロー -->
       <div class="lp-hero">
-        <div class="lp-badge">日本の学校現場向け · 完全無料</div>
-        <div class="lp-logo">🐍</div>
         <h1 class="lp-title">PyHiroba</h1>
         <p class="lp-kana">ぱいひろば</p>
         <p class="lp-lead">日本の生徒が安心して、<br>Pythonプログラミングを学べる広場</p>
@@ -35,7 +33,15 @@
       <div class="lp-features">
 
         <div class="lp-feat">
-          <span class="lp-feat-icon">💰</span>
+          <span class="lp-feat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 12 20 22 4 22 4 12"/>
+              <rect x="2" y="7" width="20" height="5"/>
+              <line x1="12" y1="22" x2="12" y2="7"/>
+              <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+              <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+            </svg>
+          </span>
           <div class="lp-feat-body">
             <strong>完全無料</strong>
             <p>広告ゼロ。人数・利用制限なし。学校予算ゼロで全生徒に提供できます。</p>
@@ -43,7 +49,11 @@
         </div>
 
         <div class="lp-feat">
-          <span class="lp-feat-icon">🔒</span>
+          <span class="lp-feat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </span>
           <div class="lp-feat-body">
             <strong>生徒を守る安心設計</strong>
             <p>登録・ログイン不要。生徒のコードも個人情報も、一切外部サーバーに送信しない完全ローカル動作。</p>
@@ -51,7 +61,11 @@
         </div>
 
         <div class="lp-feat">
-          <span class="lp-feat-icon">⚡</span>
+          <span class="lp-feat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </span>
           <div class="lp-feat-body">
             <strong>ゼロ設定で即使える</strong>
             <p>URLを開くだけ。インストール・管理者権限不要。クラス全員の一斉実行でも校内WiFiに負荷をかけません。</p>
@@ -59,15 +73,25 @@
         </div>
 
         <div class="lp-feat">
-          <span class="lp-feat-icon">📖</span>
+          <span class="lp-feat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+          </span>
           <div class="lp-feat-body">
             <strong>生徒の学びをサポート</strong>
             <p>URLひとつで教材配布。エラーを日本語でやさしく表示。授業スライドやテキストもコードと一体で使用可能。</p>
           </div>
         </div>
 
-        <div class="lp-feat lp-feat--wide">
-          <span class="lp-feat-icon">👩‍🏫</span>
+        <div class="lp-feat">
+          <span class="lp-feat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+              <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+          </span>
           <div class="lp-feat-body">
             <strong>先生の準備・負担ゼロ</strong>
             <p>アカウント管理不要。URLを共有するだけで授業スタート。ソフトウェア更新作業も一切不要です。</p>
@@ -81,7 +105,7 @@
         <button class="lp-start-btn" onclick="startApp()">
           Pythonをはじめる →
         </button>
-        <p class="lp-note">初回のみPython環境の読み込みが必要です（30秒〜1分程度）<br>2回目以降はすぐに起動します</p>
+        <p class="lp-note"><strong>初回のみPython環境の読み込みが必要です（30秒〜1分程度）<br>2回目以降はすぐに起動します</strong></p>
       </div>
 
       <footer class="lp-footer">PyHiroba · 日本の学校現場のためのPython実行環境</footer>
