@@ -133,6 +133,37 @@ body {
   gap: 10px;
 }
 
+/* ---------- アニメーション共通 ---------- */
+@keyframes pyh-blink {
+  0%, 50%      { opacity: 1 }
+  50.01%, 100% { opacity: 0 }
+}
+
+/* ヒーロー タイプライターカーソル */
+.v3-hero-cursor {
+  display: inline-block;
+  width: 0.06em;
+  height: 0.85em;
+  background: #028DAE;
+  margin-left: 0.04em;
+  vertical-align: -0.08em;
+  opacity: 0.85;
+}
+.v3-hero-cursor.v3-hero-cursor-blink {
+  opacity: 1;
+  animation: pyh-blink 1s step-end infinite;
+}
+
+/* ノートブック タイプカーソル */
+.v3-nb-cursor {
+  display: inline-block;
+  width: 0.5ch;
+  height: 1em;
+  background: #028DAE;
+  vertical-align: -0.1em;
+  animation: pyh-blink 0.8s step-end infinite;
+}
+
 /* ---------- LP V3 ボタン ---------- */
 .v3-btn {
   display: inline-flex;
@@ -155,13 +186,13 @@ body {
 }
 .v3-btn svg { flex-shrink: 0; }
 .v3-btn-primary {
-  background: var(--ink);
+  background: var(--accent);
   color: #fff;
-  border-color: var(--ink);
+  border-color: var(--accent);
 }
 .v3-btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 10px 24px -10px rgba(16,20,24,.5);
+  box-shadow: 0 10px 24px -10px rgba(2,141,174,.5);
 }
 .v3-btn-ghost {
   background: transparent;
