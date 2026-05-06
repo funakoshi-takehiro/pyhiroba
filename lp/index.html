@@ -25,7 +25,7 @@
         <nav class="v3-nav-links">
           <a href="#features">特徴</a>
           <a href="#preview">プレビュー</a>
-          <a href="#faq">FAQ</a>
+          <a href="#faq">ご利用方法</a>
         </nav>
         <div class="v3-nav-cta">
           <a class="v3-btn v3-btn-ghost" href="https://github.com/funakoshi-takehiro/pyhiroba" target="_blank" rel="noopener">GitHub</a>
@@ -76,7 +76,7 @@
             <div>
               <div class="v3-feat-num">FEATURE / 01</div>
               <h3>無料で利用可能</h3>
-              <p>広告ゼロ、無料、人数制限も利用制限もありません。</p>
+              <p>完全無料、広告なしでご利用いただけます。人数や利用回数の制限もありません。</p>
             </div>
           </div>
 
@@ -89,7 +89,7 @@
             <div>
               <div class="v3-feat-num">FEATURE / 02</div>
               <h3>生徒を守る安心設計</h3>
-              <p>生徒の登録やログイン不要、ローカル駆動。生徒が書いたコード・個人情報を一切外部に送信しない設計です。</p>
+              <p>生徒はアカウント登録不要でご利用いただけます。生徒のパソコン上で動作するため、生徒の学習内容は一切外部に送信されません。</p>
             </div>
           </div>
 
@@ -102,7 +102,7 @@
             <div>
               <div class="v3-feat-num">FEATURE / 03</div>
               <h3>すぐに授業で使える簡単環境</h3>
-              <p>環境設定不要。ブラウザでURLを開くだけで即使え、校内WiFiに負荷をかけずにクラス全員の一斉実行にも対応します。</p>
+              <p>ブラウザでURLを開けばすぐにご利用いただけます。また、校内WiFiに負荷をかけずにクラス全員の一斉実行も可能です。</p>
             </div>
           </div>
 
@@ -146,105 +146,126 @@
           </div>
         </div>
         <div class="v3-preview-wrap">
-          <!-- ノートブックモック -->
+          <!-- ノートブックモック（アプリスタイル） -->
           <div class="v3-nb">
+            <!-- アプリバー -->
             <div class="v3-nb-bar">
-              <div class="v3-nb-tab">
-                <span style="font-size:12px;color:var(--ink-3)">pyhiroba.app /</span>
-                <span style="color:var(--accent);font-weight:600">授業01_平均と分散.py</span>
+              <div class="v3-nb-logo">🐍</div>
+              <div>
+                <span class="v3-nb-title">PyHiroba</span><span class="v3-nb-sub">ぱいひろば</span>
+              </div>
+              <div class="v3-nb-actions">
+                <span class="v3-nb-btn v3-nb-btn-primary">▶▶ すべて実行</span>
+                <span class="v3-nb-btn v3-nb-btn-ghost">🗑 出力をクリア</span>
+                <span class="v3-nb-help">？</span>
               </div>
             </div>
-            <div class="v3-nb-toolbar">
-              <span class="v3-nb-tool v3-nb-run">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8V4z"/></svg>
-                すべて実行
-              </span>
-              <span class="v3-nb-tool">＋ コードセル</span>
-              <span class="v3-nb-tool">＋ テキスト</span>
-              <span class="v3-nb-tool" style="margin-left:auto">Python 3.12 · ローカル実行</span>
-            </div>
-            <div class="v3-nb-cell">
-              <div class="v3-nb-prompt">In [1]:</div>
-              <pre class="v3-nb-code"><span class="v3-kw">import</span> numpy <span class="v3-kw">as</span> np
+            <!-- セル一覧 -->
+            <div class="v3-nb-body">
+
+              <!-- セル 1 -->
+              <div class="v3-nb-cell">
+                <div class="v3-nb-cell-tb">
+                  <span class="v3-nb-cell-num">[1]</span>
+                  <span class="v3-nb-cell-type">code</span>
+                  <span class="v3-nb-cell-run">▶ 実行</span>
+                </div>
+                <div class="v3-nb-cell-body">
+                  <pre class="v3-nb-code"><span class="v3-kw">import</span> numpy <span class="v3-kw">as</span> np
 <span class="v3-kw">import</span> matplotlib.pyplot <span class="v3-kw">as</span> plt
 
 <span class="v3-co"># 5教科のテストの点数</span>
 scores = np.array([<span class="v3-nm">72</span>, <span class="v3-nm">85</span>, <span class="v3-nm">68</span>, <span class="v3-nm">91</span>, <span class="v3-nm">77</span>])</pre>
-            </div>
-            <div class="v3-nb-cell">
-              <div class="v3-nb-prompt">In [2]:</div>
-              <pre class="v3-nb-code"><span class="v3-kw">print</span>(<span class="v3-st">"平均:"</span>, scores.mean())
-<span class="v3-kw">print</span>(<span class="v3-st">"標準偏差:"</span>, scores.std().round(<span class="v3-nm">2</span>))</pre>
-              <div class="v3-nb-out">平均: 78.6
-標準偏差: 8.61</div>
-            </div>
-            <div class="v3-nb-cell">
-              <div class="v3-nb-prompt">In [3]:</div>
-              <pre class="v3-nb-code">plt.bar(<span class="v3-st">"国数英理社"</span>, scores, color=<span class="v3-st">"#028DAE"</span>)
-plt.title(<span class="v3-st">"テスト結果"</span>); plt.show()</pre>
-              <div class="v3-nb-chart">
-                <svg viewBox="0 0 360 130" width="100%" height="130" role="img">
-                  <defs>
-                    <pattern id="grid" width="36" height="20" patternUnits="userSpaceOnUse">
-                      <path d="M 36 0 L 0 0 0 20" fill="none" stroke="#efece6" stroke-width="1"/>
-                    </pattern>
-                  </defs>
-                  <rect x="20" y="6" width="328" height="100" fill="url(#grid)"/>
-                  <g><rect x="28" y="36.88" width="48" height="69.12" fill="#028DAE" rx="2"/><text x="52" y="30.88" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">72</text><text x="52" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">国</text></g>
-                  <g><rect x="90" y="24.4" width="48" height="81.6" fill="#028DAE" rx="2"/><text x="114" y="18.4" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">85</text><text x="114" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">数</text></g>
-                  <g><rect x="152" y="40.72" width="48" height="65.28" fill="#028DAE" rx="2"/><text x="176" y="34.72" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">68</text><text x="176" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">英</text></g>
-                  <g><rect x="214" y="18.64" width="48" height="87.36" fill="#028DAE" rx="2"/><text x="238" y="12.64" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">91</text><text x="238" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">理</text></g>
-                  <g><rect x="276" y="32.08" width="48" height="73.92" fill="#028DAE" rx="2"/><text x="300" y="26.08" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">77</text><text x="300" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">社</text></g>
-                </svg>
+                </div>
               </div>
+
+              <!-- セル 2 -->
+              <div class="v3-nb-cell">
+                <div class="v3-nb-cell-tb">
+                  <span class="v3-nb-cell-num">[2]</span>
+                  <span class="v3-nb-cell-type">code</span>
+                  <span class="v3-nb-cell-run">▶ 実行</span>
+                </div>
+                <div class="v3-nb-cell-body">
+                  <pre class="v3-nb-code"><span class="v3-kw">print</span>(<span class="v3-st">"平均:"</span>, scores.mean())
+<span class="v3-kw">print</span>(<span class="v3-st">"標準偏差:"</span>, scores.std().round(<span class="v3-nm">2</span>))</pre>
+                </div>
+                <div class="v3-nb-out">平均: 78.6
+標準偏差: 8.61</div>
+              </div>
+
+              <!-- セル 3 -->
+              <div class="v3-nb-cell">
+                <div class="v3-nb-cell-tb">
+                  <span class="v3-nb-cell-num">[3]</span>
+                  <span class="v3-nb-cell-type">code</span>
+                  <span class="v3-nb-cell-run">▶ 実行</span>
+                </div>
+                <div class="v3-nb-cell-body">
+                  <pre class="v3-nb-code">plt.bar(<span class="v3-st">"国数英理社"</span>, scores, color=<span class="v3-st">"#028DAE"</span>)
+plt.title(<span class="v3-st">"テスト結果"</span>); plt.show()</pre>
+                </div>
+                <div class="v3-nb-chart">
+                  <svg viewBox="0 0 360 130" width="100%" height="130" role="img">
+                    <defs>
+                      <pattern id="grid" width="36" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 36 0 L 0 0 0 20" fill="none" stroke="#efece6" stroke-width="1"/>
+                      </pattern>
+                    </defs>
+                    <rect x="20" y="6" width="328" height="100" fill="url(#grid)"/>
+                    <g><rect x="28" y="36.88" width="48" height="69.12" fill="#028DAE" rx="2"/><text x="52" y="30.88" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">72</text><text x="52" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">国</text></g>
+                    <g><rect x="90" y="24.4" width="48" height="81.6" fill="#028DAE" rx="2"/><text x="114" y="18.4" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">85</text><text x="114" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">数</text></g>
+                    <g><rect x="152" y="40.72" width="48" height="65.28" fill="#028DAE" rx="2"/><text x="176" y="34.72" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">68</text><text x="176" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">英</text></g>
+                    <g><rect x="214" y="18.64" width="48" height="87.36" fill="#028DAE" rx="2"/><text x="238" y="12.64" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">91</text><text x="238" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">理</text></g>
+                    <g><rect x="276" y="32.08" width="48" height="73.92" fill="#028DAE" rx="2"/><text x="300" y="26.08" font-family="JetBrains Mono" font-size="10" text-anchor="middle" fill="#5b636c">77</text><text x="300" y="122" font-family="Zen Kaku Gothic New" font-size="11" text-anchor="middle" fill="#5b636c">社</text></g>
+                  </svg>
+                </div>
+              </div>
+
             </div>
-          </div>
-          <!-- グラデーションオーバーレイ + CTAボタン -->
-          <div class="v3-preview-overlay"></div>
-          <div class="v3-preview-cta">
-            <a class="v3-btn v3-btn-accent" href="../">
-              はじめる
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
-            </a>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- FAQ -->
+    <!-- ご利用方法 -->
     <section class="v3-faq-section" id="faq">
       <div class="container">
         <div class="v3-section-head">
           <div>
-            <div class="v3-section-eyebrow">FAQ</div>
-            <h2 class="v3-section-title">よくある質問</h2>
+            <div class="v3-section-eyebrow">HOW TO USE</div>
+            <h2 class="v3-section-title">ご利用方法</h2>
           </div>
         </div>
         <div class="v3-faq">
-          <div class="v3-faq-item">
-            <div class="v3-faq-q"><span><span class="v3-q">Q.</span>本当に無料ですか？広告はありますか？</span></div>
-            <div class="v3-faq-a">はい、完全に無料です。広告も、ユーザー登録もありません。学校予算ゼロで、すべての生徒に提供できます。</div>
-          </div>
-          <div class="v3-faq-item">
-            <div class="v3-faq-q"><span><span class="v3-q">Q.</span>コードや個人情報はどこに保存されますか？</span></div>
-            <div class="v3-faq-a">コードは生徒のブラウザ内（ローカル）でのみ実行・保存されます。外部サーバーに送信される情報は一切ありません。</div>
-          </div>
-          <div class="v3-faq-item">
-            <div class="v3-faq-q"><span><span class="v3-q">Q.</span>学校のWi-Fiでクラス全員が同時に使えますか？</span></div>
-            <div class="v3-faq-a">はい。初回読み込み後は完全ローカル動作のため、ネットワーク負荷がかかりません。一斉実行にも耐えられます。</div>
-          </div>
-          <div class="v3-faq-item">
-            <div class="v3-faq-q"><span><span class="v3-q">Q.</span>使えるライブラリは？</span></div>
-            <div class="v3-faq-a">numpy・pandas・matplotlib・scikit-learn・Pillow など、教育で頻出のライブラリを標準搭載。import 文を書けば自動で読み込まれます。</div>
-          </div>
-          <div class="v3-faq-item">
-            <div class="v3-faq-q"><span><span class="v3-q">Q.</span>教材はどう配布できますか？</span></div>
-            <div class="v3-faq-a">ノートをURLにエンコードして共有できます。生徒はリンクを開くだけ、教材＋コード＋スライドが一体となって届きます。</div>
-          </div>
-          <div class="v3-faq-item">
-            <div class="v3-faq-q"><span><span class="v3-q">Q.</span>古い端末や学校のChromebookでも動きますか？</span></div>
-            <div class="v3-faq-a">近年のブラウザ（Chrome/Edge/Safari）が動く端末であれば動作します。インストール不要、管理者権限も必要ありません。</div>
-          </div>
+          <ol class="v3-use-steps">
+
+            <li class="v3-use-step">
+              <div class="v3-step-num">1</div>
+              <div class="v3-step-body">
+                <div class="v3-step-title">実際の動作を確認する</div>
+                <div class="v3-step-desc">まずは「はじめる」ボタンから、PyHirobaの動作をご確認ください。</div>
+                <a class="v3-btn-sm v3-btn-primary" href="../">はじめる →</a>
+              </div>
+            </li>
+
+            <li class="v3-use-step">
+              <div class="v3-step-num">2</div>
+              <div class="v3-step-body">
+                <div class="v3-step-title">ご利用開始のアンケートに回答</div>
+                <div class="v3-step-desc">先生の方向けに、簡単なアンケートにご回答ください。授業での導入をスムーズにするための情報をお伺いします。</div>
+                <a class="v3-btn-sm v3-btn-outline" href="#">アンケートに回答する →</a>
+              </div>
+            </li>
+
+            <li class="v3-use-step">
+              <div class="v3-step-num">3</div>
+              <div class="v3-step-body">
+                <div class="v3-step-title">実際の講義で使用</div>
+              </div>
+            </li>
+
+          </ol>
         </div>
       </div>
     </section>
@@ -267,7 +288,7 @@ plt.title(<span class="v3-st">"テスト結果"</span>); plt.show()</pre>
             <div>
               <h5>サービス</h5>
               <a href="#features">特徴</a>
-              <a href="#faq">よくある質問</a>
+              <a href="#faq">ご利用方法</a>
               <a href="#">先生向け</a>
             </div>
             <div>
