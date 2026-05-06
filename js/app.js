@@ -687,15 +687,35 @@ function openNewNotebook() {
 // .ipynb 読み込み / 書き出し
 // ============================================================
 
-/** ファイル選択時のハンドラ */
+/** ウェルカム画面からのアップロードハンドラ */
 function onIpynbUpload(event) {
+  _readIpynbFile(event.target.files[0], () => dismissWelcomeScreen());
+  event.target.value = '';
+}
+
+/** ヘッダーのインポートボタンからのアップロードハンドラ */
+function onIpynbHeaderUpload(event) {
   const file = event.target.files[0];
+  if (!file) return;
+  // 既存セルに内容があれば確認
+  if (cells.some(c => c.content && c.content.trim())) {
+    if (!confirm('現在のノートブックは破棄されます。\n' + file.name + ' を読み込みますか？')) {
+      event.target.value = '';
+      return;
+    }
+  }
+  _readIpynbFile(file, null);
+  event.target.value = '';
+}
+
+/** .ipynb ファイルを読み込む共通処理 */
+function _readIpynbFile(file, beforeLoad) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
     try {
       const json = JSON.parse(e.target.result);
-      dismissWelcomeScreen();
+      if (beforeLoad) beforeLoad();
       loadIpynb(json);
       // ファイル名をタイトルに反映
       const name = file.name.replace(/\.ipynb$/i, '');
@@ -707,7 +727,6 @@ function onIpynbUpload(event) {
     }
   };
   reader.readAsText(file);
-  event.target.value = ''; // 同じファイルを再選択できるようにリセット
 }
 
 /** .ipynb JSON をセルにロード（既存セルは全て置き換え） */

@@ -982,6 +982,14 @@ body {
   border: 1px solid var(--line);
 }
 .btn-clear:hover { background: var(--line-2); }
+.btn-import {
+  background: transparent;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  cursor: pointer;
+}
+.btn-import:hover { background: var(--bg-2); color: var(--ink); }
 .btn-download {
   background: transparent;
   color: var(--ink-3);
