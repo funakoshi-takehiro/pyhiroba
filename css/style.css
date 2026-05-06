@@ -724,6 +724,135 @@ body {
 }
 
 /* ======================================================
+   ウェルカム画面
+   ====================================================== */
+#welcome-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5000;
+  overflow-y: auto;
+  padding: 40px 20px;
+}
+#welcome-overlay.hidden { display: none; }
+.welcome-box {
+  max-width: 680px;
+  width: 100%;
+  text-align: center;
+}
+.welcome-brand { margin-bottom: 8px; }
+.welcome-logo-text {
+  font-size: 38px;
+  font-weight: 900;
+  color: var(--accent);
+  letter-spacing: -0.025em;
+  font-family: var(--font-ui);
+  line-height: 1;
+}
+.welcome-kana {
+  font-size: 13px;
+  color: var(--ink-4);
+  letter-spacing: 0.28em;
+  margin-top: 4px;
+}
+.welcome-tagline {
+  font-size: 15px;
+  color: var(--ink-3);
+  margin: 20px 0 28px;
+}
+.welcome-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 28px 20px;
+  background: var(--paper);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--ink);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.12s;
+  font-family: var(--font-ui);
+  font-feature-settings: "palt";
+  min-height: 150px;
+}
+.welcome-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 24px rgba(2,141,174,.12);
+  transform: translateY(-3px);
+}
+.welcome-card-url {
+  cursor: default;
+  align-items: flex-start;
+  text-align: left;
+}
+.welcome-card-url:hover {
+  border-color: var(--accent);
+  box-shadow: 0 6px 24px rgba(2,141,174,.12);
+  transform: none;
+}
+.wc-icon { font-size: 30px; line-height: 1; }
+.wc-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 2px;
+}
+.wc-desc {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+.welcome-url-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 6px;
+}
+.welcome-url-input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  font-size: 12px;
+  font-family: var(--font-code);
+  color: var(--ink);
+  background: var(--bg);
+  outline: none;
+}
+.welcome-url-input:focus { border-color: var(--accent); }
+.welcome-url-go {
+  height: 38px;
+  padding: 0 16px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+}
+.welcome-url-go:hover { background: var(--accent-dk); }
+.welcome-url-go:disabled { opacity: 0.6; cursor: default; }
+@media (max-width: 520px) {
+  .welcome-grid { grid-template-columns: 1fr; }
+}
+
+/* ======================================================
    読み込み画面
    ====================================================== */
 #loading-overlay {
@@ -853,6 +982,13 @@ body {
   border: 1px solid var(--line);
 }
 .btn-clear:hover { background: var(--line-2); }
+.btn-download {
+  background: transparent;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+.btn-download:hover { background: var(--bg-2); color: var(--ink); }
 .btn-about {
   background: transparent;
   color: var(--ink-3);

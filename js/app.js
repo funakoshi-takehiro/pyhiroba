@@ -49,8 +49,15 @@ async function initApp() {
     await sleep(400);
     document.getElementById('loading-overlay').classList.add('hidden');
 
-    // デフォルトのノートブックを表示
-    buildDefaultNotebook();
+    // URL パラメータで分岐
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('lesson')) {
+      buildDefaultNotebook();            // ?lesson=xxx → レッスン直接ロード
+    } else if (params.get('nb')) {
+      await loadFromUrl(params.get('nb')); // ?nb=URL → .ipynb 直接ロード
+    } else {
+      showWelcomeScreen();               // パラメータなし → ウェルカム画面
+    }
 
   } catch (err) {
     setProgress(0, `⚠ 読み込みエラー: ${err.message}`);
@@ -656,6 +663,188 @@ function buildDefaultNotebook() {
 
   // URLパラメータに対応したセルを追加
   lesson.cells().forEach(cell => addCell(cell));
+}
+
+// ============================================================
+// ウェルカム画面
+// ============================================================
+
+function showWelcomeScreen() {
+  document.getElementById('welcome-overlay').classList.remove('hidden');
+}
+
+function dismissWelcomeScreen() {
+  document.getElementById('welcome-overlay').classList.add('hidden');
+}
+
+/** 新規ノートブックを開く */
+function openNewNotebook() {
+  dismissWelcomeScreen();
+  buildDefaultNotebook();
+}
+
+// ============================================================
+// .ipynb 読み込み / 書き出し
+// ============================================================
+
+/** ファイル選択時のハンドラ */
+function onIpynbUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const json = JSON.parse(e.target.result);
+      dismissWelcomeScreen();
+      loadIpynb(json);
+      // ファイル名をタイトルに反映
+      const name = file.name.replace(/\.ipynb$/i, '');
+      document.title = name + ' - PyHiroba';
+      const h1 = document.querySelector('#app-header h1');
+      if (h1) h1.textContent = name;
+    } catch (err) {
+      alert('.ipynb ファイルの読み込みに失敗しました。\n' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; // 同じファイルを再選択できるようにリセット
+}
+
+/** .ipynb JSON をセルにロード（既存セルは全て置き換え） */
+function loadIpynb(json) {
+  // 状態をリセット
+  cells   = [];
+  editors = {};
+  outputs = {};
+  nextId  = 0;
+
+  const ipynbCells = json.cells || [];
+  ipynbCells.forEach(c => {
+    const src = Array.isArray(c.source) ? c.source.join('') : (c.source || '');
+    if (c.cell_type === 'code') {
+      cells.push({ id: nextId++, type: 'code', content: src, slides: [] });
+    } else if (c.cell_type === 'markdown') {
+      cells.push({ id: nextId++, type: 'text', content: src, slides: [] });
+    }
+    // raw セルはスキップ
+  });
+
+  // セルが0個の場合は空セルを追加
+  if (cells.length === 0) {
+    cells.push({ id: nextId++, type: 'code', content: '', slides: [] });
+  }
+
+  renderAll();
+}
+
+/** URL 入力欄からロード */
+async function loadFromUrlInput() {
+  const input = document.getElementById('nb-url-input');
+  const url = (input && input.value.trim()) || '';
+  if (!url) return;
+  await loadFromUrl(url);
+}
+
+/** URL から .ipynb をフェッチしてロード（?nb= パラメータ経由でも使用） */
+async function loadFromUrl(rawUrl) {
+  // GitHub のブラウザ URL を raw URL に変換
+  let url = rawUrl;
+  const ghMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+  if (ghMatch) {
+    url = `https://raw.githubusercontent.com/${ghMatch[1]}/${ghMatch[2]}/${ghMatch[3]}`;
+  }
+
+  const btn = document.querySelector('.welcome-url-go');
+  if (btn) { btn.textContent = '読込中...'; btn.disabled = true; }
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    dismissWelcomeScreen();
+    loadIpynb(json);
+    // URL のファイル名をタイトルに反映
+    const name = url.split('/').pop().replace(/\.ipynb$/i, '');
+    if (name) {
+      document.title = name + ' - PyHiroba';
+      const h1 = document.querySelector('#app-header h1');
+      if (h1) h1.textContent = name;
+    }
+  } catch (err) {
+    alert(
+      'ノートブックの読み込みに失敗しました。\n' +
+      'URLが正しいか確認してください。\n' +
+      '（GitHubの場合は raw URL を使用してください）\n\n' +
+      'エラー: ' + err.message
+    );
+  } finally {
+    if (btn) { btn.textContent = '開く'; btn.disabled = false; }
+  }
+}
+
+/** 現在のノートブックを .ipynb としてダウンロード */
+function downloadIpynb() {
+  saveAllEditors();
+
+  const nb = {
+    nbformat: 4,
+    nbformat_minor: 5,
+    metadata: {
+      kernelspec: {
+        display_name: 'Python 3',
+        language: 'python',
+        name: 'python3'
+      },
+      language_info: {
+        name: 'python',
+        version: '3.11.0'
+      }
+    },
+    cells: cells.map((cell, idx) => {
+      const source = toIpynbSource(cell.content || '');
+      if (cell.type === 'code') {
+        return {
+          cell_type: 'code',
+          execution_count: null,
+          id: `cell-${idx}`,
+          metadata: {},
+          outputs: [],
+          source
+        };
+      } else {
+        // text / slide → markdown として出力
+        return {
+          cell_type: 'markdown',
+          id: `cell-${idx}`,
+          metadata: {},
+          source
+        };
+      }
+    })
+  };
+
+  const blob = new Blob([JSON.stringify(nb, null, 2)], { type: 'application/json' });
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  // タイトルからファイル名を生成
+  const titleMatch = document.title.match(/^(.+?) - /);
+  const filename = titleMatch
+    ? titleMatch[1].replace(/[^\w\-_ ]/g, '_') + '.ipynb'
+    : 'notebook.ipynb';
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(blobUrl);
+}
+
+/** content 文字列を .ipynb の source 配列形式に変換 */
+function toIpynbSource(content) {
+  if (!content) return [];
+  const lines = content.split('\n');
+  // 各行末に \n を付与（最後の行を除く）
+  return lines.map((line, i) => i < lines.length - 1 ? line + '\n' : line);
 }
 
 // ============================================================

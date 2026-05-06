@@ -17,6 +17,55 @@
 </head>
 <body>
 
+  <!-- ===== ウェルカム画面 ===== -->
+  <div id="welcome-overlay" class="hidden">
+    <div class="welcome-box">
+      <div class="welcome-brand">
+        <div class="welcome-logo-text">PyHiroba</div>
+        <div class="welcome-kana">ぱいひろば</div>
+      </div>
+      <p class="welcome-tagline">どこから始めますか？</p>
+      <div class="welcome-grid">
+
+        <!-- 新規ノートブック -->
+        <button class="welcome-card" onclick="openNewNotebook()">
+          <div class="wc-icon">📄</div>
+          <div class="wc-title">新規ノートブック</div>
+          <div class="wc-desc">空のノートブックを開く</div>
+        </button>
+
+        <!-- .ipynb アップロード -->
+        <label class="welcome-card" for="ipynb-upload">
+          <div class="wc-icon">📂</div>
+          <div class="wc-title">ファイルを開く</div>
+          <div class="wc-desc">.ipynb をアップロード</div>
+        </label>
+        <input type="file" id="ipynb-upload" accept=".ipynb" style="display:none"
+          onchange="onIpynbUpload(event)">
+
+        <!-- URL から開く -->
+        <div class="welcome-card welcome-card-url">
+          <div class="wc-icon">🔗</div>
+          <div class="wc-title">URLから開く</div>
+          <div class="welcome-url-row">
+            <input type="url" id="nb-url-input" class="welcome-url-input"
+              placeholder="https://raw.githubusercontent.com/..."
+              onkeydown="if(event.key==='Enter') loadFromUrlInput()">
+            <button class="welcome-url-go" onclick="loadFromUrlInput()">開く</button>
+          </div>
+        </div>
+
+        <!-- PyHirobaについて -->
+        <a class="welcome-card" href="lp/">
+          <div class="wc-icon">ℹ️</div>
+          <div class="wc-title">PyHirobaについて</div>
+          <div class="wc-desc">サービスの詳細を確認する</div>
+        </a>
+
+      </div>
+    </div>
+  </div>
+
   <!-- ===== 読み込み画面 ===== -->
   <div id="loading-overlay">
     <div class="loading-box">
@@ -44,6 +93,9 @@
       </button>
       <button class="btn-header btn-clear" onclick="clearAllOutputs()" title="すべての実行結果を消去します">
         🗑 出力をクリア
+      </button>
+      <button class="btn-header btn-download" onclick="downloadIpynb()" title=".ipynb形式でダウンロード">
+        ⬇ .ipynb
       </button>
       <div class="header-help" title="ヘルプ" onclick="toggleHelp()">？</div>
       <a class="btn-header btn-about" href="lp/" title="PyHirobaについて">PyHirobaについて</a>
