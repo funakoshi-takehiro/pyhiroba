@@ -82,23 +82,6 @@ body {
 }
 
 /* ======================================================
-   LP 画面
-   ====================================================== */
-
-#lp-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 500;
-  overflow-y: auto;
-  background-color: var(--bg);
-  transition: opacity 0.4s ease;
-}
-#lp-screen.lp-out {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* ======================================================
    LP V3 — コンテナ・共通
    ====================================================== */
 
@@ -708,6 +691,20 @@ body {
   border: 1px solid var(--line);
 }
 .btn-clear:hover { background: var(--line-2); }
+.btn-about {
+  background: transparent;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+.btn-about:hover {
+  background: var(--bg-2);
+  color: var(--ink);
+  border-color: var(--line);
+}
 .header-help {
   width: 32px;
   height: 32px;

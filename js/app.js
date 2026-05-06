@@ -22,20 +22,10 @@ let lbIdx    = 0;
 // ============================================================
 // 初期化
 // ============================================================
-// LP「はじめる」ボタンから呼ばれる
-function startApp() {
-  const lp = document.getElementById('lp-screen');
-  const loading = document.getElementById('loading-overlay');
-
-  // LPをフェードアウト
-  lp.classList.add('lp-out');
-  setTimeout(() => {
-    lp.style.display = 'none';
-    // ローディング画面を表示してPyodide初期化
-    loading.classList.remove('hidden');
-    initApp();
-  }, 400);
-}
+// ページ読み込み時に自動起動
+document.addEventListener('DOMContentLoaded', () => {
+  initApp();
+});
 
 async function initApp() {
   setProgress(5, 'Pyodideを読み込んでいます...');
