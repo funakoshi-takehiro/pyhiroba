@@ -94,9 +94,9 @@
       <button class="btn-header btn-clear" onclick="clearAllOutputs()" title="すべての実行結果を消去します">
         🗑 出力をクリア
       </button>
-      <label class="btn-header btn-import" for="ipynb-header-upload" title=".ipynbファイルを読み込む">
+      <button class="btn-header btn-import" onclick="document.getElementById('ipynb-header-upload').click()" title=".ipynbファイルを読み込む">
         ⬆ インポート
-      </label>
+      </button>
       <input type="file" id="ipynb-header-upload" accept=".ipynb" style="display:none"
         onchange="onIpynbHeaderUpload(event)">
       <button class="btn-header btn-download" onclick="downloadIpynb()" title=".ipynb形式でダウンロード">

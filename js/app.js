@@ -687,35 +687,43 @@ function openNewNotebook() {
 // .ipynb 読み込み / 書き出し
 // ============================================================
 
-/** ウェルカム画面からのアップロードハンドラ */
+/** ウェルカム画面の「ファイルを開く」ハンドラ */
 function onIpynbUpload(event) {
-  _readIpynbFile(event.target.files[0], () => dismissWelcomeScreen());
+  const file = event.target.files[0];
   event.target.value = '';
+  if (!file) return;
+  _readAndLoadIpynb(file, true);
 }
 
-/** ヘッダーのインポートボタンからのアップロードハンドラ */
+/** ヘッダーの「インポート」ボタンハンドラ */
 function onIpynbHeaderUpload(event) {
   const file = event.target.files[0];
+  event.target.value = ''; // 同じファイルを再選択できるよう先にリセット
   if (!file) return;
-  // 既存セルに内容があれば確認
-  if (cells.some(c => c.content && c.content.trim())) {
-    if (!confirm('現在のノートブックは破棄されます。\n' + file.name + ' を読み込みますか？')) {
-      event.target.value = '';
-      return;
-    }
-  }
-  _readIpynbFile(file, null);
-  event.target.value = '';
+
+  // 確認ダイアログを必ず表示
+  const ok = confirm(
+    '「' + file.name + '」を読み込みます。\n\n' +
+    '現在のノートブックの内容はすべて削除され、\n' +
+    'インポートしたファイルの内容に置き換わります。\n\n' +
+    'よろしいですか？'
+  );
+  if (!ok) return;
+
+  _readAndLoadIpynb(file, false);
 }
 
-/** .ipynb ファイルを読み込む共通処理 */
-function _readIpynbFile(file, beforeLoad) {
-  if (!file) return;
+/**
+ * .ipynb ファイルを FileReader で読み込み loadIpynb() に渡す
+ * @param {File}    file          - 読み込む File オブジェクト
+ * @param {boolean} fromWelcome   - true のときウェルカム画面を閉じる
+ */
+function _readAndLoadIpynb(file, fromWelcome) {
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = function (e) {
     try {
       const json = JSON.parse(e.target.result);
-      if (beforeLoad) beforeLoad();
+      if (fromWelcome) dismissWelcomeScreen();
       loadIpynb(json);
       // ファイル名をタイトルに反映
       const name = file.name.replace(/\.ipynb$/i, '');
@@ -723,10 +731,13 @@ function _readIpynbFile(file, beforeLoad) {
       const h1 = document.querySelector('#app-header h1');
       if (h1) h1.textContent = name;
     } catch (err) {
-      alert('.ipynb ファイルの読み込みに失敗しました。\n' + err.message);
+      alert('.ipynb ファイルの読み込みに失敗しました。\nファイルが壊れているか、形式が正しくない可能性があります。\n\n' + err.message);
     }
   };
-  reader.readAsText(file);
+  reader.onerror = function () {
+    alert('ファイルの読み込み中にエラーが発生しました。');
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 /** .ipynb JSON をセルにロード（既存セルは全て置き換え） */
