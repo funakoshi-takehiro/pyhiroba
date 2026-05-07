@@ -1577,12 +1577,19 @@ function renderOutput(id, result) {
 
   // エラー
   if (result.errMsg) {
-    const jaMsg = translateError(result.errType, result.errMsg);
+    const lineNum   = getErrorLineInfo(result.errTb);
+    const codeLine  = getErrorCodeLine(result.errTb);
+    const jaMsg     = translateError(result.errType, result.errMsg);
+    const jaMsgHtml = escHtml(jaMsg).replace(/\n/g, '<br>');
     html += `
       <div class="output-error">
-        <div class="error-title">❌ エラー: ${escHtml(result.errType || 'エラー')}</div>
+        <div class="error-header">
+          <span class="error-type-badge">${escHtml(result.errType || 'Error')}</span>
+          ${lineNum ? `<span class="error-line-badge">📍 ${lineNum}行目</span>` : ''}
+        </div>
         <div class="error-message">${escHtml(result.errMsg)}</div>
-        <div class="error-japanese">${jaMsg}</div>
+        ${codeLine ? `<div class="error-code-line"><span class="error-code-label">該当:</span><code>${escHtml(codeLine)}</code></div>` : ''}
+        <div class="error-japanese">${jaMsgHtml}</div>
         ${result.errTb ? `
           <details class="error-details">
             <summary>詳しいエラー情報を見る</summary>
@@ -1616,119 +1623,420 @@ function renderOutput(id, result) {
 }
 
 // ============================================================
-// エラーメッセージの日本語化
+// エラー行番号・コード行の抽出
+// ============================================================
+
+/** トレースバックから行番号を抽出（最後のセル内行を優先） */
+function getErrorLineInfo(tb) {
+  if (!tb) return null;
+  const matches = [...tb.matchAll(/File "<セル>", line (\d+)/g)];
+  if (!matches.length) return null;
+  return matches[matches.length - 1][1];
+}
+
+/** トレースバックからエラーが起きたコード行を抽出 */
+function getErrorCodeLine(tb) {
+  if (!tb) return null;
+  // 通常エラー: File "<セル>", line N, in ...\n    code
+  // SyntaxError: File "<セル>", line N\n    code
+  const m = tb.match(/File "<セル>", line \d+(?:, in [^\n]*)?\n([ \t]+)([^\n]+)\n/);
+  if (!m) return null;
+  const line = m[2].trim();
+  // ハット記号だけの行は除外
+  if (/^[\^~\s]+$/.test(line)) return null;
+  return line.length > 80 ? line.slice(0, 77) + '...' : line;
+}
+
+// ============================================================
+// エラーメッセージの日本語化（初学者向け詳細ガイド）
 // ============================================================
 function translateError(type, msg) {
   const rules = [
-    // NameError
-    { types: ['NameError'],
-      pattern: /name '(.+?)' is not defined/,
-      build: m => `変数・関数「${m[1]}」が定義されていません。スペルミスがないか確認してください。先にそのセルを実行しましたか？` },
 
-    // SyntaxError
+    // ======================================================
+    // SyntaxError ─ 文法エラー
+    // ======================================================
     { types: ['SyntaxError'],
-      pattern: /invalid syntax/,
-      build: () => '文法（syntax）が間違っています。括弧 () [] {} の対応、コロン「:」の付け忘れ、クォート「\'」「"」の対応を確認してください。' },
+      pattern: /expected ':'/,
+      build: () => 'コロン「:」が必要です。\nif・for・while・def・class などの行の末尾には必ず「:」を付けてください。\n例（誤）: if x > 0\n例（正）: if x > 0:' },
+
     { types: ['SyntaxError'],
       pattern: /EOL while scanning string literal/,
-      build: () => '文字列が閉じられていません。クォート「\'」または「"」が対応しているか確認してください。' },
-    { types: ['SyntaxError'],
-      pattern: /unexpected EOF/,
-      build: () => 'コードが途中で終わっています。括弧や文字列が閉じられているか確認してください。' },
+      build: () => '文字列が閉じられていません。\nクォート「\'」または「"」を最後に書き忘れていませんか？\n例（誤）: print("こんにちは\n例（正）: print("こんにちは")' },
 
-    // IndentationError
+    { types: ['SyntaxError'],
+      pattern: /EOF while scanning triple-quoted string literal/,
+      build: () => '三重クォート（"""または\'\'\'）が閉じられていません。\n開いた """ や \'\'\' の終わりを書き忘れていませんか？' },
+
+    { types: ['SyntaxError'],
+      pattern: /unexpected EOF|unexpected end of file/i,
+      build: () => 'コードが途中で終わっています。\n括弧 ()・[]・{} が閉じられているか確認してください。' },
+
+    { types: ['SyntaxError'],
+      pattern: /'(.+?)' was never closed|was never closed/,
+      build: m => `括弧「${m[1] || '('}」が閉じられていません。\n開いた括弧の数と閉じた括弧の数が一致しているか確認してください。` },
+
+    { types: ['SyntaxError'],
+      pattern: /'return' outside function/,
+      build: () => '「return」が関数の外にあります。\nreturn は def で定義した関数の中でのみ使えます。' },
+
+    { types: ['SyntaxError'],
+      pattern: /'break' outside loop/,
+      build: () => '「break」が繰り返し（for・while）の外にあります。\nbreak は for や while の中でのみ使えます。' },
+
+    { types: ['SyntaxError'],
+      pattern: /'continue' outside loop/,
+      build: () => '「continue」が繰り返し（for・while）の外にあります。\ncontinue は for や while の中でのみ使えます。' },
+
+    { types: ['SyntaxError'],
+      pattern: /cannot assign to (literal|expression here|operator|function call)/,
+      build: () => '代入できない場所に「=」が使われています。\n• 条件式で「==」とすべき所を「=」と書いていませんか？\n• 数値や文字列リテラルに代入しようとしていませんか？\n例（誤）: if x = 5:  →  例（正）: if x == 5:' },
+
+    { types: ['SyntaxError'],
+      pattern: /f-string: empty expression not allowed/,
+      build: () => 'f文字列の { } の中が空です。\n{ } の中には変数名や式を書いてください。\n例（誤）: f"値は{}"  →  例（正）: f"値は{x}"' },
+
+    { types: ['SyntaxError'],
+      pattern: /f-string/i,
+      build: () => 'f文字列（f"..."）の書き方が間違っています。\n• { } の中に正しいPythonの式を書いてください\n• { } の対応が取れているか確認してください\n例（正）: f"こんにちは、{name}さん！"' },
+
+    { types: ['SyntaxError'],
+      pattern: /invalid character '(.+?)'/,
+      build: m => `使えない文字「${m[1]}」が含まれています。\n全角の記号や日本語スペースが混じっていませんか？\n括弧・コロン・イコールなどの記号は必ず半角（ASCII）で入力してください。\n例: （→(   ：→:   ＝→=` },
+
+    { types: ['SyntaxError'],
+      pattern: /non-default argument follows default argument/,
+      build: () => '関数の引数の定義が間違っています。\nデフォルト値（= で指定）のある引数の後に、デフォルト値のない引数は書けません。\n例（誤）: def f(a=1, b):\n例（正）: def f(b, a=1):' },
+
+    { types: ['SyntaxError'],
+      pattern: /positional argument follows keyword argument/,
+      build: () => '関数の引数の渡し方が間違っています。\nキーワード引数（名前=値）の後に通常の引数（値のみ）は書けません。\n例（誤）: func(x=1, 2)  →  例（正）: func(2, x=1)' },
+
+    { types: ['SyntaxError'],
+      pattern: /duplicate argument '(.+?)'/,
+      build: m => `関数の引数「${m[1]}」が重複しています。\n同じ名前の引数を2回書いています。引数名を変えてください。` },
+
+    { types: ['SyntaxError'],
+      pattern: /invalid decimal literal/,
+      build: () => '数値の書き方が間違っています。\n変数名は数字で始めることができません。文字かアンダースコア(_)で始めてください。\n例（誤）: 1value = 10  →  例（正）: value1 = 10' },
+
+    { types: ['SyntaxError'],
+      pattern: /invalid syntax/,
+      build: () => '文法（書き方）が間違っています。よくある原因:\n• コロン「:」の付け忘れ（if・for・while・def の行末）\n• 括弧 ()・[]・{} の対応ミス\n• クォート「\'」「"」の対応ミス\n• 全角文字（記号・スペース）の混入\n• 比較に「==」ではなく「=」を使っている' },
+
+    // ======================================================
+    // IndentationError / TabError ─ インデントエラー
+    // ======================================================
+    { types: ['IndentationError'],
+      pattern: /unexpected indent/,
+      build: () => '余分なインデント（字下げ）があります。\nインデントが必要ない行に余分なスペースやタブが入っています。\n行の先頭の空白を確認してください。' },
+
+    { types: ['IndentationError'],
+      pattern: /expected an indented block/,
+      build: () => 'インデント（字下げ）が必要です。\nif・for・while・def・class の次の行は必ずスペース4つで字下げしてください。\n例:\nif x > 0:\n    print("正の数")  ← スペース4つ必須' },
+
+    { types: ['IndentationError', 'TabError'],
+      pattern: /inconsistent use of tabs and spaces/,
+      build: () => 'タブ（Tab）とスペースが混在しています。\nインデントはスペース4つだけで統一してください。\nタブキーを使っている行をすべてスペース4つに変換しましょう。' },
+
     { types: ['IndentationError', 'TabError'],
       pattern: /.*/,
-      build: () => 'インデント（字下げ）が正しくありません。if・for・def などの次の行は、スペース4つで字下げしてください。TabキーまたはSpaceキーが混在していませんか？' },
+      build: () => 'インデント（字下げ）が正しくありません。\n• if・for・while・def・class の次の行はスペース4つで字下げ\n• タブとスペースを混在させない\n• 同じブロック内はすべて同じ字下げ幅にする' },
 
-    // TypeError
+    // ======================================================
+    // NameError ─ 未定義の名前
+    // ======================================================
+    { types: ['NameError'],
+      pattern: /name '(.+?)' is not defined/,
+      build: m => {
+        const name = m[1];
+        let hint = '';
+        if (name === 'Print' || name === 'PRINT')       hint = '\nヒント: print は全部小文字です → print()';
+        else if (name === 'Input' || name === 'INPUT')  hint = '\nヒント: input は全部小文字です → input()';
+        else if (name === 'true' || name === 'false')   hint = `\nヒント: Python では先頭だけ大文字にします → ${name[0].toUpperCase() + name.slice(1)}`;
+        else if (name === 'null' || name === 'nil')     hint = '\nヒント: Python では「None」（大文字N）を使います';
+        else if (name === 'AND' || name === 'OR' || name === 'NOT') hint = `\nヒント: Python では小文字で「${name.toLowerCase()}」と書きます`;
+        else if (name === 'elif' || name === 'else')    hint = '';
+        return `変数・関数「${name}」が定義されていません。${hint}\n• スペルミスがないか確認してください\n• この変数を定義しているセルを先に実行しましたか？\n• import が必要なライブラリの関数ではありませんか？`;
+      }
+    },
+
+    // ======================================================
+    // UnboundLocalError ─ スコープエラー
+    // ======================================================
+    { types: ['UnboundLocalError'],
+      pattern: /local variable '(.+?)' referenced before assignment/,
+      build: m => `関数の中でローカル変数「${m[1]}」を定義する前に使っています。\n関数の外に同じ名前の変数があっても、関数の中で代入（=）すると「ローカル変数」扱いになります。\n関数内で使う前に必ず値を代入してください。\n外の変数を使いたい場合は「global ${m[1]}」と宣言する方法もあります。` },
+
+    // ======================================================
+    // TypeError ─ 型エラー
+    // ======================================================
     { types: ['TypeError'],
       pattern: /unsupported operand type\(s\) for (.+?): '(.+?)' and '(.+?)'/,
-      build: m => `型が違います。「${m[2]}」型と「${m[3]}」型の計算はできません。数値と文字列を混在させていませんか？int() や str() で変換してみましょう。` },
+      build: m => `「${m[2]}」型と「${m[3]}」型の間で「${m[1]}」の計算はできません。\n数値と文字列を混在させていませんか？\n• 数値に変換: int("3") または float("3.14")\n• 文字列に変換: str(42)\n例（誤）: 5 + "3"  →  例（正）: 5 + int("3")` },
+
     { types: ['TypeError'],
       pattern: /can only concatenate str \(not "(.+?)"\) to str/,
-      build: m => `文字列（str）と「${m[1]}」型は結合できません。str() で文字列に変換してください。例: str(数値)` },
+      build: m => `文字列（str）と「${m[1]}」型は「+」でつなげません。\nstr() で文字列に変換してください。\n例（誤）: "点数は" + 85\n例（正）: "点数は" + str(85)\n例（正）: f"点数は{85}"` },
+
+    { types: ['TypeError'],
+      pattern: /must be str, not (.+)/,
+      build: m => `文字列が必要な場所に「${m[1]}」型が使われています。str() で文字列に変換してください。` },
+
+    { types: ['TypeError'],
+      pattern: /takes (\d+) positional arguments? but (\d+) (?:was|were) given/,
+      build: m => `関数の引数の数が合いません。\nこの関数に渡せる引数は ${m[1]} 個ですが、${m[2]} 個渡されました。\n関数の定義（def 〜）と呼び出し方を確認してください。` },
+
+    { types: ['TypeError'],
+      pattern: /missing (\d+) required positional argument[s]?[: ]*'(.+?)'/,
+      build: m => `関数の必須引数「${m[2]}」が渡されていません。\n（${m[1]} 個の引数が不足しています）` },
+
+    { types: ['TypeError'],
+      pattern: /missing (\d+) required positional argument/,
+      build: m => `関数に必須の引数が ${m[1]} 個不足しています。\n関数を呼び出すときの引数を確認してください。` },
+
+    { types: ['TypeError'],
+      pattern: /got an unexpected keyword argument '(.+?)'/,
+      build: m => `関数に「${m[1]}」というキーワード引数はありません。\n引数名のスペルを確認してください。` },
+
+    { types: ['TypeError'],
+      pattern: /got multiple values for argument '(.+?)'/,
+      build: m => `関数の引数「${m[1]}」に値が2回渡されています。\n位置引数とキーワード引数で同じ引数を指定していませんか？` },
+
+    { types: ['TypeError'],
+      pattern: /'NoneType' object is not iterable/,
+      build: () => 'None（何もない値）に対して繰り返し処理をしようとしました。\n• 関数が return で値を返しているか確認してください\n• 変数に意図せず None が入っていませんか？\n• for文の対象が None になっていませんか？' },
+
+    { types: ['TypeError'],
+      pattern: /'(.+?)' object is not iterable/,
+      build: m => `「${m[1]}」型は繰り返し処理（for文など）には使えません。\nfor文にはリスト・range・str・tuple など繰り返せるものを使ってください。\n例（誤）: for i in 5:\n例（正）: for i in range(5):` },
+
     { types: ['TypeError'],
       pattern: /'(.+?)' object is not subscriptable/,
-      build: m => `「${m[1]}」型には [ ] でアクセスできません。` },
+      build: m => `「${m[1]}」型には [ ] でアクセスできません。\nリスト・文字列・辞書など、インデックスが使えるデータ型か確認してください。` },
+
     { types: ['TypeError'],
       pattern: /'(.+?)' object is not callable/,
-      build: m => `「${m[1]}」は関数ではないため、() で呼び出すことはできません。` },
+      build: m => `「${m[1]}」は関数ではないため、() で呼び出すことはできません。\n変数名と組み込み関数名が同じになっていませんか？\n例: list = [1,2,3] とした後に list() を呼ぶとこのエラーが出ます。` },
+
+    { types: ['TypeError'],
+      pattern: /object of type '(.+?)' has no len\(\)/,
+      build: m => `「${m[1]}」型には len() が使えません。\nlen() はリスト・文字列・タプルなど、長さを持つデータ型に使います。` },
+
+    { types: ['TypeError'],
+      pattern: /'str' object cannot be interpreted as an integer/,
+      build: () => '整数が必要な場所に文字列が使われています。int() で整数に変換してください。\n例（誤）: range("5")  →  例（正）: range(5)' },
+
     { types: ['TypeError'],
       pattern: /.*/,
-      build: () => 'データの型（種類）が合っていません。数値・文字列・リストなどの型を確認してください。' },
+      build: () => 'データの型（種類）が合っていません。\ntype() でデータの型を確認し、int()・float()・str() などで変換してみましょう。' },
 
-    // IndexError
+    // ======================================================
+    // IndexError ─ インデックスエラー
+    // ======================================================
     { types: ['IndexError'],
       pattern: /list index out of range/,
-      build: () => 'リストの範囲外にアクセスしようとしました。インデックス（番号）はリストの長さより小さくする必要があります（最初の要素は [0] です）。' },
+      build: () => 'リストの範囲外にアクセスしようとしました。\n• 最初の要素は [0]、最後の要素は [-1] です\n• インデックスは 0 ～ len(リスト)-1 の範囲にしてください\n例: lst = [10,20,30] の場合 → lst[0]=10, lst[1]=20, lst[2]=30, lst[3]はエラー！' },
+
+    { types: ['IndexError'],
+      pattern: /string index out of range/,
+      build: () => '文字列の範囲外にアクセスしようとしました。\nインデックスが文字列の長さを超えています。len() で長さを確認してください。' },
+
+    { types: ['IndexError'],
+      pattern: /tuple index out of range/,
+      build: () => 'タプルの範囲外にアクセスしようとしました。\nインデックスがタプルの要素数を超えています。' },
+
+    { types: ['IndexError'],
+      pattern: /index (\d+) is out of bounds for axis \d+ with size (\d+)/,
+      build: m => `NumPy配列のインデックス ${m[1]} が範囲外です（サイズは ${m[2]}）。\n.shape で配列の形を確認してください。` },
+
     { types: ['IndexError'],
       pattern: /.*/,
-      build: () => '配列・リストの範囲外を指定しました。インデックスの数値を確認してください。' },
+      build: () => 'リスト・配列の範囲外にアクセスしました。\nインデックスの値が大きすぎます。len() で長さを確認してください。' },
 
-    // KeyError
+    // ======================================================
+    // KeyError ─ 辞書のキーエラー
+    // ======================================================
     { types: ['KeyError'],
       pattern: /(.+)/,
-      build: m => `辞書（dict）にキー ${m[1]} が存在しません。キーのスペルを確認してください。` },
+      build: m => `辞書（dict）にキー ${m[1]} が存在しません。\n• キーのスペルを確認してください\n• .get(キー) を使うと存在しないキーでもエラーにならず None を返します\n• dict.keys() でキーの一覧を確認できます` },
 
-    // ZeroDivisionError
+    // ======================================================
+    // ZeroDivisionError ─ ゼロ除算
+    // ======================================================
     { types: ['ZeroDivisionError'],
       pattern: /.*/,
-      build: () => '0（ゼロ）で割り算しようとしました。分母が 0 になっていないか確認してください。' },
+      build: () => '0（ゼロ）で割り算しようとしました。\n分母（割る数）が 0 になっていないか確認してください。\n割る前に if 文でゼロチェックするとよいでしょう。\n例: if b != 0: print(a / b)' },
 
-    // ImportError / ModuleNotFoundError
+    // ======================================================
+    // ImportError / ModuleNotFoundError ─ インポートエラー
+    // ======================================================
     { types: ['ImportError', 'ModuleNotFoundError'],
       pattern: /No module named '(.+?)'/,
-      build: m => `ライブラリ「${m[1]}」が見つかりません。このノートブックで使えるライブラリか確認してください。使える主なもの: numpy, pandas, matplotlib, sklearn, PIL, math, random` },
+      build: m => `ライブラリ「${m[1]}」が見つかりません。\n使える主なライブラリ: numpy, pandas, matplotlib, sklearn, scipy, PIL, math, random, json, re, datetime\nimport のスペルを確認してください。` },
 
-    // AttributeError
+    { types: ['ImportError'],
+      pattern: /cannot import name '(.+?)' from '(.+?)'/,
+      build: m => `モジュール「${m[2]}」に「${m[1]}」という名前はありません。\nスペルを確認してください。` },
+
+    { types: ['ImportError', 'ModuleNotFoundError'],
+      pattern: /.*/,
+      build: () => 'ライブラリのインポートに失敗しました。\nライブラリ名のスペルを確認してください。' },
+
+    // ======================================================
+    // AttributeError ─ 属性エラー
+    // ======================================================
+    { types: ['AttributeError'],
+      pattern: /'NoneType' object has no attribute '(.+?)'/,
+      build: m => `None（何もない値）に「.${m[1]}」を使おうとしました。\n• 変数に None が入っていませんか？\n• 関数が値を return しているか確認してください\n• メソッドの戻り値を変数に受けた後に使おうとしていませんか？\n例: x = リスト.sort() → sort() は None を返すので x は None になります！` },
+
     { types: ['AttributeError'],
       pattern: /'(.+?)' object has no attribute '(.+?)'/,
-      build: m => `「${m[1]}」型のオブジェクトに「${m[2]}」という属性・メソッドはありません。スペルを確認してください。` },
+      build: m => `「${m[1]}」型のオブジェクトに「${m[2]}」という属性・メソッドはありません。\n• スペルミスがないか確認してください\n• データの型が想定と合っているか type() で確認してください` },
+
     { types: ['AttributeError'],
       pattern: /module '(.+?)' has no attribute '(.+?)'/,
-      build: m => `モジュール「${m[1]}」に「${m[2]}」という関数・属性はありません。スペルを確認してください。` },
+      build: m => `モジュール「${m[1]}」に「${m[2]}」という関数・属性はありません。\nスペルミスがないか確認してください。` },
 
-    // ValueError
+    { types: ['AttributeError'],
+      pattern: /.*/,
+      build: () => '属性またはメソッドが見つかりません。\nスペルミスや、データの型の間違いがないか確認してください。' },
+
+    // ======================================================
+    // ValueError ─ 値エラー
+    // ======================================================
+    { types: ['ValueError'],
+      pattern: /invalid literal for int\(\) with base \d+: '(.+?)'/,
+      build: m => `「${m[1]}」を整数に変換できません。\nint() には数字だけからなる文字列を渡してください。\n小数を整数にしたい場合: int(float("3.14"))\n例（誤）: int("abc")  例（誤）: int("3.14")  例（正）: int("42")` },
+
     { types: ['ValueError'],
       pattern: /invalid literal for int\(\)/,
-      build: () => '文字列を整数に変換できません。数字だけからなる文字列か確認してください。例: int("abc") はエラーになります。' },
+      build: () => '文字列を整数に変換できません。\nint() には数字だけからなる文字列を渡してください。\n例（誤）: int("abc")  →  例（正）: int("42")' },
+
+    { types: ['ValueError'],
+      pattern: /could not convert string to float: '(.+?)'/,
+      build: m => `「${m[1]}」を小数（float）に変換できません。\n数値のみの文字列か確認してください。` },
+
     { types: ['ValueError'],
       pattern: /could not convert string to float/,
-      build: () => '文字列を小数に変換できません。数値のみの文字列か確認してください。' },
+      build: () => '文字列を小数（float）に変換できません。\n数値のみの文字列か確認してください。' },
+
+    { types: ['ValueError'],
+      pattern: /too many values to unpack \(expected (\d+)\)/,
+      build: m => `展開する値が多すぎます。\n左辺に ${m[1]} 個の変数がありますが、右辺の要素数がそれより多いです。\n例（誤）: a, b = [1, 2, 3]\n例（正）: a, b, c = [1, 2, 3]` },
+
+    { types: ['ValueError'],
+      pattern: /too many values to unpack/,
+      build: () => '展開する値が多すぎます。左辺の変数の数と右辺の要素の数を合わせてください。' },
+
+    { types: ['ValueError'],
+      pattern: /not enough values to unpack \(expected (\d+), got (\d+)\)/,
+      build: m => `展開する値が少なすぎます。\n左辺に ${m[1]} 個の変数がありますが、右辺の要素は ${m[2]} 個しかありません。` },
+
+    { types: ['ValueError'],
+      pattern: /not enough values to unpack/,
+      build: () => '展開する値が少なすぎます。左辺の変数の数と右辺の要素の数を合わせてください。' },
+
+    { types: ['ValueError'],
+      pattern: /math domain error/,
+      build: () => '数学的に定義できない計算をしようとしました。\n• 負の数の平方根: math.sqrt(-1) はエラー\n• 0の対数: math.log(0) はエラー\n入力値を確認してください。' },
+
+    { types: ['ValueError'],
+      pattern: /operands could not be broadcast together with shapes?/,
+      build: () => 'NumPy配列の形（shape）が合いません。\n計算する配列のサイズが一致しているか .shape で確認してください。' },
+
+    { types: ['ValueError'],
+      pattern: /setting an array element with a sequence/,
+      build: () => 'NumPy配列に形の揃わないデータを入れようとしました。\n各行の要素数が同じかどうか確認してください。' },
+
+    { types: ['ValueError'],
+      pattern: /x and y must be the same size/,
+      build: () => 'グラフのx軸とy軸のデータ数が一致しません。\n同じ長さのリスト・配列を使ってください。len() で両方の長さを確認しましょう。' },
+
+    { types: ['ValueError'],
+      pattern: /list\.remove\(x\): x not in list/,
+      build: () => 'remove() で削除しようとした値がリストの中にありません。\n値のスペルや型（文字列か数値か）を確認してください。' },
+
+    { types: ['ValueError'],
+      pattern: /substring not found/,
+      build: () => 'index() で探した文字列が見つかりませんでした。\nfind() を使うと見つからない場合も -1 を返してエラーになりません。' },
+
     { types: ['ValueError'],
       pattern: /.*/,
-      build: () => '値が正しくありません。データの内容や形式を確認してください。' },
+      build: () => '値が正しくありません。\nデータの内容・形式・範囲を確認してください。' },
 
-    // RecursionError
+    // ======================================================
+    // RecursionError ─ 再帰エラー
+    // ======================================================
     { types: ['RecursionError'],
       pattern: /.*/,
-      build: () => '関数が深く呼び出されすぎました（再帰が無限ループになっている可能性があります）。再帰処理の終了条件を確認してください。' },
+      build: () => '関数の呼び出しが深くなりすぎました（再帰が無限ループになっています）。\n再帰関数には必ず「終了条件（ベースケース）」を書いてください。\n例: if n == 0: return 1  のような処理で再帰を止めましょう。' },
 
-    // MemoryError
+    // ======================================================
+    // OverflowError ─ オーバーフロー
+    // ======================================================
+    { types: ['OverflowError'],
+      pattern: /.*/,
+      build: () => '数値が大きすぎて処理できません。\n計算の途中で非常に大きな数（無限大）になっていませんか？\nmath.inf や float("inf") と比較して確認できます。' },
+
+    // ======================================================
+    // MemoryError ─ メモリ不足
+    // ======================================================
     { types: ['MemoryError'],
       pattern: /.*/,
-      build: () => 'メモリが不足しています。より小さなデータで試してみてください。' },
+      build: () => 'メモリが不足しています。\n非常に大きなリストや配列を作ろうとしていませんか？\nより小さなデータで試してみてください。' },
 
-    // FileNotFoundError
+    // ======================================================
+    // FileNotFoundError / OSError ─ ファイルエラー
+    // ======================================================
     { types: ['FileNotFoundError'],
       pattern: /.*/,
-      build: () => 'ファイルが見つかりません。このノートブックではファイルの読み書きはできません。' },
+      build: () => 'ファイルが見つかりません。\nこのノートブック（ブラウザ上のPython）ではローカルファイルの読み書きはできません。\nファイルの代わりに直接データをコードに書いて使ってください。' },
 
-    // SystemExit
-    { types: ['SystemExit'],
+    { types: ['OSError', 'IOError'],
       pattern: /.*/,
-      build: () => 'プログラムが終了しました（sys.exit() が呼ばれました）。' },
+      build: () => 'ファイルやシステム操作でエラーが発生しました。\nこのノートブックではファイルへのアクセスは制限されています。' },
 
-    // StopIteration
-    { types: ['StopIteration'],
+    { types: ['PermissionError'],
       pattern: /.*/,
-      build: () => 'イテレータの要素がなくなりました。next() の使い方を確認してください。' },
+      build: () => 'アクセス権限がありません。\nこのノートブックではファイルやシステムへのアクセスは制限されています。' },
 
-    // RuntimeError
+    // ======================================================
+    // AssertionError ─ アサーションエラー
+    // ======================================================
+    { types: ['AssertionError'],
+      pattern: /.*/,
+      build: () => 'assert 文の条件が満たされませんでした。\nデバッグ・テスト用の検証が失敗しています。条件式を確認してください。' },
+
+    // ======================================================
+    // RuntimeError ─ 実行時エラー
+    // ======================================================
+    { types: ['RuntimeError'],
+      pattern: /dictionary changed size during iteration/,
+      build: () => 'for文でループ中に辞書（dict）の要素を追加・削除しようとしました。\nループ前にコピーを作ってから操作してください。\n例: for k in list(d.keys()):' },
+
     { types: ['RuntimeError'],
       pattern: /.*/,
-      build: () => '実行時エラーが発生しました。コードを見直してみてください。' },
+      build: () => '実行時エラーが発生しました。\nコードの論理を見直してみてください。' },
+
+    // ======================================================
+    // SystemExit / StopIteration / UnicodeError
+    // ======================================================
+    { types: ['SystemExit'],
+      pattern: /.*/,
+      build: () => 'プログラムが sys.exit() によって終了しました。\n意図した終了か確認してください。' },
+
+    { types: ['StopIteration'],
+      pattern: /.*/,
+      build: () => 'イテレータの要素がなくなりました。\nnext() を使いすぎていませんか？for文を使うとより安全です。' },
+
+    { types: ['UnicodeDecodeError', 'UnicodeEncodeError'],
+      pattern: /.*/,
+      build: () => '文字コードのエラーです。\n日本語などの特殊文字の処理で起こることがあります。' },
+
+    { types: ['TimeoutError'],
+      pattern: /.*/,
+      build: () => '処理が時間切れになりました。\n無限ループや重い計算になっていないか確認してください。' },
   ];
 
   for (const rule of rules) {
@@ -1738,7 +2046,7 @@ function translateError(type, msg) {
     }
   }
 
-  return 'エラーが発生しました。エラーメッセージをよく読んで、コードを確認してみましょう。わからなければ先生や友達に聞いてみよう！';
+  return 'エラーが発生しました。\nエラーメッセージをよく読んで、コードを確認してみましょう。\nわからなければ先生や友達に聞いてみよう！';
 }
 
 // ============================================================
