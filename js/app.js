@@ -671,6 +671,23 @@ function buildDefaultNotebook() {
 
 function showWelcomeScreen() {
   document.getElementById('welcome-overlay').classList.remove('hidden');
+  // タイプライターアニメーション
+  const nameEl = document.getElementById('picker-name');
+  if (nameEl) {
+    nameEl.textContent = '';
+    const full = 'PyHiroba';
+    let i = 0;
+    const tid = setInterval(() => {
+      i++;
+      nameEl.textContent = full.slice(0, i);
+      if (i >= full.length) {
+        clearInterval(tid);
+        const caret = document.createElement('span');
+        caret.className = 'picker-caret';
+        nameEl.appendChild(caret);
+      }
+    }, 130);
+  }
 }
 
 function dismissWelcomeScreen() {
@@ -784,7 +801,7 @@ async function loadFromUrl(rawUrl) {
     url = `https://raw.githubusercontent.com/${ghMatch[1]}/${ghMatch[2]}/${ghMatch[3]}`;
   }
 
-  const btn = document.querySelector('.welcome-url-go');
+  const btn = document.querySelector('.picker-url-row button');
   if (btn) { btn.textContent = '読込中...'; btn.disabled = true; }
 
   try {
@@ -809,6 +826,7 @@ async function loadFromUrl(rawUrl) {
     );
   } finally {
     if (btn) { btn.textContent = '開く'; btn.disabled = false; }
+
   }
 }
 
