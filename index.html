@@ -81,29 +81,38 @@
   <!-- ===== ヘッダー ===== -->
   <header id="app-header">
     <div class="header-left">
-      <span class="header-logo">🐍</span>
       <div class="header-title-group">
         <h1>PyHiroba</h1>
         <span class="header-subtitle">ぱいひろば</span>
       </div>
     </div>
     <div class="header-right">
-      <button class="btn-header btn-run-all" onclick="runAllCells()" title="すべてのコードセルを順番に実行します">
-        ▶▶ すべて実行
+      <button class="btn-header btn-clear" onclick="downloadIpynb()" title=".ipynb形式でダウンロード">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        ダウンロード
       </button>
-      <button class="btn-header btn-clear" onclick="clearAllOutputs()" title="すべての実行結果を消去します">
-        🗑 出力をクリア
-      </button>
-      <button class="btn-header btn-import" onclick="document.getElementById('ipynb-header-upload').click()" title=".ipynbファイルを読み込む">
-        ⬆ インポート
+      <button class="btn-header btn-clear" onclick="document.getElementById('ipynb-header-upload').click()" title=".ipynbファイルを読み込む">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        インポート
       </button>
       <input type="file" id="ipynb-header-upload" accept=".ipynb" style="display:none"
         onchange="onIpynbHeaderUpload(event)">
-      <button class="btn-header btn-download" onclick="downloadIpynb()" title=".ipynb形式でダウンロード">
-        ⬇ ダウンロード
+      <button class="btn-header btn-run-all" onclick="runAllCells()" title="すべてのコードセルを順番に実行します">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 12 8 12 16 5 21"/><polygon points="12 3 19 8 19 16 12 21"/></svg>
+        すべて実行
       </button>
-      <div class="header-help" title="ヘルプ" onclick="toggleHelp()">？</div>
-      <a class="btn-header btn-about" href="lp/" title="PyHirobaについて">PyHirobaについて</a>
+      <button class="btn-header btn-clear" onclick="clearAllOutputs()" title="すべての実行結果を消去します">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        出力をクリア
+      </button>
+      <button class="btn-header btn-clear" onclick="toggleHelp()" title="使い方ガイドを表示">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        使い方
+      </button>
+      <a class="btn-header btn-about" href="lp/" title="TOPページへ">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        TOPにもどる
+      </a>
     </div>
   </header>
 
@@ -142,6 +151,22 @@
       <button class="btn-add-bottom" onclick="appendCell('slide')">＋ スライドセルを追加</button>
     </div>
   </main>
+
+  <!-- ===== フッター ===== -->
+  <footer class="nb-footer">
+    <div class="footer-container">
+      <div class="v3-footer-row">
+        <div class="footer-brand">
+          <span class="footer-logo">PyHiroba<span class="footer-logo-sub">（ぱいひろば）</span></span>
+          <span class="footer-copy">© 2026</span>
+        </div>
+        <div class="footer-links">
+          <a href="lp/">↩ TOPにもどる</a>
+          <a href="lp/">PyHirobaについて</a>
+        </div>
+      </div>
+    </div>
+  </footer>
 
   <!-- ===== スライドライトボックス ===== -->
   <div id="slide-lightbox" class="slide-lightbox hidden" onclick="closeLightbox(event)">

@@ -1070,17 +1070,28 @@ function buildCellHTML(cell, idx) {
       <div class="cell-toolbar">
         <div class="cell-toolbar-left">
           <span class="cell-number">[${idx + 1}]</span>
-          <select class="cell-type-select" onchange="changeCellType(${cell.id}, this.value)" title="セルの種類を変更">
-            <option value="code"  ${cell.type === 'code'  ? 'selected' : ''}>🐍 コード</option>
-            <option value="text"  ${cell.type === 'text'  ? 'selected' : ''}>📝 テキスト</option>
-            <option value="image" ${cell.type === 'image' ? 'selected' : ''}>🖼 画像</option>
-            <option value="slide" ${cell.type === 'slide' ? 'selected' : ''}>🎞 スライド</option>
-          </select>
+          <div class="cell-type-toggle">
+            <button class="cell-type-btn ${cell.type === 'code' ? 'is-active' : ''}" data-type="code"
+              onclick="changeCellType(${cell.id},'code')" title="コードセル">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              コード
+            </button>
+            <button class="cell-type-btn ${cell.type === 'text' ? 'is-active' : ''}" data-type="text"
+              onclick="changeCellType(${cell.id},'text')" title="テキストセル">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>
+              テキスト
+            </button>
+            ${(cell.type === 'image' || cell.type === 'slide') ? `
+            <button class="cell-type-btn is-active" data-type="${cell.type}" title="${cell.type === 'image' ? '画像セル' : 'スライドセル'}">
+              ${cell.type === 'image' ? '🖼 画像' : '🎞 スライド'}
+            </button>` : ''}
+          </div>
         </div>
         <div class="cell-toolbar-right">
           ${cell.type === 'code' ? `
             <button class="btn-run" onclick="runCell(${cell.id})" title="コードを実行 (Shift+Enter)" id="run-btn-${cell.id}">
-              ▶ 実行
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              実行
             </button>` : cell.type === 'slide' ? `
             <button class="btn-edit-text" onclick="document.getElementById('slide-input-${cell.id}').click()" title="画像を追加">
               ＋ 画像を追加
@@ -1092,11 +1103,13 @@ function buildCellHTML(cell, idx) {
             </button>`}
           <button class="btn-icon" onclick="moveCellUp(${cell.id})"   ${isFirst ? 'disabled' : ''} title="上に移動">↑</button>
           <button class="btn-icon" onclick="moveCellDown(${cell.id})" ${isLast  ? 'disabled' : ''} title="下に移動">↓</button>
-          <button class="btn-icon" onclick="addCell({afterId:${cell.id},type:'code'})" title="下にコードセルを追加">＋</button>
           <button class="btn-icon btn-delete" onclick="deleteCell(${cell.id})" title="このセルを削除">✕</button>
         </div>
       </div>
       ${contentHTML}
+    </div>
+    <div class="cell-add-between">
+      <button class="btn-add-between" onclick="addCell({afterId:${cell.id},type:'code'})" title="ここにセルを追加">+</button>
     </div>`;
 }
 
@@ -1378,7 +1391,10 @@ async function runCell(id) {
   const cellEl = document.querySelector(`[data-cell-id="${id}"]`);
   if (cellEl) cellEl.classList.add('running');
   const runBtn = document.getElementById(`run-btn-${id}`);
-  if (runBtn) { runBtn.textContent = '⏳ 実行中'; runBtn.disabled = true; }
+  if (runBtn) {
+    runBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg> 実行中';
+    runBtn.disabled = true;
+  }
 
   renderOutput(id, { status: 'running' });
 
@@ -1421,7 +1437,10 @@ async function runCell(id) {
   } finally {
     isRunning = false;
     if (cellEl) cellEl.classList.remove('running');
-    if (runBtn) { runBtn.textContent = '▶ 実行'; runBtn.disabled = false; }
+    if (runBtn) {
+      runBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg> 実行';
+      runBtn.disabled = false;
+    }
   }
 }
 
