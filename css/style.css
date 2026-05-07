@@ -872,8 +872,14 @@ body {
   justify-content: center;
   color: #fff;
   flex-shrink: 0;
+  overflow: hidden;
 }
-.picker-ic svg { width: 28px; height: 28px; }
+.picker-ic svg {
+  width: 28px !important;
+  height: 28px !important;
+  display: block;
+  flex-shrink: 0;
+}
 .picker-card h3 {
   margin: 0;
   font-size: 20px;
