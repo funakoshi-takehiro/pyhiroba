@@ -52,11 +52,13 @@ async function initApp() {
     // URL パラメータで分岐
     const params = new URLSearchParams(window.location.search);
     if (params.get('lesson')) {
-      buildDefaultNotebook();            // ?lesson=xxx → レッスン直接ロード
+      buildDefaultNotebook();              // ?lesson=xxx → レッスン直接ロード
+    } else if (params.get('gdrive')) {
+      await loadFromUrl(params.get('gdrive')); // ?gdrive=ID/URL → Drive直接ロード
     } else if (params.get('nb')) {
-      await loadFromUrl(params.get('nb')); // ?nb=URL → .ipynb 直接ロード
+      await loadFromUrl(params.get('nb'));   // ?nb=URL → .ipynb 直接ロード（Colab/Drive可）
     } else {
-      showWelcomeScreen();               // パラメータなし → ウェルカム画面
+      showWelcomeScreen();                 // パラメータなし → ウェルカム画面
     }
 
   } catch (err) {
@@ -784,6 +786,56 @@ function loadIpynb(json) {
   renderAll();
 }
 
+// ============================================================
+// Google Drive / Colab の公開ノートブック読み込み
+// ============================================================
+// Drive API 専用・PyHirobaドメイン限定に制限した公開用APIキー。
+// 公開ファイル（リンクを知っている全員：閲覧者）の読み取りのみ可能で、
+// 非公開ファイルやアカウント情報には一切アクセスできない。
+const GDRIVE_API_KEY = 'AIzaSyBcOmDs7KqQzbp5MbK3wps6AgHHp6FDYMA';
+
+/** Colab / Drive のリンクから Drive ファイルID を取り出す（なければ null） */
+function extractDriveId(url) {
+  if (!url) return null;
+  const s = String(url).trim();
+  const patterns = [
+    /colab\.research\.google\.com\/drive\/([a-zA-Z0-9_-]{20,})/,
+    /drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]{20,})/,
+    /docs\.google\.com\/[^/]+\/d\/([a-zA-Z0-9_-]{20,})/,
+    /(?:drive|colab)\.google\.com\/[^]*?[?&]id=([a-zA-Z0-9_-]{20,})/,
+    /[?&]id=([a-zA-Z0-9_-]{20,})/,
+  ];
+  for (const p of patterns) {
+    const m = s.match(p);
+    if (m) return m[1];
+  }
+  // URL ではなく、ファイルID だけが貼られた場合
+  if (/^[a-zA-Z0-9_-]{25,}$/.test(s)) return s;
+  return null;
+}
+
+/** Drive のファイルID から公開ノートブックの JSON とファイル名を取得する */
+async function fetchDriveIpynb(fileId) {
+  const base = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`;
+  const res = await fetch(`${base}?alt=media&key=${GDRIVE_API_KEY}`);
+  if (res.status === 404) throw new Error('GD_404');
+  if (res.status === 401 || res.status === 403) throw new Error('GD_403');
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+
+  // ファイル名も取得（失敗しても致命的ではない）
+  let name = '';
+  try {
+    const meta = await fetch(`${base}?fields=name&key=${GDRIVE_API_KEY}`);
+    if (meta.ok) {
+      const m = await meta.json();
+      name = (m.name || '').replace(/\.ipynb$/i, '');
+    }
+  } catch (_) { /* 名前が取れなくても続行 */ }
+
+  return { json, name };
+}
+
 /** URL 入力欄からロード */
 async function loadFromUrlInput() {
   const input = document.getElementById('nb-url-input');
@@ -792,41 +844,68 @@ async function loadFromUrlInput() {
   await loadFromUrl(url);
 }
 
-/** URL から .ipynb をフェッチしてロード（?nb= パラメータ経由でも使用） */
+/**
+ * URL（または Drive ファイルID）から .ipynb をフェッチしてロードする。
+ * ?nb= / ?gdrive= パラメータ経由でも使用。
+ * Colab / Google Drive の公開リンク、GitHub の URL に対応。
+ */
 async function loadFromUrl(rawUrl) {
-  // GitHub のブラウザ URL を raw URL に変換
-  let url = rawUrl;
-  const ghMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
-  if (ghMatch) {
-    url = `https://raw.githubusercontent.com/${ghMatch[1]}/${ghMatch[2]}/${ghMatch[3]}`;
-  }
-
   const btn = document.querySelector('.picker-url-row button');
   if (btn) { btn.textContent = '読込中...'; btn.disabled = true; }
 
   try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = await res.json();
+    let json, nameHint = '';
+
+    const driveId = extractDriveId(rawUrl);
+    if (driveId) {
+      // Google Drive / Colab の公開ノートブック
+      const r = await fetchDriveIpynb(driveId);
+      json = r.json;
+      nameHint = r.name;
+    } else {
+      // GitHub のブラウザ URL を raw URL に変換してから取得
+      let url = rawUrl;
+      const ghMatch = url.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+      if (ghMatch) {
+        url = `https://raw.githubusercontent.com/${ghMatch[1]}/${ghMatch[2]}/${ghMatch[3]}`;
+      }
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      json = await res.json();
+      nameHint = url.split('/').pop().replace(/\.ipynb$/i, '');
+    }
+
     dismissWelcomeScreen();
     loadIpynb(json);
-    // URL のファイル名をタイトルに反映
-    const name = url.split('/').pop().replace(/\.ipynb$/i, '');
+
+    // ファイル名をタイトルに反映
+    const name = (nameHint || '').replace(/\.ipynb$/i, '');
     if (name) {
       document.title = name + ' - PyHiroba';
       const h1 = document.querySelector('#app-header h1');
       if (h1) h1.textContent = name;
     }
   } catch (err) {
-    alert(
-      'ノートブックの読み込みに失敗しました。\n' +
-      'URLが正しいか確認してください。\n' +
-      '（GitHubの場合は raw URL を使用してください）\n\n' +
-      'エラー: ' + err.message
-    );
+    let msg;
+    if (err.message === 'GD_404') {
+      msg = 'ファイルが見つからないか、公開されていません。\n\n' +
+            '・リンクが正しいか確認してください\n' +
+            '・Google Drive / Colab で「共有」→「リンクを知っている全員（閲覧者）」に\n' +
+            '　設定されているか確認してください';
+    } else if (err.message === 'GD_403') {
+      msg = 'このファイルにアクセスできませんでした。\n\n' +
+            '・ファイルが「リンクを知っている全員（閲覧者）」で共有されているか\n' +
+            '　確認してください\n' +
+            '・しばらく待ってから再度お試しください';
+    } else {
+      msg = 'ノートブックの読み込みに失敗しました。\n' +
+            'URLが正しいか確認してください。\n' +
+            '（GitHubは raw URL、Google Drive / Colab は公開リンクをご利用ください）\n\n' +
+            'エラー: ' + err.message;
+    }
+    alert(msg);
   } finally {
     if (btn) { btn.textContent = '開く'; btn.disabled = false; }
-
   }
 }
 
