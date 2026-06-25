@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>対応エラー一覧 | PyHiroba（ぱいひろば）</title>
+  <meta name="description" content="PyHirobaが日本語で解説するPythonエラーの一覧。SyntaxError・NameError・TypeErrorなど、初学者がつまずきやすいエラーをわかりやすく説明します。">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../css/style.css">
+
+  <style>
+    .err-page {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    /* ヘッダー */
+    .err-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      max-width: 980px; margin: 0 auto; padding: 22px 24px;
+    }
+    .err-topbar .err-logo {
+      font-weight: 900; font-size: 18px; color: var(--accent);
+      text-decoration: none; letter-spacing: -0.01em;
+    }
+    .err-topbar a.err-back {
+      display: inline-flex; align-items: center; gap: 6px;
+      height: 38px; padding: 0 16px; font-size: 13px; font-weight: 600;
+      border-radius: 999px; border: 1px solid var(--ink);
+      color: var(--ink); text-decoration: none; background: transparent;
+      transition: background .15s;
+    }
+    .err-topbar a.err-back:hover { background: rgba(0,0,0,0.04); }
+
+    /* ヒーロー */
+    .err-hero { text-align: center; padding: 40px 0 8px; }
+    .err-hero .err-eyebrow {
+      font-family: var(--font-code); font-size: 13px; font-weight: 600;
+      letter-spacing: 0.18em; color: var(--accent); margin-bottom: 14px;
+    }
+    .err-hero h1 {
+      font-size: 38px; font-weight: 900; letter-spacing: -0.02em;
+      color: var(--ink); margin: 0 0 16px; line-height: 1.25;
+    }
+    .err-hero p {
+      font-size: 15px; color: var(--ink-3); line-height: 1.8;
+      max-width: 620px; margin: 0 auto;
+    }
+    .err-stat {
+      display: inline-flex; align-items: center; gap: 8px;
+      margin-top: 24px; padding: 8px 20px;
+      background: var(--accent-soft); border: 1px solid var(--accent-border);
+      border-radius: 999px; color: var(--accent-dk);
+      font-size: 14px; font-weight: 700;
+    }
+    .err-stat b { font-size: 18px; }
+
+    /* カテゴリ見出し */
+    .err-cat { margin-top: 48px; }
+    .err-cat-head {
+      display: flex; align-items: baseline; gap: 12px;
+      padding-bottom: 10px; margin-bottom: 16px;
+      border-bottom: 2px solid var(--line);
+    }
+    .err-cat-head h2 {
+      font-size: 20px; font-weight: 800; color: var(--ink); margin: 0;
+    }
+    .err-cat-head .err-cat-en {
+      font-family: var(--font-code); font-size: 13px; color: var(--ink-3);
+    }
+
+    /* テーブル */
+    .err-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .err-table th {
+      text-align: left; font-size: 12px; font-weight: 700; color: var(--ink-3);
+      padding: 8px 12px; border-bottom: 1px solid var(--line);
+      background: #f8fafc; white-space: nowrap;
+    }
+    .err-table td {
+      padding: 12px; border-bottom: 1px solid var(--line);
+      vertical-align: top; line-height: 1.7;
+    }
+    .err-table tr:last-child td { border-bottom: none; }
+    .err-table tr:hover td { background: #fafbfc; }
+    .err-type {
+      font-family: var(--font-code); font-size: 12.5px; font-weight: 600;
+      color: #334155; background: #e2e8f0;
+      padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+      display: inline-block;
+    }
+    .err-cause { color: var(--ink-2); width: 38%; }
+    .err-jp { color: var(--ink); }
+    .err-jp code, .err-cause code {
+      font-family: var(--font-code); font-size: 12px;
+      background: var(--color-code-bg); padding: 1px 6px; border-radius: 4px;
+      color: var(--accent-dk);
+    }
+
+    /* 締め */
+    .err-foot-note {
+      margin-top: 56px; padding: 24px; text-align: center;
+      background: #f8fafc; border-radius: 14px; color: var(--ink-3);
+      font-size: 14px; line-height: 1.8;
+    }
+    .err-foot-note a { color: var(--accent); font-weight: 700; text-decoration: none; }
+    .err-foot-note a:hover { text-decoration: underline; }
+
+    @media (max-width: 640px) {
+      .err-hero h1 { font-size: 28px; }
+      .err-table { font-size: 13px; }
+      .err-cause { width: auto; }
+      .err-table th:nth-child(2), .err-table td:nth-child(2) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- トップバー -->
+  <header class="err-topbar">
+    <a href="./" class="err-logo">PyHiroba</a>
+    <a href="../" class="err-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      ノートブックを開く
+    </a>
+  </header>
+
+  <main class="err-page">
+
+    <!-- ヒーロー -->
+    <section class="err-hero">
+      <div class="err-eyebrow">ERROR GUIDE</div>
+      <h1>日本語で表示される<br>エラー解説の一覧</h1>
+      <p>
+        PyHirobaは、Pythonの実行中に発生したエラーを自動で読み取り、
+        初学者にもわかりやすい日本語のヒントで表示します。
+        ここでは対応しているエラーの一覧と、その解説内容をまとめています。
+      </p>
+      <div class="err-stat">
+        <span>📘 対応エラー</span><b>25種類・60パターン以上</b>
+      </div>
+    </section>
+
+    <!-- ① 文法・インデント -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>文法・字下げのエラー</h2>
+        <span class="err-cat-en">SyntaxError / IndentationError / TabError</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>if x &gt; 0</code> のようにコロンを忘れた</td><td class="err-jp">コロン「:」が必要です。<code>if</code>・<code>for</code>・<code>def</code> などの行末には必ず「:」を付けてください。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause">全角の記号やスペースが混入した</td><td class="err-jp">使えない文字が含まれています。括弧・コロン・イコールなどの記号は半角で入力してください。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause">クォートを閉じ忘れた</td><td class="err-jp">文字列が閉じられていません。「'」や「"」の対応を確認してください。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause">括弧 () [] {} の対応ミス</td><td class="err-jp">括弧が閉じられていません。開いた括弧と閉じた括弧の数を確認してください。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>f"値は{}"</code> のように {} が空</td><td class="err-jp">f文字列の { } の中が空です。変数名や式を書いてください。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>if x = 5:</code> と書いた</td><td class="err-jp">代入できない場所に「=」があります。比較は「==」を使ってください。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>return</code>/<code>break</code> を関数やループの外で使った</td><td class="err-jp"><code>return</code> は関数の中、<code>break</code>・<code>continue</code> は繰り返しの中でのみ使えます。</td></tr>
+          <tr><td><span class="err-type">IndentationError</span></td><td class="err-cause">字下げが必要な行を字下げしていない</td><td class="err-jp">インデントが必要です。<code>if</code>・<code>for</code>・<code>def</code> の次の行はスペース4つで字下げしてください。</td></tr>
+          <tr><td><span class="err-type">IndentationError</span></td><td class="err-cause">余分なスペースが入っている</td><td class="err-jp">余分なインデントがあります。行の先頭の空白を確認してください。</td></tr>
+          <tr><td><span class="err-type">TabError</span></td><td class="err-cause">タブとスペースが混在している</td><td class="err-jp">タブとスペースが混在しています。インデントはスペース4つで統一してください。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ② 名前・変数 -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>名前・変数のエラー</h2>
+        <span class="err-cat-en">NameError / UnboundLocalError</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">NameError</span></td><td class="err-cause">変数・関数のスペルミス</td><td class="err-jp">その名前が定義されていません。スペルミスや、定義したセルを先に実行したか確認してください。</td></tr>
+          <tr><td><span class="err-type">NameError</span></td><td class="err-cause"><code>Print()</code> のように大文字で書いた</td><td class="err-jp"><code>print</code> は全部小文字です、など、よくある書き間違いも個別にヒント表示します。</td></tr>
+          <tr><td><span class="err-type">NameError</span></td><td class="err-cause"><code>true</code> / <code>null</code> と書いた</td><td class="err-jp">Pythonでは <code>True</code>・<code>False</code>・<code>None</code>（先頭大文字）を使います。</td></tr>
+          <tr><td><span class="err-type">UnboundLocalError</span></td><td class="err-cause">関数内で定義前の変数を使った</td><td class="err-jp">関数の中で、値を代入する前にその変数を使っています。先に代入するか <code>global</code> 宣言してください。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ③ 型 -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>データ型のエラー</h2>
+        <span class="err-cat-en">TypeError</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>5 + "3"</code> のように数値と文字列を計算</td><td class="err-jp">型が違うため計算できません。<code>int()</code>・<code>str()</code> で変換してください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>"点数" + 85</code> と結合した</td><td class="err-jp">文字列と数値は「+」でつなげません。<code>str(85)</code> や f文字列を使ってください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause">関数に渡す引数の数が違う</td><td class="err-jp">引数の数が合いません。関数の定義と呼び出し方を確認してください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>for i in 5:</code> と書いた</td><td class="err-jp">その型は繰り返せません。<code>range(5)</code> などを使ってください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause">変数名が組み込み関数と衝突</td><td class="err-jp">関数ではないものを () で呼び出しています。<code>list</code> などの変数名を避けましょう。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>None</code> を繰り返し処理に使った</td><td class="err-jp">関数が値を <code>return</code> しているか確認してください。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ④ 値 -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>値のエラー</h2>
+        <span class="err-cat-en">ValueError</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">ValueError</span></td><td class="err-cause"><code>int("abc")</code> と変換した</td><td class="err-jp">文字列を整数に変換できません。数字だけの文字列か確認してください。</td></tr>
+          <tr><td><span class="err-type">ValueError</span></td><td class="err-cause"><code>a, b = [1, 2, 3]</code> と展開した</td><td class="err-jp">左辺の変数の数と右辺の要素の数を合わせてください。</td></tr>
+          <tr><td><span class="err-type">ValueError</span></td><td class="err-cause"><code>math.sqrt(-1)</code> を計算した</td><td class="err-jp">数学的に定義できない計算です（負の数の平方根など）。入力値を確認してください。</td></tr>
+          <tr><td><span class="err-type">ValueError</span></td><td class="err-cause">グラフのx・yのデータ数が違う</td><td class="err-jp">x軸とy軸のデータ数が一致しません。同じ長さのデータを使ってください。</td></tr>
+          <tr><td><span class="err-type">ValueError</span></td><td class="err-cause">NumPy配列の形が合わない</td><td class="err-jp">配列の形（shape）が合いません。<code>.shape</code> で確認してください。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ⑤ リスト・辞書 -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>リスト・辞書の参照エラー</h2>
+        <span class="err-cat-en">IndexError / KeyError</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">IndexError</span></td><td class="err-cause">リストの範囲外の番号を指定</td><td class="err-jp">範囲外にアクセスしています。最初は [0]、インデックスは 0〜len()-1 の範囲です。</td></tr>
+          <tr><td><span class="err-type">IndexError</span></td><td class="err-cause">NumPy配列の範囲外アクセス</td><td class="err-jp">配列のサイズを超えています。<code>.shape</code> で形を確認してください。</td></tr>
+          <tr><td><span class="err-type">KeyError</span></td><td class="err-cause">辞書に存在しないキーを指定</td><td class="err-jp">そのキーは辞書にありません。スペルを確認するか <code>.get()</code> を使ってください。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ⑥ 計算 -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>計算・再帰のエラー</h2>
+        <span class="err-cat-en">ZeroDivisionError / RecursionError / OverflowError</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">ZeroDivisionError</span></td><td class="err-cause">0で割り算した</td><td class="err-jp">0（ゼロ）で割っています。分母が0でないか確認してください。</td></tr>
+          <tr><td><span class="err-type">RecursionError</span></td><td class="err-cause">再帰関数に終了条件がない</td><td class="err-jp">再帰が無限ループになっています。必ず終了条件を書いてください。</td></tr>
+          <tr><td><span class="err-type">OverflowError</span></td><td class="err-cause">数値が大きくなりすぎた</td><td class="err-jp">数値が大きすぎて処理できません。計算の途中を確認してください。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ⑦ ライブラリ・属性 -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>ライブラリ・属性のエラー</h2>
+        <span class="err-cat-en">ModuleNotFoundError / ImportError / AttributeError</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">ModuleNotFoundError</span></td><td class="err-cause">ライブラリ名のスペルミス</td><td class="err-jp">そのライブラリが見つかりません。使える主なライブラリ名を一緒に表示します。</td></tr>
+          <tr><td><span class="err-type">ImportError</span></td><td class="err-cause">モジュール内の名前を間違えた</td><td class="err-jp">そのモジュールに指定した名前はありません。スペルを確認してください。</td></tr>
+          <tr><td><span class="err-type">AttributeError</span></td><td class="err-cause">メソッド・属性のスペルミス</td><td class="err-jp">その属性・メソッドはありません。スペルや、データの型を確認してください。</td></tr>
+          <tr><td><span class="err-type">AttributeError</span></td><td class="err-cause"><code>x = lst.sort()</code> の戻り値を使った</td><td class="err-jp"><code>None</code> に属性を使おうとしています。メソッドの戻り値が <code>None</code> でないか確認してください。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ⑧ その他 -->
+    <section class="err-cat">
+      <div class="err-cat-head">
+        <h2>ファイル・その他のエラー</h2>
+        <span class="err-cat-en">FileNotFoundError / AssertionError / RuntimeError ほか</span>
+      </div>
+      <table class="err-table">
+        <thead><tr><th>エラー種別</th><th>よくある原因</th><th>日本語での解説（要約）</th></tr></thead>
+        <tbody>
+          <tr><td><span class="err-type">FileNotFoundError</span></td><td class="err-cause">ファイルを読み込もうとした</td><td class="err-jp">ファイルが見つかりません。ブラウザ上のPythonではローカルファイルは扱えません。</td></tr>
+          <tr><td><span class="err-type">AssertionError</span></td><td class="err-cause"><code>assert</code> の条件を満たさない</td><td class="err-jp">検証（assert）が失敗しました。条件式を確認してください。</td></tr>
+          <tr><td><span class="err-type">RuntimeError</span></td><td class="err-cause">ループ中に辞書を変更した</td><td class="err-jp">実行時エラーです。ループ中のデータ変更などを見直してください。</td></tr>
+          <tr><td><span class="err-type">MemoryError</span></td><td class="err-cause">巨大なデータを作ろうとした</td><td class="err-jp">メモリが不足しています。より小さなデータで試してください。</td></tr>
+          <tr><td><span class="err-type">StopIteration</span></td><td class="err-cause"><code>next()</code> の使いすぎ</td><td class="err-jp">イテレータの要素がなくなりました。for文を使うとより安全です。</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- 締め -->
+    <div class="err-foot-note">
+      上記以外のエラーも、英語の原文・エラー種別・発生した行番号とともに表示します。<br>
+      該当しないエラーには「エラーメッセージをよく読んでみよう」という汎用のヒントを表示します。<br>
+      <a href="../">▶ PyHirobaを開いて試してみる</a>
+    </div>
+
+  </main>
+
+</body>
+</html>
