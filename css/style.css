@@ -1241,20 +1241,6 @@ body {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-/* セル左バー */
-.cell::before {
-  content: "";
-  position: absolute;
-  left: 0; top: 0; bottom: 0;
-  width: 3px;
-  background: transparent;
-  transition: background .2s;
-  border-top-left-radius: 14px;
-  border-bottom-left-radius: 14px;
-  z-index: 1;
-}
-.cell-code::before { background: linear-gradient(180deg, var(--accent), rgba(2,141,174,0.35)); }
-.cell-text::before { background: linear-gradient(180deg, #d8c89a, #b3a070); }
 .cell:hover {
   box-shadow: var(--shadow-hover);
 }
@@ -1272,46 +1258,46 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 12px;
-  background: var(--color-code-bg);
+  padding: 3px 8px 3px 10px;
+  background: transparent;
   border-bottom: 1px solid var(--line);
-  gap: 8px;
+  gap: 6px;
 }
 .cell-toolbar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .cell-toolbar-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 .cell-number {
   font-family: var(--font-code);
-  font-size: 12px;
-  color: var(--accent);
-  font-weight: 700;
-  min-width: 24px;
+  font-size: 11px;
+  color: var(--ink-3);
+  font-weight: 600;
+  min-width: 20px;
 }
 /* セルタイプ切替トグル */
 .cell-type-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  padding: 2px;
+  gap: 1px;
+  padding: 1px;
   background: rgba(16,20,24,0.04);
-  border-radius: 8px;
+  border-radius: 7px;
 }
 .cell-type-btn {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
+  gap: 4px;
+  padding: 3px 8px;
   background: transparent;
   border: none;
   border-radius: 6px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--ink-4);
   cursor: pointer;
@@ -1328,8 +1314,8 @@ body {
 
 /* ---------- コードセル ---------- */
 .cell-code .cell-toolbar {
-  background: linear-gradient(180deg, #fafcfd, #f5f9fa);
-  border-bottom-color: #e5edf0;
+  background: transparent;
+  border-bottom-color: var(--line);
 }
 .cell-editor .CodeMirror {
   font-family: var(--font-code);
@@ -1624,8 +1610,8 @@ body {
 
 /* ---------- テキストセル ---------- */
 .cell-text .cell-toolbar {
-  background: linear-gradient(180deg, #fbf9f3, #f6f3ea);
-  border-bottom-color: #ebe5d2;
+  background: transparent;
+  border-bottom-color: var(--line);
 }
 .cell-text-display {
   padding: 16px 20px;
@@ -1882,8 +1868,8 @@ body {
 
 /* ---------- スライドセル ---------- */
 .cell-slide .cell-toolbar {
-  background: rgba(2,141,174,0.04);
-  border-bottom-color: rgba(2,141,174,0.15);
+  background: transparent;
+  border-bottom-color: var(--line);
 }
 .slide-drop-zone {
   margin: 20px;
