@@ -1613,6 +1613,10 @@ body {
   background: transparent;
   border-bottom-color: var(--line);
 }
+/* 連続テキストセルの2個目以降：ツールバーを隠してシームレスに。
+   クリック（編集）すると .editing が付いて再表示される。 */
+.cell-text-cont .cell-toolbar { display: none; }
+.cell-text-cont.editing .cell-toolbar { display: flex; }
 .cell-text-display {
   padding: 16px 20px;
   min-height: 48px;

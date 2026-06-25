@@ -1142,6 +1142,9 @@ function buildCellHTML(cell, idx) {
   const isFirst = idx === 0;
   const isLast  = idx === cells.length - 1;
 
+  // 連続するテキストセルの2個目以降は、ツールバーを隠して文章をシームレスに見せる
+  const isContText = cell.type === 'text' && idx > 0 && cells[idx - 1] && cells[idx - 1].type === 'text';
+
   let typeLabel, toolbarClass, contentHTML;
 
   if (cell.type === 'code') {
@@ -1163,7 +1166,7 @@ function buildCellHTML(cell, idx) {
   }
 
   return `
-    <div class="cell ${toolbarClass}" data-cell-id="${cell.id}">
+    <div class="cell ${toolbarClass}${isContText ? ' cell-text-cont' : ''}" data-cell-id="${cell.id}">
       <div class="cell-toolbar">
         <div class="cell-toolbar-left">
           <span class="cell-number">[${idx + 1}]</span>
@@ -1194,10 +1197,7 @@ function buildCellHTML(cell, idx) {
               ＋ 画像を追加
             </button>
             <input type="file" id="slide-input-${cell.id}" accept="image/*" multiple style="display:none"
-              onchange="onSlideSelect(event,${cell.id})">` : `
-            <button class="btn-edit-text" onclick="toggleTextEdit(${cell.id})" title="テキストを編集">
-              ✏️ 編集
-            </button>`}
+              onchange="onSlideSelect(event,${cell.id})">` : ''}
           <button class="btn-icon" onclick="moveCellUp(${cell.id})"   ${isFirst ? 'disabled' : ''} title="上に移動">↑</button>
           <button class="btn-icon" onclick="moveCellDown(${cell.id})" ${isLast  ? 'disabled' : ''} title="下に移動">↓</button>
           <button class="btn-icon btn-delete" onclick="deleteCell(${cell.id})" title="このセルを削除">✕</button>
@@ -1446,6 +1446,9 @@ function startTextEdit(id) {
   const disp = document.getElementById(`text-disp-${id}`);
   const edit = document.getElementById(`text-edit-${id}`);
   if (!disp || !edit) return;
+  // 連続テキストセルで隠れているツールバーを編集中は表示する
+  const cellEl = document.querySelector(`.cell[data-cell-id="${id}"]`);
+  if (cellEl) cellEl.classList.add('editing');
   disp.classList.add('hidden');
   edit.classList.remove('hidden');
   const ta = edit.querySelector('textarea');
@@ -1464,6 +1467,9 @@ function finishTextEdit(id) {
     : '<p class="placeholder">ここをクリックして編集... (Markdownが使えます)</p>';
   edit.classList.add('hidden');
   disp.classList.remove('hidden');
+  // 編集終了でツールバーを再び隠す（連続テキストセルの場合）
+  const cellEl = document.querySelector(`.cell[data-cell-id="${id}"]`);
+  if (cellEl) cellEl.classList.remove('editing');
 }
 
 function toggleTextEdit(id) {
