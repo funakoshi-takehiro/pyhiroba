@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/style.css?v=20260625c">
 </head>
 <body>
 
@@ -348,8 +348,20 @@
       el.innerHTML =
         '<div class="v3-nb-cell-tb">'
           + '<span class="v3-nb-cell-num">[' + (idx + 1) + ']</span>'
-          + '<span class="v3-nb-cell-type">code</span>'
-          + '<span class="v3-nb-cell-run">&#9654; 実行</span>'
+          + '<div class="v3-nb-toggle">'
+            + '<span class="v3-nb-tgl is-active">'
+              + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>コード'
+            + '</span>'
+            + '<span class="v3-nb-tgl">'
+              + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>テキスト'
+            + '</span>'
+          + '</div>'
+          + '<span class="v3-nb-cell-run">'
+            + '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>実行'
+          + '</span>'
+          + '<span class="v3-nb-ico">&#8593;</span>'
+          + '<span class="v3-nb-ico">&#8595;</span>'
+          + '<span class="v3-nb-ico">&#10005;</span>'
         + '</div>'
         + '<div class="v3-nb-cell-body">'
           + '<pre class="v3-nb-code" id="anim-code-' + idx + '"></pre>'
@@ -365,21 +377,32 @@
         + (withCursor ? '<span class="v3-nb-cursor"></span>' : '');
     }
 
+    /* 出力エリア（実行済みバッジ入り）を作って返す */
+    function makeOutputBox(cellEl) {
+      if (!cellEl) return null;
+      var box = document.createElement('div');
+      box.className = 'v3-nb-output';
+      box.innerHTML = '<span class="v3-nb-done-badge">&#10003; 実行済み</span>';
+      cellEl.appendChild(box);
+      return box;
+    }
+
     /* 出力 / チャートを表示 */
     function showOutput(idx) {
       var cell   = cells[idx];
       var cellEl = document.getElementById('anim-cell-' + idx);
       if (!cellEl) return;
+      var box = makeOutputBox(cellEl);
       if (cell.output === 'chart') {
         var cd = document.createElement('div');
         cd.className = 'v3-nb-chart';
         cd.innerHTML = CHART_SVG;
-        cellEl.appendChild(cd);
+        box.appendChild(cd);
       } else if (cell.output === 'text') {
         var od = document.createElement('div');
         od.className = 'v3-nb-out';
         od.textContent = cell.text;
-        cellEl.appendChild(od);
+        box.appendChild(od);
       }
     }
 
@@ -414,7 +437,8 @@
           }
         }, 450);
       } else {
-        /* 出力なし — 700ms 後に次セルへ */
+        /* 出力なし — 実行済みバッジを表示して 700ms 後に次セルへ */
+        makeOutputBox(document.getElementById('anim-cell-' + cellIdx));
         if (cellIdx < cells.length - 1) {
           setTimeout(function () {
             cellIdx++;

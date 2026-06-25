@@ -476,40 +476,70 @@ body {
 .v3-nb-cell-tb {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: rgba(2,141,174,0.04);
-  border-bottom: 1px solid rgba(2,141,174,0.15);
+  gap: 6px;
+  padding: 3px 8px 3px 10px;
+  background: transparent;
+  border-bottom: 1px solid var(--line);
 }
 .v3-nb-cell-num {
   font-family: var(--font-code);
-  font-size: 11.5px;
-  color: var(--accent);
-  font-weight: 700;
-  min-width: 22px;
-}
-.v3-nb-cell-type {
   font-size: 11px;
   color: var(--ink-3);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 1px 6px;
+  font-weight: 600;
+  min-width: 20px;
+}
+/* コード/テキスト 切替トグル（実アプリと同じ見た目） */
+.v3-nb-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px;
+  background: rgba(16,20,24,0.04);
+  border-radius: 7px;
+}
+.v3-nb-tgl {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-4);
+}
+.v3-nb-tgl svg { display: block; }
+.v3-nb-tgl.is-active {
   background: #fff;
+  color: var(--accent);
+  box-shadow: 0 1px 0 rgba(16,20,24,0.04), 0 1px 3px rgba(16,20,24,0.08);
 }
 .v3-nb-cell-run {
   margin-left: auto;
-  background: #028DAE;
+  background: linear-gradient(180deg, #03a4c8, #028DAE);
   color: #fff;
   border: none;
-  border-radius: 4px;
-  padding: 3px 10px;
+  border-radius: 999px;
+  padding: 4px 12px;
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 5px;
   line-height: 1;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 1px 2px rgba(2,141,174,.3);
   cursor: default;
+}
+.v3-nb-cell-run svg { display: block; }
+.v3-nb-ico {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-4);
+  font-size: 12px;
+  line-height: 1;
+  border-radius: 6px;
 }
 .v3-nb-cell-body { padding: 10px 14px; }
 .v3-nb-code {
@@ -525,10 +555,27 @@ body {
 .v3-st  { color: #117a3b; }
 .v3-co  { color: #8a929b; }
 .v3-nm  { color: #b25e1e; }
-.v3-nb-out {
-  padding: 12px 14px;
+/* 出力エリア（実行済みバッジ＋出力／チャート） */
+.v3-nb-output {
   border-top: 1px solid var(--line);
-  background: #f7f6f1;
+  background: #fafaf8;
+  padding: 9px 14px 12px;
+}
+.v3-nb-done-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #2f9e44;
+  background: #ebfbee;
+  border: 1px solid #c3e6cb;
+  border-radius: 999px;
+  padding: 2px 9px;
+  letter-spacing: 0.02em;
+}
+.v3-nb-out {
+  margin-top: 8px;
   font-family: var(--font-code);
   font-size: 12.5px;
   line-height: 1.7;
@@ -536,8 +583,10 @@ body {
   white-space: pre;
 }
 .v3-nb-chart {
-  border-top: 1px solid var(--line);
+  margin-top: 8px;
   background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   padding: 14px;
 }
 
