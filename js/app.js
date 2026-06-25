@@ -1655,9 +1655,9 @@ function renderOutput(id, result) {
     html += `<div class="output-text"><pre>${escHtml(result.stdout)}</pre></div>`;
   }
 
-  // 警告（stderr）
+  // 警告（stderr）— Python の警告を日本語で分かりやすく表示する
   if (result.stderr) {
-    html += `<div class="output-warning"><pre>${escHtml(result.stderr)}</pre></div>`;
+    html += renderWarnings(result.stderr);
   }
 
   // エラー
@@ -2212,6 +2212,125 @@ function translateError(type, msg) {
   }
 
   return 'エラーが発生しました。\nエラーメッセージをよく読んで、コードを確認してみましょう。\nわからなければ先生や友達に聞いてみよう！';
+}
+
+// ============================================================
+// 警告（Warning）の日本語化
+// ============================================================
+
+/**
+ * stderr に出力された Python の警告を解析し、日本語ヒント付きで表示するHTMLを返す。
+ * 警告でない通常の stderr 出力はそのまま表示する。
+ */
+function renderWarnings(stderr) {
+  if (!stderr) return '';
+  // 「<ファイル>:行: 種別Warning: メッセージ」形式の警告を1件ずつ取り出す
+  const warnRe = /^(.*?):(\d+):\s*([A-Za-z_]*Warning):\s*(.+)$/;
+  const lines = stderr.split('\n');
+  const warnings = [];
+  let leftover = [];
+
+  for (const line of lines) {
+    const m = line.match(warnRe);
+    if (m) {
+      warnings.push({ line: m[2], type: m[3], message: m[4].trim() });
+    } else if (line.trim() && !/^\s+\S/.test(line)) {
+      // 警告に付随するソース行（インデント行）は無視、それ以外の出力は残す
+      leftover.push(line);
+    }
+  }
+
+  let html = '';
+  for (const w of warnings) {
+    const ja = translateWarning(w.type, w.message);
+    const jaHtml = escHtml(ja).replace(/\n/g, '<br>');
+    html += `
+      <div class="output-warning">
+        <div class="warning-header">
+          <span class="warning-type-badge">⚠ ${escHtml(w.type)}</span>
+          ${w.line ? `<span class="warning-line-badge">📍 ${w.line}行目</span>` : ''}
+        </div>
+        <div class="warning-message">${escHtml(w.message)}</div>
+        <div class="warning-japanese">${jaHtml}</div>
+      </div>`;
+  }
+
+  // 警告として解析できなかった stderr 出力（あれば）はそのまま表示
+  const rest = leftover.join('\n').trim();
+  if (rest) {
+    html += `<div class="output-warning"><pre>${escHtml(rest)}</pre></div>`;
+  }
+  return html;
+}
+
+/** 警告メッセージを初学者向けの日本語ヒントに変換する */
+function translateWarning(type, msg) {
+  const rules = [
+
+    // ── matplotlib 関連 ──────────────────────────────
+    { pattern: /Matplotlib is currently using agg|non-GUI backend|cannot show the figure/,
+      build: () => 'これは問題ありません。\nplt.show() による画面表示はできませんが、グラフはこのセルのすぐ下に自動で表示されます。そのまま進めて大丈夫です。' },
+
+    { pattern: /Glyph \d+ .*missing from (the )?(current )?font|missing from font|findfont: .*not found/,
+      build: () => 'グラフの中の一部の文字（日本語など）が表示できませんでした。\nグラフのラベルやタイトルを英語（半角英数字）にすると、文字化け（□表示）を防げます。' },
+
+    { pattern: /More than 20 figures have been opened/,
+      build: () => 'グラフを開きすぎています。\n使い終わったグラフは plt.close() で閉じるとメモリを節約できます。' },
+
+    { pattern: /Tight layout not applied|tight_layout/,
+      build: () => 'グラフのレイアウト自動調整がうまくできませんでした。\nグラフの表示自体には大きな影響はありません。' },
+
+    { pattern: /FixedFormatter should only be used together with FixedLocator/,
+      build: () => '軸ラベルの設定方法に関する警告です。\nset_xticks() で目盛りを決めてから set_xticklabels() を使うと安全です。表示への影響は小さいです。' },
+
+    // ── NumPy の計算に関する RuntimeWarning ───────────
+    { pattern: /divide by zero encountered/,
+      build: () => '0（ゼロ）で割り算が行われました（結果は inf＝無限大になります）。\n分母が0になっていないか確認してください。' },
+
+    { pattern: /invalid value encountered/,
+      build: () => '計算の結果が NaN（非数：数として表せない値）になりました。\n「0 ÷ 0」や「負の数の平方根」などが原因のことがあります。データの値を確認してください。' },
+
+    { pattern: /overflow encountered/,
+      build: () => '数値が大きくなりすぎました（オーバーフロー）。\n扱う数値の大きさや、計算式を確認してください。' },
+
+    { pattern: /Mean of empty slice|Degrees of freedom <= 0/,
+      build: () => '空（から）のデータに対して平均や標準偏差を計算しようとしました。\nデータが空になっていないか、len() で確認してください。' },
+
+    // ── scikit-learn 関連 ────────────────────────────
+    { pattern: /did not converge|failed to converge|ConvergenceWarning|Maximum number of iteration/i,
+      build: () => '学習（最適化）が指定回数内に終わりきりませんでした。\nmax_iter（繰り返し回数）を増やすか、データを標準化（StandardScaler）すると改善することがあります。多くの場合そのまま使っても問題ありません。' },
+
+    { pattern: /does not have valid feature names|X has feature names|X does not have valid feature names/,
+      build: () => '学習したときと予測するときで、データの形式（列名の有無）が少し違っています。\n動作はしますが、同じ形式（例：どちらも DataFrame）にそろえると安全です。' },
+
+    // ── pandas 関連 ──────────────────────────────────
+    { pattern: /A value is trying to be set on a copy of a slice|SettingWithCopyWarning/,
+      build: () => 'データフレームの一部に直接値を入れようとしています。\n意図せず元のデータが変わらないことがあります。df.loc[行, 列] = 値 の形で書くと安全です。' },
+
+    { pattern: /np\.(float|int|bool|object|str)`? is a deprecated alias|`np\.\w+` is a deprecated/,
+      build: () => 'np.float などの古い書き方は廃止されました。\nfloat や int など、通常の型名をそのまま使ってください。' },
+
+    // ── 警告の種別ごとの汎用ヒント ───────────────────
+    { pattern: /^/, when: t => t === 'DeprecationWarning' || t === 'PendingDeprecationWarning',
+      build: () => 'この機能は将来のバージョンで廃止される予定です。\n今は問題なく動きますが、新しい書き方が用意されている場合はそちらが推奨されます。' },
+
+    { pattern: /^/, when: t => t === 'FutureWarning',
+      build: () => '将来のバージョンで動作が変わる予定の機能です。\n今は問題なく動きますが、頭の片隅に置いておきましょう。' },
+
+    { pattern: /^/, when: t => t === 'RuntimeWarning',
+      build: () => '計算中の注意メッセージです（エラーではありません）。\n0での割り算や、NaN・無限大などが発生していないか、結果を確認してみましょう。' },
+
+    { pattern: /^/, when: t => t === 'UserWarning',
+      build: () => '注意メッセージ（警告）です。\nプログラムは動いていますが、内容を一度確認しておくとよいでしょう。' },
+  ];
+
+  for (const rule of rules) {
+    if (rule.when && !rule.when(type)) continue;
+    if (msg && rule.pattern.test(msg)) return rule.build();
+    if (!msg && rule.pattern.source === '^') return rule.build();
+  }
+
+  return '警告メッセージです。\nエラーではないのでプログラムは動作していますが、内容を確認しておきましょう。';
 }
 
 // ============================================================

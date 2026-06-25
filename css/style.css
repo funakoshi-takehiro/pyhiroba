@@ -1421,16 +1421,69 @@ body {
   color: var(--ink);
 }
 .output-warning {
-  padding: 10px 16px;
+  padding: 12px 16px;
   background: #fffbeb;
-  border-left: 3px solid var(--color-orange);
+  border-left: 4px solid #f59e0b;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 .output-warning pre {
   font-family: var(--font-code);
   font-size: 12px;
   white-space: pre-wrap;
   color: #92400e;
+  margin: 0;
 }
+/* 警告の種別バッジ + 行番号バッジ */
+.warning-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.warning-type-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #fef3c7;
+  color: #92400e;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-family: var(--font-code);
+}
+.warning-line-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #fefce8;
+  color: #a16207;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+/* 警告メッセージ原文 */
+.warning-message {
+  font-family: var(--font-code);
+  font-size: 12.5px;
+  color: #92400e;
+  background: #fffaf0;
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  margin: 0;
+  white-space: pre-wrap;
+}
+/* 日本語ヒント */
+.warning-japanese {
+  font-size: 13px;
+  color: #7c4a03;
+  background: #fef9c3;
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  line-height: 1.75;
+}
+.warning-japanese::before { content: "💡 "; }
 .output-error {
   padding: 14px 16px;
   background: #f8fafc;
