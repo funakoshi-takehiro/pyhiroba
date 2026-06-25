@@ -1721,6 +1721,42 @@ function translateError(type, msg) {
       build: () => '数値の書き方が間違っています。\n変数名は数字で始めることができません。文字かアンダースコア(_)で始めてください。\n例（誤）: 1value = 10  →  例（正）: value1 = 10' },
 
     { types: ['SyntaxError'],
+      pattern: /Missing parentheses in call to 'print'/,
+      build: () => 'print の書き方が古い形式です。\nPython3 では print は ( ) で囲みます。\n例（誤）: print "こんにちは"\n例（正）: print("こんにちは")' },
+
+    { types: ['SyntaxError'],
+      pattern: /Missing parentheses in call to '(.+?)'/,
+      build: m => `「${m[1]}」は ( ) で囲んで呼び出してください。\n例（正）: ${m[1]}("...")` },
+
+    { types: ['SyntaxError'],
+      pattern: /unterminated string literal/,
+      build: () => '文字列が閉じられていません。\n行の終わりまでにクォート「\'」または「"」を書き忘れていませんか？\n例（誤）: name = "山田\n例（正）: name = "山田"' },
+
+    { types: ['SyntaxError'],
+      pattern: /unterminated triple-quoted string literal/,
+      build: () => '三重クォート（"""または\'\'\'）が閉じられていません。\n開いた """ や \'\'\' の終わりを書き忘れていませんか？' },
+
+    { types: ['SyntaxError'],
+      pattern: /unmatched '(.+?)'/,
+      build: m => `閉じ括弧「${m[1]}」に対応する開き括弧がありません。\n余分な括弧を書いていないか、開き括弧を書き忘れていないか確認してください。` },
+
+    { types: ['SyntaxError'],
+      pattern: /closing parenthesis '(.+?)' does not match opening parenthesis '(.+?)'/,
+      build: m => `括弧の種類が合っていません。「${m[2]}」で開いたのに「${m[1]}」で閉じています。\n() [] {} の種類をそろえてください。` },
+
+    { types: ['SyntaxError'],
+      pattern: /Perhaps you forgot a comma/,
+      build: () => 'カンマ「,」を書き忘れていませんか？\nリストや関数の引数では、要素どうしをカンマで区切ります。\n例（誤）: [1 2 3]  →  例（正）: [1, 2, 3]' },
+
+    { types: ['SyntaxError'],
+      pattern: /Maybe you meant '==' or ':=' instead of '='\?|cannot assign to .* maybe you meant/,
+      build: () => '比較のつもりで「=」を使っていませんか？\n「等しいか」を調べるときは「==」を使います。\n例（誤）: if x = 5:  →  例（正）: if x == 5:' },
+
+    { types: ['SyntaxError'],
+      pattern: /keyword argument repeated/,
+      build: () => '関数に同じキーワード引数を2回渡しています。\n同じ名前の引数を重複して指定していないか確認してください。' },
+
+    { types: ['SyntaxError'],
       pattern: /invalid syntax/,
       build: () => '文法（書き方）が間違っています。よくある原因:\n• コロン「:」の付け忘れ（if・for・while・def の行末）\n• 括弧 ()・[]・{} の対応ミス\n• クォート「\'」「"」の対応ミス\n• 全角文字（記号・スペース）の混入\n• 比較に「==」ではなく「=」を使っている' },
 
@@ -1734,6 +1770,10 @@ function translateError(type, msg) {
     { types: ['IndentationError'],
       pattern: /expected an indented block/,
       build: () => 'インデント（字下げ）が必要です。\nif・for・while・def・class の次の行は必ずスペース4つで字下げしてください。\n例:\nif x > 0:\n    print("正の数")  ← スペース4つ必須' },
+
+    { types: ['IndentationError'],
+      pattern: /unindent does not match any outer indentation level/,
+      build: () => '字下げの幅がそろっていません。\n前の行と字下げの位置が合っていません。\n同じブロックの中はすべて同じスペース数（4つ）にそろえてください。' },
 
     { types: ['IndentationError', 'TabError'],
       pattern: /inconsistent use of tabs and spaces/,
@@ -1826,6 +1866,38 @@ function translateError(type, msg) {
     { types: ['TypeError'],
       pattern: /'str' object cannot be interpreted as an integer/,
       build: () => '整数が必要な場所に文字列が使われています。int() で整数に変換してください。\n例（誤）: range("5")  →  例（正）: range(5)' },
+
+    { types: ['TypeError'],
+      pattern: /'(.+?)' object cannot be interpreted as an integer/,
+      build: m => `整数が必要な場所に「${m[1]}」型が使われています。\nrange() などには整数を渡してください。小数なら int() で変換します。\n例（誤）: range(3.0)  →  例（正）: range(3)` },
+
+    { types: ['TypeError'],
+      pattern: /'[<>]=?' not supported between instances of '(.+?)' and '(.+?)'/,
+      build: m => `「${m[1]}」型と「${m[2]}」型は大小を比べられません。\n数値どうし、または文字列どうしで比較してください。\n文字列の数字は int() で数値に変換しましょう。\n例（誤）: "5" > 3  →  例（正）: int("5") > 3` },
+
+    { types: ['TypeError'],
+      pattern: /can't multiply sequence by non-int of type '(.+?)'/,
+      build: m => `文字列やリストは「${m[1]}」型ではかけられません。\n繰り返しに使う回数は整数（int）にしてください。\n例（誤）: "ab" * 2.5  →  例（正）: "ab" * 2` },
+
+    { types: ['TypeError'],
+      pattern: /sequence item \d+: expected str instance, (.+?) found/,
+      build: m => `"".join() でつなげられるのは文字列だけです。リストの中に「${m[1]}」型が混ざっています。\n数値が含まれる場合は文字列に変換してください。\n例: "-".join(str(x) for x in [1, 2, 3])` },
+
+    { types: ['TypeError'],
+      pattern: /argument of type '(.+?)' is not iterable/,
+      build: m => `「${m[1]}」型に対して「in」で中身を探すことはできません。\n「in」はリスト・文字列・辞書などに使います。` },
+
+    { types: ['TypeError'],
+      pattern: /string indices must be integers/,
+      build: () => '文字列に [ ] でアクセスするときは整数の番号を使います。\n文字列は辞書のように [ "キー" ] ではアクセスできません。\n例（誤）: s["a"]  →  例（正）: s[0]' },
+
+    { types: ['TypeError'],
+      pattern: /list indices must be integers or slices, not (.+)/,
+      build: m => `リストの [ ] には整数の番号を入れてください（「${m[1]}」型は使えません）。\n例（誤）: lst["0"]  →  例（正）: lst[0]` },
+
+    { types: ['TypeError'],
+      pattern: /(.+?)\(\) takes no arguments/,
+      build: m => `「${m[1]}」は引数を受け取りません。( ) の中に値を入れずに呼び出してください。` },
 
     { types: ['TypeError'],
       pattern: /.*/,
@@ -1940,6 +2012,14 @@ function translateError(type, msg) {
     { types: ['ValueError'],
       pattern: /math domain error/,
       build: () => '数学的に定義できない計算をしようとしました。\n• 負の数の平方根: math.sqrt(-1) はエラー\n• 0の対数: math.log(0) はエラー\n入力値を確認してください。' },
+
+    { types: ['ValueError'],
+      pattern: /(max|min)\(\) (?:arg is an empty sequence|iterable argument is empty)/,
+      build: m => `${m[1]}() に空のリストを渡しています。\n中身のあるリストを渡してください。\n先に len(リスト) で要素があるか確認するとよいでしょう。` },
+
+    { types: ['ValueError'],
+      pattern: /empty separator/,
+      build: () => 'split() の区切り文字に空の文字列を指定しています。\n区切りたい文字（例: "," や " "）を指定してください。' },
 
     { types: ['ValueError'],
       pattern: /operands could not be broadcast together with shapes?/,

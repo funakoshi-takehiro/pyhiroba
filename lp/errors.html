@@ -141,7 +141,7 @@
         ここでは対応しているエラーの一覧と、その解説内容をまとめています。
       </p>
       <div class="err-stat">
-        <span>📘 対応エラー</span><b>25種類・60パターン以上</b>
+        <span>📘 対応エラー</span><b>25種類・80パターン以上</b>
       </div>
     </section>
 
@@ -161,6 +161,10 @@
           <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>f"値は{}"</code> のように {} が空</td><td class="err-jp">f文字列の { } の中が空です。変数名や式を書いてください。</td></tr>
           <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>if x = 5:</code> と書いた</td><td class="err-jp">代入できない場所に「=」があります。比較は「==」を使ってください。</td></tr>
           <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>return</code>/<code>break</code> を関数やループの外で使った</td><td class="err-jp"><code>return</code> は関数の中、<code>break</code>・<code>continue</code> は繰り返しの中でのみ使えます。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>print "x"</code> と古い書き方をした</td><td class="err-jp">Python3 では print は ( ) で囲みます。<code>print("x")</code> としてください。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause"><code>[1 2 3]</code> のようにカンマを忘れた</td><td class="err-jp">カンマ「,」を書き忘れています。要素どうしは <code>,</code> で区切ります。</td></tr>
+          <tr><td><span class="err-type">SyntaxError</span></td><td class="err-cause">括弧の種類 () [] {} が食い違う</td><td class="err-jp">開いた括弧と閉じた括弧の種類が合っていません。種類をそろえてください。</td></tr>
+          <tr><td><span class="err-type">IndentationError</span></td><td class="err-cause">字下げ幅が前の行とそろっていない</td><td class="err-jp">字下げの位置が合っていません。同じブロックは同じスペース数（4つ）にそろえてください。</td></tr>
           <tr><td><span class="err-type">IndentationError</span></td><td class="err-cause">字下げが必要な行を字下げしていない</td><td class="err-jp">インデントが必要です。<code>if</code>・<code>for</code>・<code>def</code> の次の行はスペース4つで字下げしてください。</td></tr>
           <tr><td><span class="err-type">IndentationError</span></td><td class="err-cause">余分なスペースが入っている</td><td class="err-jp">余分なインデントがあります。行の先頭の空白を確認してください。</td></tr>
           <tr><td><span class="err-type">TabError</span></td><td class="err-cause">タブとスペースが混在している</td><td class="err-jp">タブとスペースが混在しています。インデントはスペース4つで統一してください。</td></tr>
@@ -200,6 +204,10 @@
           <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>for i in 5:</code> と書いた</td><td class="err-jp">その型は繰り返せません。<code>range(5)</code> などを使ってください。</td></tr>
           <tr><td><span class="err-type">TypeError</span></td><td class="err-cause">変数名が組み込み関数と衝突</td><td class="err-jp">関数ではないものを () で呼び出しています。<code>list</code> などの変数名を避けましょう。</td></tr>
           <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>None</code> を繰り返し処理に使った</td><td class="err-jp">関数が値を <code>return</code> しているか確認してください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>"5" &gt; 3</code> と文字列と数値を比較</td><td class="err-jp">型が違うものは大小を比べられません。<code>int()</code> でそろえてください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>range(3.0)</code> と小数を渡した</td><td class="err-jp">整数が必要な場所に小数を渡しています。<code>range(3)</code> としてください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>"-".join([1,2,3])</code> で数値を結合</td><td class="err-jp">join でつなげられるのは文字列だけです。<code>str()</code> で変換してください。</td></tr>
+          <tr><td><span class="err-type">TypeError</span></td><td class="err-cause"><code>s["a"]</code> と文字列に文字で添字</td><td class="err-jp">文字列・リストの [ ] には整数の番号を使います。</td></tr>
         </tbody>
       </table>
     </section>
@@ -218,6 +226,7 @@
           <tr><td><span class="err-type">ValueError</span></td><td class="err-cause"><code>math.sqrt(-1)</code> を計算した</td><td class="err-jp">数学的に定義できない計算です（負の数の平方根など）。入力値を確認してください。</td></tr>
           <tr><td><span class="err-type">ValueError</span></td><td class="err-cause">グラフのx・yのデータ数が違う</td><td class="err-jp">x軸とy軸のデータ数が一致しません。同じ長さのデータを使ってください。</td></tr>
           <tr><td><span class="err-type">ValueError</span></td><td class="err-cause">NumPy配列の形が合わない</td><td class="err-jp">配列の形（shape）が合いません。<code>.shape</code> で確認してください。</td></tr>
+          <tr><td><span class="err-type">ValueError</span></td><td class="err-cause"><code>max([])</code> と空リストを渡した</td><td class="err-jp">空のリストには max()・min() は使えません。中身があるか len() で確認してください。</td></tr>
         </tbody>
       </table>
     </section>
