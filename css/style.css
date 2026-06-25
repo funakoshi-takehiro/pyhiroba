@@ -1367,6 +1367,32 @@ body {
   min-height: 0;
 }
 .cell-output:empty { display: none; }
+/* 実行済みマーク（出力エリア上部） */
+.output-done-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 2px 10px;
+  margin: 10px 16px 0;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+.output-done-badge .done-check {
+  font-weight: 900;
+}
+.output-done-badge.is-ok {
+  color: #2f9e44;
+  background: #ebfbee;
+  border: 1px solid #c3e6cb;
+}
+.output-done-badge.is-err {
+  color: #868e96;
+  background: #f1f3f5;
+  border: 1px solid #dee2e6;
+}
 .output-running {
   padding: 12px 16px;
   color: var(--accent);
@@ -1593,8 +1619,16 @@ body {
   margin: 8px 0;
 }
 /* テキストセル内の画像（.ipynb に埋め込まれた図・スライド画像など） */
+.cell-text-display { overflow-wrap: anywhere; }
+/* 画像やその折り返し用ラッパが、セル幅を絶対に超えないようにする */
+.cell-text-display img,
+.cell-text-display svg,
+.cell-text-display video,
+.cell-text-display table { max-width: 100% !important; }
+.cell-text-display div,
+.cell-text-display p,
+.cell-text-display figure { max-width: 100%; }
 .cell-text-display img {
-  max-width: 100%;
   height: auto;
   display: block;
   margin: 12px auto;

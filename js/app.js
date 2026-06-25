@@ -1643,6 +1643,13 @@ function renderOutput(id, result) {
 
   let html = '';
 
+  // 実行済みマーク（このセルは実行された）— 出力が空でも表示する
+  if (result.status === 'done') {
+    const ranOk = !result.errMsg;
+    html += `<div class="output-done-badge ${ranOk ? 'is-ok' : 'is-err'}">`
+          + `<span class="done-check">${ranOk ? '✓' : '!'}</span> 実行済み</div>`;
+  }
+
   // 標準出力
   if (result.stdout) {
     html += `<div class="output-text"><pre>${escHtml(result.stdout)}</pre></div>`;
