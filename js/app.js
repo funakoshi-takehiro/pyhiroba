@@ -1140,11 +1140,16 @@ function buildCodeContent(cell) {
 }
 
 function buildTextContent(cell) {
-  const rendered = cell.content
+  const hasContent = cell.content && cell.content.trim();
+  const media = hasContent && isMediaOnlyMarkdown(cell.content);
+  const rendered = hasContent
     ? marked.parse(cell.content)
     : '<p class="placeholder">ここをクリックして編集... (Markdownが使えます)</p>';
+  // 画像だけのセルはクリックで拡大表示、それ以外はクリックで編集
+  const dispClass = media ? 'cell-text-display is-media' : 'cell-text-display';
+  const onClick   = media ? `openTextImage(${cell.id})` : `startTextEdit(${cell.id})`;
   return `
-    <div class="cell-text-display" id="text-disp-${cell.id}" onclick="startTextEdit(${cell.id})">
+    <div class="${dispClass}" id="text-disp-${cell.id}" onclick="${onClick}">
       ${rendered}
     </div>
     <div class="cell-text-editor hidden" id="text-edit-${cell.id}">
@@ -1154,6 +1159,36 @@ function buildTextContent(cell) {
       >${escHtml(cell.content)}</textarea>
       <div class="text-editor-hint">Shift+Enter または Esc で確定</div>
     </div>`;
+}
+
+/**
+ * テキストセルの中身が「画像だけ」かどうかを判定する。
+ * .ipynb に埋め込まれたスライド画像（![](data:...) や <img src="data:...">）を
+ * いい感じに表示するために使う。
+ */
+function isMediaOnlyMarkdown(content) {
+  if (!content) return false;
+  const hasImage = /!\[[^\]]*\]\([^)]+\)|<img[\s>]/i.test(content);
+  if (!hasImage) return false;
+  // 画像・装飾タグ・空白を取り除いて、文章が残らなければ「画像だけ」
+  const stripped = content
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')      // Markdown画像
+    .replace(/<img[^>]*>/gi, '')               // <img>
+    .replace(/<\/?(div|p|center|figure|br)[^>]*>/gi, '') // 装飾タグ
+    .replace(/\s+/g, '');
+  return stripped.length === 0;
+}
+
+/** テキストセル内の最初の画像をライトボックスで拡大表示する */
+function openTextImage(id) {
+  const cell = cells.find(c => c.id === id);
+  if (!cell) return;
+  let src = null;
+  const md  = cell.content.match(/!\[[^\]]*\]\(([^)]+)\)/);
+  const tag = cell.content.match(/<img[^>]*\ssrc=["']([^"']+)["']/i);
+  if (md)  src = md[1];
+  else if (tag) src = tag[1];
+  if (src) openImageLightbox(src);
 }
 
 function buildImageContent(cell) {
@@ -1270,7 +1305,26 @@ function openSlide(cellId, idx) {
   if (!cell || !cell.slides.length) return;
   lbCellId = cellId;
   lbIdx    = idx;
+  // スライドセル用：前後ボタンを表示
+  const prev = document.querySelector('.lightbox-prev');
+  const next = document.querySelector('.lightbox-next');
+  if (prev) prev.style.display = '';
+  if (next) next.style.display = '';
   updateLightbox();
+  document.getElementById('slide-lightbox').classList.remove('hidden');
+  document.addEventListener('keydown', onLightboxKey);
+}
+
+/** 単体画像（テキストセル内の画像など）をライトボックスで表示する */
+function openImageLightbox(src) {
+  lbCellId = null;
+  document.getElementById('lightbox-img').src = src;
+  document.getElementById('lightbox-counter').textContent = '';
+  // 単体画像なので前後ボタンは隠す
+  const prev = document.querySelector('.lightbox-prev');
+  const next = document.querySelector('.lightbox-next');
+  if (prev) prev.style.display = 'none';
+  if (next) next.style.display = 'none';
   document.getElementById('slide-lightbox').classList.remove('hidden');
   document.addEventListener('keydown', onLightboxKey);
 }
@@ -1326,7 +1380,7 @@ function finishTextEdit(id) {
   const ta = edit.querySelector('textarea');
   const cell = cells.find(c => c.id === id);
   if (cell && ta) cell.content = ta.value;
-  disp.innerHTML = cell && cell.content
+  disp.innerHTML = cell && cell.content && cell.content.trim()
     ? marked.parse(cell.content)
     : '<p class="placeholder">ここをクリックして編集... (Markdownが使えます)</p>';
   edit.classList.add('hidden');
@@ -1418,8 +1472,21 @@ async function runCell(id) {
 
   try {
     // import文を解析してパッケージを自動インストール
+    // まだ読み込んでいないライブラリが必要な場合は分かりやすいUIを表示する
     try {
-      await pyodide.loadPackagesFromImports(code);
+      let pkgLoading = false;
+      await pyodide.loadPackagesFromImports(code, {
+        messageCallback: (msg) => {
+          // Pyodide が実際にダウンロードを始めると "Loading ..." が届く
+          if (!pkgLoading && /loading/i.test(msg)) {
+            pkgLoading = true;
+            const names = (msg.match(/Loading\s+(.+)/i) || [])[1] || '';
+            renderOutput(id, { status: 'loading-pkg', packages: names });
+          }
+        }
+      });
+      // 読み込みUIを出した場合は、実行中表示に戻す
+      if (pkgLoading) renderOutput(id, { status: 'running' });
     } catch (_) { /* 失敗してもコード実行は試みる */ }
 
     // コードをPythonに渡す
@@ -1559,6 +1626,17 @@ function renderOutput(id, result) {
     el.innerHTML = `
       <div class="output-running">
         <span class="spinner">⚙</span> 実行中...
+      </div>`;
+    return;
+  }
+
+  if (result.status === 'loading-pkg') {
+    const names = result.packages ? escHtml(result.packages) : '';
+    el.innerHTML = `
+      <div class="output-running output-loading-pkg">
+        <span class="spinner">⚙</span>
+        <span>ライブラリを読み込み中…${names ? `（${names}）` : ''}</span>
+        <small>初回はダウンロードのため少し時間がかかります（数十秒程度）</small>
       </div>`;
     return;
   }

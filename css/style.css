@@ -1563,6 +1563,9 @@ body {
 .cell-text-display h1 { font-size: 22px; font-weight: 900; margin: 8px 0; border-bottom: 2px solid var(--line); padding-bottom: 6px; color: var(--ink); }
 .cell-text-display h2 { font-size: 18px; font-weight: 700; margin: 12px 0 6px; color: var(--accent); }
 .cell-text-display h3 { font-size: 16px; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }
+.cell-text-display h4 { font-size: 15px; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }
+.cell-text-display h5 { font-size: 14px; font-weight: 700; margin: 8px 0 3px; color: var(--ink-3); }
+.cell-text-display h6 { font-size: 13px; font-weight: 700; margin: 8px 0 3px; color: var(--ink-3); }
 .cell-text-display p  { margin: 6px 0; color: var(--ink-2); }
 .cell-text-display ul, .cell-text-display ol { padding-left: 24px; margin: 6px 0; }
 .cell-text-display li { margin: 3px 0; color: var(--ink-2); }
@@ -1588,6 +1591,38 @@ body {
   padding-left: 12px;
   color: var(--ink-3);
   margin: 8px 0;
+}
+/* テキストセル内の画像（.ipynb に埋め込まれた図・スライド画像など） */
+.cell-text-display img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 12px auto;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+.cell-text-display div[align="center"] { text-align: center; }
+/* 画像だけのテキストセル（スライド画像など）→ クリックで拡大 */
+.cell-text-display.is-media {
+  cursor: zoom-in;
+  padding: 12px 20px;
+  text-align: center;
+}
+.cell-text-display.is-media:hover { background: #f4fbfc; }
+.cell-text-display.is-media img { margin: 0 auto; transition: transform .15s ease; }
+.cell-text-display.is-media:hover img { transform: scale(1.01); }
+/* ライブラリ読み込み中の表示 */
+.output-loading-pkg {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.output-loading-pkg small {
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 400;
 }
 .cell-text-editor textarea {
   width: 100%;
