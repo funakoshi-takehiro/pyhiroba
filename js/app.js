@@ -1218,11 +1218,34 @@ function buildCodeContent(cell) {
     <div class="cell-output" id="output-${cell.id}"></div>`;
 }
 
+/**
+ * 標準仕様で崩れやすい Markdown を補正してから marked で描画する。
+ * Colab 等でよくある「# の直後に半角スペースが無い見出し」（例: ###算術演算子）
+ * を見出しとして描画できるようにする。
+ */
+function renderMarkdown(src) {
+  return marked.parse(preprocessMarkdown(src));
+}
+
+/** marked に渡す前の Markdown 補正 */
+function preprocessMarkdown(src) {
+  if (!src) return src;
+  // フェンスドコードブロック（``` / ~~~）の中は触らないように分割して処理する
+  const parts = String(src).split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g);
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 1) continue; // コードブロックはそのまま
+    // 行頭の # 1〜6個の直後に空白が無い場合に半角スペースを補う
+    //   ###算術演算子 → ### 算術演算子
+    parts[i] = parts[i].replace(/^(\s{0,3})(#{1,6})([^\s#])/gm, '$1$2 $3');
+  }
+  return parts.join('');
+}
+
 function buildTextContent(cell) {
   const hasContent = cell.content && cell.content.trim();
   const media = hasContent && isMediaOnlyMarkdown(cell.content);
   const rendered = hasContent
-    ? marked.parse(cell.content)
+    ? renderMarkdown(cell.content)
     : '<p class="placeholder">ここをクリックして編集... (Markdownが使えます)</p>';
   // 画像だけのセルはクリックで拡大表示、それ以外はクリックで編集
   const dispClass = media ? 'cell-text-display is-media' : 'cell-text-display';
@@ -1463,7 +1486,7 @@ function finishTextEdit(id) {
   const cell = cells.find(c => c.id === id);
   if (cell && ta) cell.content = ta.value;
   disp.innerHTML = cell && cell.content && cell.content.trim()
-    ? marked.parse(cell.content)
+    ? renderMarkdown(cell.content)
     : '<p class="placeholder">ここをクリックして編集... (Markdownが使えます)</p>';
   edit.classList.add('hidden');
   disp.classList.remove('hidden');
