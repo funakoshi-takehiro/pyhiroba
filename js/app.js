@@ -123,42 +123,42 @@ const LESSONS = {
   default: {
     title: 'Pythonノートブック',
     cells: () => [
-      { type: 'text', content: `# 🐍 Pythonノートブックへようこそ！
+      { type: 'text', content: `# PyHiroba（ぱいひろば）へようこそ！
 
-ここでPythonプログラミングを練習することができます。
+PyHiroba は、ブラウザだけで Python（パイソン）プログラミングができる学習環境です。
+インストールも、アカウント登録もいりません。さっそく始めてみましょう！
 
-## 📌 基本的な使い方
-- **コードセル**にPythonコードを書いて、**▶ 実行**ボタン（または **Shift+Enter**）で実行します
-- 上のセルで作った変数は、**下のセルでも使えます**
-- グラフはセルのすぐ下に自動で表示されます
+## 1. Python（パイソン）とは
+Python は、世界中で使われている人気のプログラミング言語です。
+読みやすくて初心者にもやさしく、AI・データ分析・Web など、いろいろな場面で活躍しています。
 
-## ⌨️ キーボードショートカット
-| 操作 | キー |
-|------|------|
-| セルを実行 | **Shift + Enter** |
-| インデント（字下げ） | **Tab** |
+## 2. PyHiroba（ぱいひろば）とは
+PyHiroba は、その Python を **ブラウザの中だけ** で動かせるサービスです。
+書いたコードはあなたのパソコンの中で動くので、安心して使えます。
 
-下のサンプルコードを **▶ 実行** して動かしてみよう！` },
-      { type: 'code', content: `# 変数と計算
-name = "山田太郎"
-age  = 16
-print("こんにちは、" + name + "さん！")
-print(f"年齢: {age} 歳")
+## 3. PyHirobaの使い方
+このノートブックは、2種類の「セル（マス）」でできています。
 
-for i in range(1, 6):
-    print(f"  {i} の 2乗 = {i ** 2}")` },
-      { type: 'code', content: `# グラフを描いてみよう
-import matplotlib.pyplot as plt
-import numpy as np
+- **コードセル**：Python のプログラムを書く場所です。
+  左の **▶ 実行** ボタン（または **Shift + Enter**）で動かせます。
+  上のセルで作った変数は下のセルでも使えるので、**上から順番に実行** しましょう。
+- **テキストセル**：今読んでいるこの文章のような、説明を書く場所です。
+  文字だけでなく、**画像やスライド** も入れられます。
 
-x = np.linspace(0, 2 * np.pi, 200)
-fig, ax = plt.subplots(figsize=(8, 4))
-ax.plot(x, np.sin(x), label='sin(x)', linewidth=2)
-ax.plot(x, np.cos(x), label='cos(x)', linewidth=2)
-ax.set_title('Sine and Cosine Waves')
-ax.legend(); ax.grid(True, alpha=0.3)
-plt.tight_layout(); plt.show()` },
-      { type: 'text', content: `## ✏️ 自由に書いてみよう！` },
+## 4. キーボードショートカット
+覚えておくと便利なキーです。
+
+- **Shift + Enter** … セルを実行する
+- **Ctrl + Z** … 直前の操作を取り消す（もとに戻す）
+- **Tab** … 字下げ（インデント）を入れる
+
+それでは、最初のプログラムを動かしてみましょう！
+下のセルの **▶ 実行** を押してください。` },
+      { type: 'code', content: `print("hello PyHiroba")` },
+      { type: 'text', content: `## ✏️ 自由に書いてみよう！
+
+下のセルに、自分でコードを書いて **▶ 実行** してみましょう。
+何を書けばいいか迷ったら、上のセルをまねして print で文字を出してみてください。` },
       { type: 'code', content: '# ここに自由にコードを書いてみよう！\n' },
     ]
   },
