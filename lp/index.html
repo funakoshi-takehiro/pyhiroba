@@ -151,13 +151,12 @@
           <!-- ノートブックモック — JS がセルをアニメーションで生成する -->
           <div class="v3-nb">
             <div class="v3-nb-bar">
-              <div class="v3-nb-logo">🐍</div>
               <div>
                 <span class="v3-nb-title">PyHiroba</span><span class="v3-nb-sub">ぱいひろば</span>
               </div>
               <div class="v3-nb-actions">
                 <span class="v3-nb-btn v3-nb-btn-primary">▶▶ すべて実行</span>
-                <span class="v3-nb-btn v3-nb-btn-ghost">🗑 出力をクリア</span>
+                <span class="v3-nb-btn v3-nb-btn-ghost">出力をクリア</span>
                 <span class="v3-nb-help">？</span>
               </div>
             </div>
@@ -318,17 +317,33 @@
       '</svg>'
     ].join('');
 
+    var TEXT_HTML =
+      '<div style="font-size:18px;font-weight:800;color:#101418;margin:2px 0 10px;border-bottom:2px solid #e7e5e0;padding-bottom:7px;">テストの点数を分析してみよう</div>'
+      + '<p style="margin:8px 0;color:#2b3138;font-size:14px;line-height:1.85;">5教科のテストの点数を使って、データ分析の基本を体験します。やることは次の2つです。</p>'
+      + '<ul style="margin:8px 0;padding-left:22px;color:#2b3138;font-size:14px;line-height:1.95;">'
+        + '<li>平均点と標準偏差（点数のばらつき）を計算する</li>'
+        + '<li>棒グラフにして、点数を「見える化」する</li>'
+      + '</ul>'
+      + '<p style="margin:8px 0 2px;color:#2b3138;font-size:14px;line-height:1.85;">まずは下のコードを ▶ 実行 して、結果を確かめてみよう！</p>';
+
     var cells = [
       {
+        type: 'text',
+        html: TEXT_HTML
+      },
+      {
+        type: 'code',
         code: 'import numpy as np\nimport matplotlib.pyplot as plt\n\n# 5教科のテストの点数\nscores = np.array([72, 85, 68, 91, 77])',
         output: null
       },
       {
+        type: 'code',
         code: 'print("平均:", scores.mean())\nprint("標準偏差:", scores.std().round(2))',
         output: 'text',
         text: '平均: 78.6\n標準偏差: 8.61'
       },
       {
+        type: 'code',
         code: 'plt.bar("国数英理社", scores, color="#028DAE")\nplt.title("テスト結果"); plt.show()',
         output: 'chart'
       }
@@ -339,32 +354,37 @@
 
     var cellIdx = 0, charIdx = 0;
 
-    /* セル DOM を生成して nbBody に追加 */
+    /* セル DOM を生成して nbBody に追加（コード／テキスト両対応） */
     function addCell(idx) {
+      var cell = cells[idx];
+      var isText = cell.type === 'text';
       var el = document.createElement('div');
       el.className = 'v3-nb-cell';
       el.id = 'anim-cell-' + idx;
+
+      var codeIcon = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>';
+      var textIcon = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>';
+
+      // 右側：コードセルは「実行」ボタン＋移動/削除、テキストセルは移動/削除のみ
+      var rightSide = isText
+        ? '<span class="v3-nb-ico" style="margin-left:auto">&#8593;</span><span class="v3-nb-ico">&#8595;</span><span class="v3-nb-ico">&#10005;</span>'
+        : '<span class="v3-nb-cell-run"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>実行</span>'
+          + '<span class="v3-nb-ico">&#8593;</span><span class="v3-nb-ico">&#8595;</span><span class="v3-nb-ico">&#10005;</span>';
+
+      var bodyHtml = isText
+        ? '<div class="v3-nb-cell-body" style="padding:16px 16px 14px;">' + cell.html + '</div>'
+        : '<div class="v3-nb-cell-body"><pre class="v3-nb-code" id="anim-code-' + idx + '"></pre></div>';
+
       el.innerHTML =
         '<div class="v3-nb-cell-tb">'
           + '<span class="v3-nb-cell-num">[' + (idx + 1) + ']</span>'
           + '<div class="v3-nb-toggle">'
-            + '<span class="v3-nb-tgl is-active">'
-              + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>コード'
-            + '</span>'
-            + '<span class="v3-nb-tgl">'
-              + '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="17" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="17" y1="18" x2="3" y2="18"/></svg>テキスト'
-            + '</span>'
+            + '<span class="v3-nb-tgl' + (isText ? '' : ' is-active') + '">' + codeIcon + 'コード</span>'
+            + '<span class="v3-nb-tgl' + (isText ? ' is-active' : '') + '">' + textIcon + 'テキスト</span>'
           + '</div>'
-          + '<span class="v3-nb-cell-run">'
-            + '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>実行'
-          + '</span>'
-          + '<span class="v3-nb-ico">&#8593;</span>'
-          + '<span class="v3-nb-ico">&#8595;</span>'
-          + '<span class="v3-nb-ico">&#10005;</span>'
+          + rightSide
         + '</div>'
-        + '<div class="v3-nb-cell-body">'
-          + '<pre class="v3-nb-code" id="anim-code-' + idx + '"></pre>'
-        + '</div>';
+        + bodyHtml;
       nbBody.appendChild(el);
     }
 
@@ -409,6 +429,19 @@
     function tick() {
       var cell = cells[cellIdx];
       if (!cell) return;
+
+      /* テキストセルはタイプせず、少し見せてから次のセルへ */
+      if (cell.type === 'text') {
+        if (cellIdx < cells.length - 1) {
+          setTimeout(function () {
+            cellIdx++;
+            charIdx = 0;
+            addCell(cellIdx);
+            setTimeout(tick, 28);
+          }, 1300);
+        }
+        return;
+      }
 
       /* まだタイプ中 */
       if (charIdx < cell.code.length) {
