@@ -68,13 +68,9 @@
           <h3>URL につなげて生徒に配布する</h3>
           <p>公開リンクを PyHiroba の URL につなげると、教材を PyHiroba 上で開ける 1 本の URL が完成します。つなげ方には、次の2つの方法があります。</p>
           <p>方法A：ファイルID をつなげる</p>
-          <div class="guide-url-box">
-            https://funakoshi-takehiro.github.io/pyhiroba/?gdrive=（ファイルID）
-          </div>
+          <div class="guide-url-box"><span class="app-base">https://funakoshi-takehiro.github.io/pyhiroba/</span>?gdrive=（ファイルID）</div>
           <p>方法B：共有リンクをそのままつなげる</p>
-          <div class="guide-url-box">
-            https://funakoshi-takehiro.github.io/pyhiroba/?nb=（共有リンク）
-          </div>
+          <div class="guide-url-box"><span class="app-base">https://funakoshi-takehiro.github.io/pyhiroba/</span>?nb=（共有リンク）</div>
           <p>※「ファイルID」は、共有リンク中の <code>/drive/</code> や <code>/d/</code> の後ろの文字列です。どちらの方法でも同じように開けます。</p>
           <p>この URL を生徒に共有すれば、配布は完了です。更新したいときは Drive 上のファイルを差し替えるだけで、同じ URL から最新の教材が開けます。</p>
         </div>
@@ -132,6 +128,18 @@
       </div>
     </div>
   </footer>
+
+  <script>
+    // アプリ本体のURLを現在のページから自動取得して表示（ドメイン/パス変更に追従）
+    (function () {
+      try {
+        if (!/^https?:/.test(location.protocol)) return; // ローカルfile://表示時は固定文を残す
+        var base = new URL('../', location.href).href;   // lp/ の親 ＝ アプリ本体
+        var els = document.querySelectorAll('.app-base');
+        for (var i = 0; i < els.length; i++) els[i].textContent = base;
+      } catch (e) { /* 失敗時は固定のURL表示をそのまま使う */ }
+    })();
+  </script>
 
 </body>
 </html>
