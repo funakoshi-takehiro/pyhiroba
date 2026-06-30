@@ -360,6 +360,24 @@ body {
   line-height: 1.8;
   font-weight: 500;
 }
+/* 特徴カード内のリンク */
+.v3-feat-link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 15px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.v3-feat-link:hover { text-decoration: underline; }
+.v3-feat p .v3-feat-link { margin-left: 6px; font-size: 16px; }
+.v3-feat-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  margin-top: 4px;
+}
 
 /* ---------- ノートブックプレビュー ---------- */
 .v3-preview-wrap {
@@ -2176,4 +2194,88 @@ body {
   .header-subtitle { display: none; }
   .btn-header { padding: 6px 10px; font-size: 12px; }
   #bottom-add-bar { flex-direction: column; align-items: center; }
+}
+
+/* ======================================================
+   教材ガイドページ（guide-use / guide-publish）
+   ====================================================== */
+.guide-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  max-width: 880px; margin: 0 auto; padding: 22px 24px;
+}
+.guide-topbar .guide-logo {
+  font-weight: 900; font-size: 18px; color: var(--accent);
+  text-decoration: none; letter-spacing: -0.01em;
+}
+.guide-topbar a.guide-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 38px; padding: 0 16px; font-size: 13px; font-weight: 600;
+  border-radius: 999px; border: 1px solid var(--ink);
+  color: var(--ink); text-decoration: none; background: transparent;
+  transition: background .15s;
+}
+.guide-topbar a.guide-back:hover { background: rgba(0,0,0,0.04); }
+.guide-page { max-width: 880px; margin: 0 auto; padding: 0 24px 80px; }
+.guide-hero { text-align: center; padding: 36px 0 8px; }
+.guide-hero .guide-eyebrow {
+  font-family: var(--font-code); font-size: 13px; font-weight: 600;
+  letter-spacing: 0.18em; color: var(--accent); margin-bottom: 14px;
+}
+.guide-hero h1 {
+  font-size: 34px; font-weight: 900; letter-spacing: -0.02em;
+  color: var(--ink); margin: 0 0 16px; line-height: 1.3;
+}
+.guide-hero p {
+  font-size: 15px; color: var(--ink-3); line-height: 1.85;
+  max-width: 640px; margin: 0 auto;
+}
+.guide-steps { margin-top: 40px; display: flex; flex-direction: column; gap: 18px; }
+.guide-step {
+  display: flex; gap: 18px;
+  background: var(--paper); border: 1px solid var(--line);
+  border-radius: 16px; padding: 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+}
+.guide-step-num {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  background: var(--accent); color: #fff; font-weight: 800;
+  display: flex; align-items: center; justify-content: center; font-size: 16px;
+}
+.guide-step-body { flex: 1; min-width: 0; }
+.guide-step-body h3 { margin: 4px 0 8px; font-size: 18px; font-weight: 700; color: var(--ink); }
+.guide-step-body p { margin: 0 0 8px; color: var(--ink-2); font-size: 14.5px; line-height: 1.85; }
+.guide-step-body ul { margin: 6px 0; padding-left: 20px; }
+.guide-step-body li { margin: 5px 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.8; }
+.guide-step-body code {
+  font-family: var(--font-code); font-size: 13px;
+  background: var(--color-code-bg); padding: 2px 6px; border-radius: 4px;
+  color: var(--accent-dk); word-break: break-all;
+}
+.guide-url-box {
+  background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; margin: 10px 0;
+  font-family: var(--font-code); font-size: 12.5px; color: var(--ink-2);
+  word-break: break-all; line-height: 1.8;
+}
+.guide-note {
+  margin-top: 32px; padding: 18px 20px;
+  background: var(--accent-soft); border: 1px solid var(--accent-border);
+  border-radius: 14px; color: var(--ink-2); font-size: 14px; line-height: 1.9;
+}
+.guide-note h4 { margin: 0 0 6px; color: var(--accent-dk); font-size: 14px; }
+.guide-foot {
+  margin-top: 40px; display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+}
+.guide-foot a {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 10px 18px; border-radius: 999px;
+  border: 1px solid var(--accent); color: var(--accent);
+  text-decoration: none; font-weight: 700; font-size: 14px;
+  transition: opacity .15s;
+}
+.guide-foot a.primary { background: var(--accent); color: #fff; }
+.guide-foot a:hover { opacity: .88; }
+@media (max-width: 640px) {
+  .guide-hero h1 { font-size: 26px; }
+  .guide-step { flex-direction: column; gap: 10px; }
 }

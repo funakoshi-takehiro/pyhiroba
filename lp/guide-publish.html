@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>自作教材の公開方法 | PyHiroba（ぱいひろば）</title>
+  <meta name="description" content="PyHirobaで作った演習ノートブックをGoogle Driveで公開し、URLひとつで生徒に配布する方法を解説します。">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css?v=20260625d">
+</head>
+<body>
+
+  <header class="guide-topbar">
+    <a href="./" class="guide-logo">PyHiroba</a>
+    <a href="./#faq" class="guide-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      ご利用方法へ
+    </a>
+  </header>
+
+  <main class="guide-page">
+    <section class="guide-hero">
+      <div class="guide-eyebrow">GUIDE</div>
+      <h1>自作教材の公開方法</h1>
+      <p>
+        PyHiroba で作った演習ノートブックを Google Drive で公開し、
+        URL ひとつで生徒に配布する方法を紹介します。
+        専用サーバーやアカウント管理は必要ありません。
+      </p>
+    </section>
+
+    <div class="guide-steps">
+
+      <div class="guide-step">
+        <div class="guide-step-num">1</div>
+        <div class="guide-step-body">
+          <h3>PyHiroba で教材を作る</h3>
+          <p>コードセル・テキストセル・スライドセルを使って、自由に演習ノートブックを作成します。説明（テキスト）、プログラム（コード）、図やスライドを 1 つのノートにまとめられます。</p>
+          <p>※ Google Colab で作成したノートブックを使ってもかまいません。</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">2</div>
+        <div class="guide-step-body">
+          <h3>.ipynb としてダウンロードする</h3>
+          <p>ヘッダーの <strong>「ダウンロード」</strong> ボタンを押すと、作った教材が <code>.ipynb</code> ファイルとして手元に保存されます。</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">3</div>
+        <div class="guide-step-body">
+          <h3>Google Drive にアップロードして公開する</h3>
+          <p>保存した <code>.ipynb</code> ファイルを Google Drive にアップロードします。ファイルを右クリック →「共有」から、共有設定を <strong>「リンクを知っている全員（閲覧者）」</strong> に変更してください。</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="guide-step-num">4</div>
+        <div class="guide-step-body">
+          <h3>URL につなげて生徒に配布する</h3>
+          <p>公開リンクを PyHiroba の URL につなげると、教材を PyHiroba 上で開ける <strong>1 本の URL</strong> が完成します。</p>
+          <div class="guide-url-box">
+            https://funakoshi-takehiro.github.io/pyhiroba/?gdrive=（ファイルID）
+          </div>
+          <p>この URL を生徒に共有すれば、配布は完了です。更新したいときは Drive 上のファイルを差し替えるだけで、同じ URL から最新の教材が開けます。</p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="guide-note">
+      <h4>ご注意</h4>
+      ・共有設定を <strong>「リンクを知っている全員（閲覧者）」</strong> にしておけば、生徒が内容を見たり編集を試したりしても、<strong>Drive の原本は変更されません</strong>。<br>
+      ・「閲覧者」以外（制限付き）のままだと生徒が開けないため、共有範囲の設定をお忘れなく。
+    </div>
+
+    <div class="guide-foot">
+      <a href="guide-use.html">公開教材の使い方 →</a>
+      <a class="primary" href="../">PyHiroba を開く →</a>
+    </div>
+  </main>
+
+</body>
+</html>
