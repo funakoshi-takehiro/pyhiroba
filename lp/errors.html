@@ -48,8 +48,8 @@
       color: var(--ink); margin: 0 0 16px; line-height: 1.25;
     }
     .err-hero p {
-      font-size: 15px; color: var(--ink-3); line-height: 1.8;
-      max-width: 640px; margin: 0 auto;
+      font-size: 17px; color: var(--ink-2); line-height: 1.85;
+      max-width: 660px; margin: 0 auto;
     }
     /* 対応エラー数（モダンなスタッツ表示） */
     .err-stats {
@@ -146,9 +146,9 @@
   <!-- トップバー -->
   <header class="err-topbar">
     <a href="./" class="err-logo">PyHiroba</a>
-    <a href="../" class="err-back">
+    <a href="./#faq" class="err-back">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-      ノートブックを開く
+      ご利用方法へ
     </a>
   </header>
 
@@ -332,10 +332,50 @@
     <div class="err-foot-note">
       上記以外のエラーも、英語の原文・エラー種別・発生した行番号とともに表示します。<br>
       該当しないエラーには「エラーメッセージをよく読んでみよう」という汎用のヒントを表示します。<br>
-      <a href="../">▶ PyHirobaを開いて試してみる</a>
+      <a href="./#faq">ご利用方法へ →</a>
     </div>
 
   </main>
+
+  <!-- フッター（LPと共通） -->
+  <footer class="v3-footer">
+    <div class="container">
+      <div class="v3-footer-top">
+        <div>
+          <div class="v3-footer-logo">PyHiroba<span class="v3-footer-kana">（ぱいひろば）</span></div>
+          <p class="v3-footer-tagline">すべての日本の生徒が安心してPythonプログラミングを学べる広場。</p>
+          <div style="margin-top:24px">
+            <a class="v3-btn v3-btn-primary" href="./#faq">
+              ご利用はこちら
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="v3-footer-cols">
+          <div>
+            <h5>サービス</h5>
+            <a href="./#features">特徴</a>
+            <a href="./#preview">プレビュー</a>
+            <a href="./#faq">ご利用方法</a>
+          </div>
+          <div>
+            <h5>リソース</h5>
+            <a href="errors.html">対応エラーの一覧</a>
+            <a href="guide-use.html">公開教材の一覧</a>
+            <a href="guide-publish.html">自作教材の公開方法</a>
+          </div>
+          <div>
+            <h5>プライバシー</h5>
+            <a href="https://www.u-tokyo.ac.jp/ja/general/privacy_policy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+            <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせ</a>
+          </div>
+        </div>
+      </div>
+      <div class="v3-footer-bottom">
+        <span>© 2026 PyHiroba — 日本の学校現場向けPython実行環境</span>
+      </div>
+    </div>
+  </footer>
 
 </body>
 </html>
