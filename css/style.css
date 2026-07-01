@@ -2346,3 +2346,99 @@ body {
   .guide-hero h1 { font-size: 26px; }
   .guide-step { flex-direction: column; gap: 10px; }
 }
+
+/* ============================================================
+   共通モーダル（確認/通知ダイアログ）
+   ============================================================ */
+.pmodal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(16, 20, 24, 0.42);
+  backdrop-filter: blur(2px);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+.pmodal-overlay.is-open { opacity: 1; }
+
+.pmodal {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 28px 26px 22px;
+  box-shadow: 0 24px 60px -12px rgba(16, 20, 24, 0.34);
+  text-align: center;
+  transform: translateY(10px) scale(0.97);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pmodal-overlay.is-open .pmodal { transform: translateY(0) scale(1); }
+
+.pmodal-icon {
+  width: 52px;
+  height: 52px;
+  margin: 0 auto 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pmodal-icon.is-danger {
+  background: #fdecec;
+  color: #d64545;
+}
+.pmodal-icon svg { width: 26px; height: 26px; }
+
+.pmodal-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.pmodal-msg {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-3);
+  white-space: pre-line;
+  margin-bottom: 22px;
+}
+.pmodal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.pmodal-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 16px;
+  border-radius: 11px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, opacity 0.15s;
+}
+.pmodal-cancel {
+  background: var(--bg-2);
+  color: var(--ink-2);
+  border-color: var(--border, #e2ded6);
+}
+.pmodal-cancel:hover { background: #eae7e0; }
+.pmodal-confirm {
+  background: var(--accent);
+  color: #fff;
+}
+.pmodal-confirm:hover { background: var(--accent-dk); }
+.pmodal-confirm.is-danger { background: #d64545; }
+.pmodal-confirm.is-danger:hover { background: #b83a3a; }
+.pmodal-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
