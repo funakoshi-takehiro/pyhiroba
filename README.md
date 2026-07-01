@@ -5,7 +5,7 @@
 
 公開URL: https://funakoshi-takehiro.github.io/pyhiroba/
 
-## しくみ
+## 仕組み
 
 - Python の実行は [Pyodide](https://pyodide.org/)（WebAssembly）を使い、Web Worker 上で動かしています。重い処理でも画面が固まりません。
 - すべてクライアント側で完結する静的サイトで、サーバーはありません（GitHub Pages で配信）。
