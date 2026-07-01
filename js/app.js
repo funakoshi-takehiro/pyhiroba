@@ -1182,6 +1182,14 @@ function saveEditorContent(id) {
   if (editors[id]) {
     const cell = cells.find(c => c.id === id);
     if (cell) cell.content = editors[id].getValue();
+    return;
+  }
+  // 編集中のテキストセル（textarea）があれば、その内容も保存する
+  const editArea = document.getElementById(`text-edit-${id}`);
+  if (editArea && !editArea.classList.contains('hidden')) {
+    const ta = editArea.querySelector('textarea');
+    const cell = cells.find(c => c.id === id);
+    if (ta && cell) cell.content = ta.value;
   }
 }
 
@@ -1356,7 +1364,7 @@ function buildCellHTML(cell, idx) {
       <button class="cell-collapse-btn${isCollapsed ? ' is-collapsed' : ''}" onclick="event.stopPropagation(); toggleCollapse(${cell.id})" title="${isCollapsed ? '展開する' : '折りたたむ'}">
         <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>` : ''}
-      <div class="cell-toolbar">
+      <div class="cell-toolbar" onmousedown="event.preventDefault()">
         <div class="cell-toolbar-left">
           <span class="cell-number">[${idx + 1}]</span>
           ${cell.type === 'code' ? `
@@ -1397,7 +1405,9 @@ function buildCellHTML(cell, idx) {
       <div class="cell-collapsed-note" onclick="toggleCollapse(${cell.id})">${childCount}個のセルを折りたたんでいます</div>` : ''}
     </div>
     <div class="cell-add-between">
-      <button class="btn-add-between" onclick="addCell({afterId:${cell.id},type:'code'})" title="ここにセルを追加">+</button>
+      <button class="btn-add-between" onclick="addCell({afterId:${cell.id},type:'code'})" title="ここにセルを追加" aria-label="ここにセルを追加">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
     </div>`;
 }
 

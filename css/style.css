@@ -1983,20 +1983,22 @@ body {
   opacity: 1;
 }
 .btn-add-between {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
   background: var(--accent);
   color: #fff;
   border: none;
-  border-radius: 100px;
-  padding: 2px 14px;
-  font-size: 18px;
-  font-weight: 300;
+  border-radius: 50%;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: background 0.15s ease, transform 0.1s;
-  position: relative;
-  top: -1px;
 }
-.btn-add-between:hover { background: var(--accent-dk); transform: scale(1.05); }
+.btn-add-between svg { display: block; }
+.btn-add-between:hover { background: var(--accent-dk); transform: scale(1.12); }
 
 /* ---------- セルラッパー ---------- */
 .cell-wrapper {
