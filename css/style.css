@@ -1859,7 +1859,7 @@ body {
   animation: spin 0.7s linear infinite;
 }
 /* 実行完了：少し薄くして「実行済み」を示す（ホバーで元に戻る） */
-.btn-run.is-done { opacity: 0.5; transition: opacity 0.15s ease; }
+.btn-run.is-done { opacity: 0.85; transition: opacity 0.15s ease; }
 .btn-run.is-done:hover { opacity: 1; }
 
 /* ヘッダーの停止ボタン */
