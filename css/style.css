@@ -1813,6 +1813,15 @@ body {
 }
 .btn-run:active { transform: scale(0.96); }
 .btn-run:disabled { background: rgba(2,141,174,0.4); cursor: not-allowed; transform: none; box-shadow: none; }
+/* 実行中：アイコンをクルクル回す */
+.btn-run .spin {
+  display: inline-block;
+  transform-origin: center;
+  animation: spin 0.7s linear infinite;
+}
+/* 実行完了：少し薄くして「実行済み」を示す（ホバーで元に戻る） */
+.btn-run.is-done { opacity: 0.5; transition: opacity 0.15s ease; }
+.btn-run.is-done:hover { opacity: 1; }
 
 /* 停止ボタン */
 .btn-stop {

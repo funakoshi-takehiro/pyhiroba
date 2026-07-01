@@ -1165,6 +1165,18 @@ function buildCellHTML(cell, idx) {
       <div class="cell-toolbar">
         <div class="cell-toolbar-left">
           <span class="cell-number">[${idx + 1}]</span>
+          ${cell.type === 'code' ? `
+            <button class="btn-run${outputs[cell.id] ? ' is-done' : ''}" onclick="runCell(${cell.id})" title="コードを実行 (Shift+Enter)" id="run-btn-${cell.id}">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              実行
+            </button>` : cell.type === 'slide' ? `
+            <button class="btn-edit-text" onclick="document.getElementById('slide-input-${cell.id}').click()" title="画像を追加">
+              ＋ 画像を追加
+            </button>
+            <input type="file" id="slide-input-${cell.id}" accept="image/*" multiple style="display:none"
+              onchange="onSlideSelect(event,${cell.id})">` : ''}
+        </div>
+        <div class="cell-toolbar-right">
           <div class="cell-type-toggle">
             <button class="cell-type-btn ${cell.type === 'code' ? 'is-active' : ''}" data-type="code"
               onclick="changeCellType(${cell.id},'code')" title="コードセル">
@@ -1181,18 +1193,6 @@ function buildCellHTML(cell, idx) {
               ${cell.type === 'image' ? '🖼 画像' : '🎞 スライド'}
             </button>` : ''}
           </div>
-        </div>
-        <div class="cell-toolbar-right">
-          ${cell.type === 'code' ? `
-            <button class="btn-run" onclick="runCell(${cell.id})" title="コードを実行 (Shift+Enter)" id="run-btn-${cell.id}">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-              実行
-            </button>` : cell.type === 'slide' ? `
-            <button class="btn-edit-text" onclick="document.getElementById('slide-input-${cell.id}').click()" title="画像を追加">
-              ＋ 画像を追加
-            </button>
-            <input type="file" id="slide-input-${cell.id}" accept="image/*" multiple style="display:none"
-              onchange="onSlideSelect(event,${cell.id})">` : ''}
           <button class="btn-icon" onclick="moveCellUp(${cell.id})"   ${isFirst ? 'disabled' : ''} title="上に移動">↑</button>
           <button class="btn-icon" onclick="moveCellDown(${cell.id})" ${isLast  ? 'disabled' : ''} title="下に移動">↓</button>
           <button class="btn-icon btn-delete" onclick="deleteCell(${cell.id})" title="このセルを削除">✕</button>
@@ -1567,8 +1567,10 @@ async function runCell(id) {
   if (cellEl) cellEl.classList.add('running');
   const runBtn = document.getElementById(`run-btn-${id}`);
   if (runBtn) {
-    runBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="12" r="5"/></svg> 実行中';
+    // 実行中：スピナー（クルクル）を表示
+    runBtn.innerHTML = '<svg class="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg> 実行中';
     runBtn.disabled = true;
+    runBtn.classList.remove('is-done');
   }
 
   renderOutput(id, { status: 'running' });
@@ -1628,6 +1630,8 @@ async function runCell(id) {
     if (runBtn) {
       runBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg> 実行';
       runBtn.disabled = false;
+      // 実行完了：ボタンを少し薄くして「実行済み」を示す
+      runBtn.classList.add('is-done');
     }
   }
 }
