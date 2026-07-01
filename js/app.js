@@ -19,9 +19,44 @@ let editors = {};            // CodeMirrorインスタンス { id: editor }
 let outputs = {};            // 実行結果キャッシュ    { id: result }
 let isRunning = false;       // 実行中フラグ
 
+// 未保存（＝最後のダウンロード以降に変更があるか）フラグ
+let isDirty = false;         // 変更されたが未ダウンロード
+let suppressDirty = false;   // ノート読み込み中は変更として数えない
+
 // ライトボックス状態
 let lbCellId = null;
 let lbIdx    = 0;
+
+/** ユーザー操作による変更を「未保存」として記録する */
+function markDirty() {
+  if (!suppressDirty) isDirty = true;
+}
+
+// 巨大ノートによるブラウザのフリーズを防ぐ読み込み上限
+const MAX_IPYNB_BYTES = 5 * 1024 * 1024; // ファイルサイズ 5MB（埋め込み画像込みの現実的上限）
+const MAX_IPYNB_CELLS = 500;             // セル数（大量のエディタ描画による固まりを防ぐ）
+
+/**
+ * 読み込もうとしている .ipynb が上限を超えていないか検査する。
+ * @returns {string|null} 超過理由（'size'|'cells'）、問題なければ null
+ */
+function ipynbSizeProblem(json, byteLen) {
+  if (byteLen != null && byteLen > MAX_IPYNB_BYTES) return 'size';
+  const n = (json && Array.isArray(json.cells)) ? json.cells.length : 0;
+  if (n > MAX_IPYNB_CELLS) return 'cells';
+  return null;
+}
+
+/** サイズ超過時のエラーモーダルを表示する */
+function showSizeLimitError(reason) {
+  const mb = Math.round(MAX_IPYNB_BYTES / (1024 * 1024));
+  const message = reason === 'cells'
+    ? `セル数が多すぎます（上限 ${MAX_IPYNB_CELLS} 個）。\n` +
+      'ノートブックを分割してからお試しください。'
+    : `ファイルサイズが大きすぎます（上限 ${mb}MB）。\n` +
+      '埋め込み画像を減らすか、ノートブックを分割してからお試しください。';
+  return showModal({ title: '読み込めませんでした', message, okText: '閉じる', cancelText: null });
+}
 
 // ============================================================
 // 初期化
@@ -36,6 +71,12 @@ async function initApp() {
 
   // 外部リンククリック時の確認ガードを有効化
   initExternalLinkGuard();
+
+  // タブを閉じる/リロード/戻る時、未保存ならブラウザ標準の離脱警告を出す
+  // （タブ閉じ等ではブラウザ仕様上カスタムUIは出せないため、標準ダイアログで代替）
+  window.addEventListener('beforeunload', (e) => {
+    if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+  });
 
   try {
     // Pyodide を Web Worker（別スレッド）で起動し、準備完了まで待つ
@@ -691,7 +732,11 @@ function buildDefaultNotebook() {
   }
 
   // URLパラメータに対応したセルを追加（focus:false で視点を動かさない）
+  // 読み込み中は「未保存」として数えない
+  suppressDirty = true;
   lesson.cells().forEach(cell => addCell({ ...cell, focus: false }));
+  suppressDirty = false;
+  isDirty = false;
   // 新規/レッスンを開いた直後は必ず一番上から表示する
   window.scrollTo(0, 0);
 }
@@ -769,10 +814,18 @@ async function onIpynbHeaderUpload(event) {
  * @param {boolean} fromWelcome   - true のときウェルカム画面を閉じる
  */
 function _readAndLoadIpynb(file, fromWelcome) {
+  // ファイルサイズが大きすぎる場合は読み込まない（ブラウザのフリーズ防止）
+  if (file.size > MAX_IPYNB_BYTES) {
+    showSizeLimitError('size');
+    return;
+  }
   const reader = new FileReader();
   reader.onload = function (e) {
     try {
       const json = JSON.parse(e.target.result);
+      // セル数が多すぎる場合も読み込まない
+      const problem = ipynbSizeProblem(json, null);
+      if (problem) { showSizeLimitError(problem); return; }
       if (fromWelcome) dismissWelcomeScreen();
       loadIpynb(json);
       // ファイル名をタイトルに反映
@@ -817,6 +870,8 @@ function loadIpynb(json) {
   }
 
   renderAll();
+  // 読み込み直後は未保存ではない
+  isDirty = false;
   // 読み込んだノートブックは一番上から表示する
   window.scrollTo(0, 0);
 }
@@ -856,7 +911,10 @@ async function fetchDriveIpynb(fileId) {
   if (res.status === 404) throw new Error('GD_404');
   if (res.status === 401 || res.status === 403) throw new Error('GD_403');
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
+  const text = await res.text();
+  if (text.length > MAX_IPYNB_BYTES) throw new Error('NB_TOO_BIG');
+  const json = JSON.parse(text);
+  if (ipynbSizeProblem(json, text.length)) throw new Error('NB_TOO_BIG');
 
   // ファイル名も取得（失敗しても致命的ではない）
   let name = '';
@@ -906,7 +964,10 @@ async function loadFromUrl(rawUrl) {
       }
       const res = await fetch(url);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      json = await res.json();
+      const text = await res.text();
+      if (text.length > MAX_IPYNB_BYTES) throw new Error('NB_TOO_BIG');
+      json = JSON.parse(text);
+      if (ipynbSizeProblem(json, text.length)) throw new Error('NB_TOO_BIG');
       nameHint = url.split('/').pop().replace(/\.ipynb$/i, '');
     }
 
@@ -932,7 +993,12 @@ async function loadFromUrl(rawUrl) {
     });
   } catch (err) {
     let msg;
-    if (err.message === 'GD_404') {
+    if (err.message === 'NB_TOO_BIG') {
+      const mb = Math.round(MAX_IPYNB_BYTES / (1024 * 1024));
+      msg = 'ノートブックが大きすぎるため読み込めませんでした。\n\n' +
+            `・ファイルサイズは ${mb}MB 以下、セル数は ${MAX_IPYNB_CELLS} 個以下にしてください\n` +
+            '・埋め込み画像を減らすか、ノートブックを分割してお試しください';
+    } else if (err.message === 'GD_404') {
       msg = 'ファイルが見つからないか、公開されていません。\n\n' +
             '・リンクが正しいか確認してください\n' +
             '・Google Drive / Colab で「共有」→「リンクを知っている全員（閲覧者）」に\n' +
@@ -1011,6 +1077,9 @@ function downloadIpynb() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(blobUrl);
+
+  // ダウンロードしたので「未保存」状態を解除する
+  isDirty = false;
 }
 
 /** content 文字列を .ipynb の source 配列形式に変換 */
@@ -1045,6 +1114,7 @@ function addCell(opts = {}) {
     cells.push(cell);
   }
 
+  markDirty();
   renderAll();
   // 一括生成（デフォルトノート構築など）では focus:false でスクロールを動かさない
   if (opts.focus !== false) focusCell(cell.id);
@@ -1060,9 +1130,11 @@ function appendCell(type) {
 // 共通モーダル（PyHiroba統一デザインの確認/通知ダイアログ）
 // ============================================================
 /**
- * PyHiroba共通の確認モーダルを表示する。Promise<boolean> を返す。
- * cancelText を null にすると通知（OKのみ）モードになる。
- * @param {Object} opts { title, message, okText, cancelText, danger }
+ * PyHiroba共通のモーダルを表示する。
+ * 2ボタンモード: { okText, cancelText, danger } → Promise<boolean>（cancelText:null で通知モード）
+ * 多ボタンモード: { buttons:[{label,value,variant}] } → Promise<選択されたvalue>
+ * variant: 'primary'|'confirm'|'cancel'|'danger'|'default'
+ * @param {Object} opts { title, message, okText, cancelText, danger, buttons }
  */
 function showModal(opts = {}) {
   const {
@@ -1071,14 +1143,33 @@ function showModal(opts = {}) {
     okText = 'OK',
     cancelText = 'キャンセル',
     danger = false,
+    buttons = null,
   } = opts;
 
   const DANGER_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
   const INFO_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+  const VARIANT_CLASS = {
+    primary: 'pmodal-confirm', confirm: 'pmodal-confirm',
+    cancel: 'pmodal-cancel', danger: 'pmodal-confirm is-danger', default: 'pmodal-default',
+  };
 
   return new Promise(resolve => {
     const old = document.getElementById('pyhiroba-modal');
     if (old) old.remove();
+    const prevFocus = document.activeElement; // 閉じたらフォーカスを戻す
+
+    // ボタン定義を組み立てる
+    let btnDefs, escapeValue;
+    if (Array.isArray(buttons)) {
+      btnDefs = buttons.map(b => ({ label: b.label, value: b.value, variant: b.variant || 'default' }));
+      const c = buttons.find(b => b.variant === 'cancel');
+      escapeValue = c ? c.value : null;
+    } else {
+      btnDefs = [];
+      if (cancelText !== null) btnDefs.push({ label: cancelText, value: false, variant: 'cancel' });
+      btnDefs.push({ label: okText, value: true, variant: danger ? 'danger' : 'confirm' });
+      escapeValue = (cancelText === null) ? true : false;
+    }
 
     const overlay = document.createElement('div');
     overlay.id = 'pyhiroba-modal';
@@ -1088,50 +1179,60 @@ function showModal(opts = {}) {
         '<div class="pmodal-icon"></div>' +
         '<div class="pmodal-title"></div>' +
         '<div class="pmodal-msg"></div>' +
-        '<div class="pmodal-actions">' +
-          '<button type="button" class="pmodal-btn pmodal-cancel"></button>' +
-          '<button type="button" class="pmodal-btn pmodal-confirm"></button>' +
-        '</div>' +
+        '<div class="pmodal-actions"></div>' +
       '</div>';
 
-    const iconEl    = overlay.querySelector('.pmodal-icon');
-    const cancelBtn = overlay.querySelector('.pmodal-cancel');
-    const okBtn     = overlay.querySelector('.pmodal-confirm');
-
+    const iconEl  = overlay.querySelector('.pmodal-icon');
+    const actions = overlay.querySelector('.pmodal-actions');
     iconEl.innerHTML = danger ? DANGER_SVG : INFO_SVG;
-    if (danger) { iconEl.classList.add('is-danger'); okBtn.classList.add('is-danger'); }
+    if (danger) iconEl.classList.add('is-danger');
     overlay.querySelector('.pmodal-title').textContent = title;
     overlay.querySelector('.pmodal-msg').textContent   = message;
-    okBtn.textContent = okText;
-
-    if (cancelText === null) {
-      cancelBtn.remove();            // 通知モード（OKのみ）
-    } else {
-      cancelBtn.textContent = cancelText;
-    }
-
-    document.body.appendChild(overlay);
 
     const close = (val) => {
       overlay.classList.remove('is-open');
-      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('keydown', onKey, true);
       setTimeout(() => overlay.remove(), 180);
+      if (prevFocus && typeof prevFocus.focus === 'function') {
+        try { prevFocus.focus(); } catch (_) { /* 元要素が消えていても無視 */ }
+      }
       resolve(val);
     };
+
+    const btnEls = btnDefs.map(def => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pmodal-btn ' + (VARIANT_CLASS[def.variant] || 'pmodal-default');
+      b.textContent = def.label;
+      b.onclick = () => close(def.value);
+      actions.appendChild(b);
+      return b;
+    });
+
+    // フォーカストラップ＋Escape
     const onKey = (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); close(false); }
+      if (e.key === 'Escape') { e.preventDefault(); close(escapeValue); return; }
+      if (e.key === 'Tab' && btnEls.length) {
+        const first = btnEls[0], last = btnEls[btnEls.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey) {
+          if (active === first || !overlay.contains(active)) { e.preventDefault(); last.focus(); }
+        } else {
+          if (active === last || !overlay.contains(active)) { e.preventDefault(); first.focus(); }
+        }
+      }
     };
 
-    okBtn.onclick = () => close(true);
-    if (cancelText !== null) cancelBtn.onclick = () => close(false);
-    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(false); });
-    document.addEventListener('keydown', onKey);
+    document.body.appendChild(overlay);
+    overlay.addEventListener('mousedown', (e) => { if (e.target === overlay) close(escapeValue); });
+    document.addEventListener('keydown', onKey, true);
 
-    // 強制リフローで初期状態を確定させてから is-open を付与し、
-    // 表示トランジションを確実に再生する（requestAnimationFrame に依存しない）
+    // 強制リフローで初期状態を確定させてから is-open を付与し、確実にトランジション再生
     void overlay.offsetWidth;
     overlay.classList.add('is-open');
-    (cancelText === null ? okBtn : cancelBtn).focus();
+    // 既定フォーカス：cancel系があればそこ、無ければ主ボタン（末尾）
+    const cancelIdx = btnDefs.findIndex(d => d.variant === 'cancel');
+    (btnEls[cancelIdx] || btnEls[btnEls.length - 1] || overlay).focus();
   });
 }
 
@@ -1145,25 +1246,47 @@ function initExternalLinkGuard() {
     // 修飾キー付き・中クリック等はブラウザ既定に任せる
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const a = e.target.closest ? e.target.closest('a[href]') : null;
-    if (!a) return;
+    if (!a || a.hasAttribute('download')) return; // ダウンロード用アンカーは対象外
     const href = a.getAttribute('href') || '';
-    if (!/^https?:\/\//i.test(href)) return; // 相対URL・#・javascript:・mailto: は対象外
+    if (!href || href.startsWith('#')) return;    // ページ内アンカー
 
     let url;
     try { url = new URL(href, location.href); } catch (_) { return; }
-    if (url.origin === location.origin) return; // 同一サイト内は確認不要
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return; // mailto:/javascript:/blob:/data: 等
 
-    // 外部リンク → 移動前に確認
-    e.preventDefault();
-    const ok = await showModal({
-      title: '外部のページへ移動します',
-      message: '次のURLへ移動します。信頼できるものか確認してください。\n\n' + url.href,
-      okText: '移動する',
-      cancelText: 'キャンセル',
-    });
-    if (ok) {
-      const w = window.open(url.href, '_blank', 'noopener,noreferrer');
-      if (!w) location.href = url.href; // ポップアップブロック時は同一タブで遷移
+    // 外部（別オリジン）リンク → 移動前に確認（フィッシング対策）
+    if (url.origin !== location.origin) {
+      e.preventDefault();
+      const ok = await showModal({
+        title: '外部のページへ移動します',
+        message: '次のURLへ移動します。信頼できるものか確認してください。\n\n' + url.href,
+        okText: '移動する',
+        cancelText: 'キャンセル',
+      });
+      if (ok) {
+        const w = window.open(url.href, '_blank', 'noopener,noreferrer');
+        if (!w) location.href = url.href; // ポップアップブロック時は同一タブで遷移
+      }
+      return;
+    }
+
+    // 同一サイト内でも「別ページへ離脱」かつ未保存なら、保存確認を出す
+    if (url.pathname !== location.pathname && isDirty) {
+      e.preventDefault();
+      const choice = await showModal({
+        title: '保存されていない変更があります',
+        message: 'このノートブックの変更は、まだダウンロードされていません。\nどうしますか？',
+        buttons: [
+          { label: 'ダウンロード', value: 'download', variant: 'primary' },
+          { label: '終了する',     value: 'quit',     variant: 'default' },
+          { label: 'もどる',       value: 'back',     variant: 'cancel'  },
+        ],
+      });
+      if (choice === 'back' || choice == null) return; // 移動をやめる
+      if (choice === 'download') downloadIpynb();
+      isDirty = false; // beforeunload の二重確認を防ぐ
+      // ダウンロードを開始させてから遷移する
+      setTimeout(() => { location.href = url.href; }, choice === 'download' ? 400 : 0);
     }
   }, true); // capture段階で先取りして他のハンドラより先に判定する
 }
@@ -1191,6 +1314,7 @@ async function deleteCell(id) {
   cells = cells.filter(c => c.id !== id);
   delete editors[id];
   delete outputs[id];
+  markDirty();
   renderAll();
 }
 
@@ -1199,6 +1323,7 @@ function moveCellUp(id) {
   const idx = cells.findIndex(c => c.id === id);
   if (idx > 0) {
     [cells[idx - 1], cells[idx]] = [cells[idx], cells[idx - 1]];
+    markDirty();
     renderAll();
   }
 }
@@ -1208,6 +1333,7 @@ function moveCellDown(id) {
   const idx = cells.findIndex(c => c.id === id);
   if (idx < cells.length - 1) {
     [cells[idx], cells[idx + 1]] = [cells[idx + 1], cells[idx]];
+    markDirty();
     renderAll();
   }
 }
@@ -1220,6 +1346,7 @@ function changeCellType(id, newType) {
     cell.type = newType;
     if (newType === 'slide' && !cell.slides) cell.slides = [];
   }
+  markDirty();
   renderAll();
 }
 
@@ -1308,6 +1435,11 @@ function renderAll() {
         });
         editors[cell.id] = editor;
 
+        // ユーザーによる編集を「未保存」として記録（初期化時の setValue は除外）
+        editor.on('change', (cm, chg) => {
+          if (chg && chg.origin && chg.origin !== 'setValue') markDirty();
+        });
+
         // フォーカス時にセルをハイライト
         editor.on('focus', () => {
           wrapper.querySelector('.cell').classList.add('cell-focused');
@@ -1374,6 +1506,7 @@ function toggleCollapse(id) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
   cell.collapsed = !cell.collapsed;
+  markDirty();
   renderAll();
 }
 
@@ -1520,7 +1653,9 @@ function protectMath(src) {
   s = s.replace(/\$\$[\s\S]+?\$\$/g, mathTok);                           // $$...$$
   s = s.replace(/\\\[[\s\S]+?\\\]/g, mathTok);                           // \[...\]
   s = s.replace(/\\\([\s\S]+?\\\)/g, mathTok);                           // \(...\)
-  s = s.replace(/\$(?!\s)(?:\\.|[^$\\])+?(?<!\s)\$/g, mathTok);          // $...$（前後に空白がない場合のみ＝金額の誤検出を避ける）
+  // $...$（前後に空白がない場合のみ＝金額の誤検出を避ける）。
+  // 後読み(?<!\s)は旧Safari等で構文エラーになるため、末尾を非空白クラス[^\s$]で表現する。
+  s = s.replace(/\$(?!\s)(?:\\.|[^$\\])*?[^\s$]\$/g, mathTok);
 
   // 3) コード領域を元に戻す（marked に通常どおり処理させる）
   s = s.replace(/C(\d+)/g, (m, i) => code[+i]);
@@ -1706,7 +1841,7 @@ function loadSlideFiles(id, files) {
     reader.onload = e => {
       cell.slides.push(e.target.result);
       remaining--;
-      if (remaining === 0) renderAll();
+      if (remaining === 0) { markDirty(); renderAll(); }
     };
     reader.readAsDataURL(file);
   });
@@ -1716,6 +1851,7 @@ function deleteSlide(cellId, idx) {
   const cell = cells.find(c => c.id === cellId);
   if (!cell) return;
   cell.slides.splice(idx, 1);
+  markDirty();
   renderAll();
 }
 
@@ -1813,7 +1949,7 @@ function finishTextEdit(id) {
   const edit = document.getElementById(`text-edit-${id}`);
   const cell = cells.find(c => c.id === id);
   const ta = edit ? edit.querySelector('textarea') : null;
-  if (cell && ta) cell.content = ta.value;
+  if (cell && ta && cell.content !== ta.value) { cell.content = ta.value; markDirty(); }
   const cellEl = document.querySelector(`.cell[data-cell-id="${id}"]`);
   if (cellEl) cellEl.classList.remove('editing');
   // 見出しの追加・変更でセクション構成が変わりうるため、全体を再描画する
@@ -1846,6 +1982,7 @@ function onImageSelect(event, id) {
   reader.onload = e => {
     const cell = cells.find(c => c.id === id);
     if (cell) { cell.content = e.target.result; }
+    markDirty();
     renderAll();
   };
   reader.readAsDataURL(file);
@@ -1860,6 +1997,7 @@ function onImageDrop(event, id) {
   reader.onload = e => {
     const cell = cells.find(c => c.id === id);
     if (cell) { cell.content = e.target.result; }
+    markDirty();
     renderAll();
   };
   reader.readAsDataURL(file);
@@ -1868,6 +2006,7 @@ function onImageDrop(event, id) {
 function clearImage(id) {
   const cell = cells.find(c => c.id === id);
   if (cell) { cell.content = ''; }
+  markDirty();
   renderAll();
 }
 

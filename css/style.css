@@ -2451,6 +2451,12 @@ body {
 .pmodal-confirm:hover { background: var(--accent-dk); }
 .pmodal-confirm.is-danger { background: #d64545; }
 .pmodal-confirm.is-danger:hover { background: #b83a3a; }
+.pmodal-default {
+  background: #fff;
+  color: var(--ink-2);
+  border-color: var(--line);
+}
+.pmodal-default:hover { background: var(--bg-2); }
 .pmodal-btn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
