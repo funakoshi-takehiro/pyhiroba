@@ -1735,7 +1735,7 @@ body {
   font-style: italic;
   font-size: 14px;
 }
-.cell-text-display h1 { font-size: 22px; font-weight: 900; margin: 8px 0; border-bottom: 2px solid var(--line); padding-bottom: 6px; color: var(--ink); }
+.cell-text-display h1 { font-size: 22px; font-weight: 900; margin: 8px 0; color: var(--ink); }
 .cell-text-display h2 { font-size: 18px; font-weight: 700; margin: 12px 0 6px; color: var(--accent); }
 .cell-text-display h3 { font-size: 16px; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }
 .cell-text-display h4 { font-size: 15px; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }

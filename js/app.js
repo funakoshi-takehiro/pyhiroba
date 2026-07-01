@@ -1277,6 +1277,9 @@ function renderAll() {
       renderOutput(cell.id, outputs[cell.id]);
     }
   });
+
+  // テキストセル内の LaTeX 数式を組版する
+  typesetMath();
 }
 
 /** セルのHTMLを構築する */
@@ -1425,7 +1428,57 @@ function buildCodeContent(cell) {
  * を見出しとして描画できるようにする。
  */
 function renderMarkdown(src) {
-  return marked.parse(preprocessMarkdown(src));
+  const { text, math } = protectMath(String(src == null ? '' : src));
+  const html = marked.parse(preprocessMarkdown(text));
+  return restoreMath(html, math);
+}
+
+/**
+ * marked に渡す前に LaTeX 数式を退避（プレースホルダ化）する。
+ * marked が `$a_1$` の `_` を装飾扱いにしたり `\\` を壊したりするのを防ぐ。
+ * コード（```〜``` や `〜`）の中の $ は数式扱いしないよう、先にコードを退避する。
+ * @returns {{text:string, math:string[]}}
+ */
+function protectMath(src) {
+  let s = String(src);
+
+  // 1) コード領域を一時退避（この中の $ は数式にしない）
+  const code = [];
+  const codeTok = (m) => { const i = code.length; code.push(m); return 'C' + i + ''; };
+  s = s.replace(/```[\s\S]*?```|~~~[\s\S]*?~~~/g, codeTok); // フェンスコード
+  s = s.replace(/`[^`\n]*`/g, codeTok);                     // インラインコード
+
+  // 2) 数式を退避（順番が重要：環境・$$ → \[ \( → $）
+  const math = [];
+  const mathTok = (m) => { const i = math.length; math.push(m); return '@@MATH' + i + '@@'; };
+  s = s.replace(/\\begin\{([a-zA-Z*]+)\}[\s\S]*?\\end\{\1\}/g, mathTok); // \begin{eqnarray}...\end{eqnarray}
+  s = s.replace(/\$\$[\s\S]+?\$\$/g, mathTok);                           // $$...$$
+  s = s.replace(/\\\[[\s\S]+?\\\]/g, mathTok);                           // \[...\]
+  s = s.replace(/\\\([\s\S]+?\\\)/g, mathTok);                           // \(...\)
+  s = s.replace(/\$(?!\s)(?:\\.|[^$\\])+?(?<!\s)\$/g, mathTok);          // $...$（前後に空白がない場合のみ＝金額の誤検出を避ける）
+
+  // 3) コード領域を元に戻す（marked に通常どおり処理させる）
+  s = s.replace(/C(\d+)/g, (m, i) => code[+i]);
+
+  return { text: s, math };
+}
+
+/** protectMath で退避した数式を、marked 処理後の HTML に戻す（HTMLエスケープしてMathJaxに渡す） */
+function restoreMath(html, math) {
+  return String(html).replace(/@@MATH(\d+)@@/g, (m, i) => {
+    const tex = math[+i];
+    return tex == null ? m : escHtml(tex);
+  });
+}
+
+/** テキストセル内の LaTeX 数式を MathJax で組版する（読み込み前は何もしない） */
+function typesetMath() {
+  const mj = window.MathJax;
+  if (!mj || !mj.typesetPromise) return;
+  const nodes = document.querySelectorAll('#notebook-container .cell-text-display');
+  if (!nodes.length) return;
+  try { mj.typesetClear(nodes); } catch (e) { /* 初回は未組版なので無視 */ }
+  mj.typesetPromise(Array.from(nodes)).catch(() => {});
 }
 
 /** marked に渡す前の Markdown 補正 */
