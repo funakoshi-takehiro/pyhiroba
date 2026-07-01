@@ -33,8 +33,11 @@ function markDirty() {
 }
 
 // 巨大ノートによるブラウザのフリーズを防ぐ読み込み上限
-const MAX_IPYNB_BYTES = 5 * 1024 * 1024; // ファイルサイズ 5MB（埋め込み画像込みの現実的上限）
+const MAX_IPYNB_BYTES = 8 * 1024 * 1024; // ファイルサイズ 8MB（埋め込み画像込みの現実的上限）
 const MAX_IPYNB_CELLS = 500;             // セル数（大量のエディタ描画による固まりを防ぐ）
+
+// セル実行がこの時間を超えたら「停止しますか？」を確認する
+const LONG_RUN_MS = 60000;               // 1分
 
 /**
  * 読み込もうとしている .ipynb が上限を超えていないか検査する。
@@ -2045,10 +2048,33 @@ async function runCell(id) {
 
   renderOutput(id, { status: 'running' });
 
+  const runId = ++runIdCounter;
+
+  // 実行が1分を超えたら「停止しますか？」を確認する（ポップアップ表示だけでは停止しない）
+  let longRunTimer = null;
+  const armLongRunPrompt = () => {
+    longRunTimer = setTimeout(async () => {
+      // この実行がまだ走っているときだけ確認する
+      if (!isRunning || !currentRun || currentRun.runId !== runId) return;
+      const choice = await showModal({
+        title: '実行が長引いています',
+        message: 'セルの実行に時間がかかっています。\n停止しますか？',
+        buttons: [
+          { label: '停止する', value: 'stop',     variant: 'danger' },
+          { label: '継続する', value: 'continue', variant: 'cancel' },
+        ],
+      });
+      // モーダル操作中に実行が終わっている場合は何もしない
+      if (!isRunning || !currentRun || currentRun.runId !== runId) return;
+      if (choice === 'stop') stopExecution();
+      else armLongRunPrompt(); // 継続：さらに1分後に再確認
+    }, LONG_RUN_MS);
+  };
+
   let result;
   try {
     // ワーカーに実行を依頼し、結果が返るまで待つ（メインスレッドはブロックしない）
-    const runId = ++runIdCounter;
+    armLongRunPrompt();
     result = await new Promise((resolve) => {
       currentRun = {
         runId,
@@ -2065,6 +2091,8 @@ async function runCell(id) {
     });
   } catch (err) {
     result = { status: 'done', errType: 'SystemError', errMsg: (err && err.message) || String(err), stdout: '', stderr: '', figs: [] };
+  } finally {
+    if (longRunTimer) clearTimeout(longRunTimer);
   }
 
   isRunning = false;
