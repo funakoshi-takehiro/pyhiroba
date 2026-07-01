@@ -786,10 +786,12 @@ function loadIpynb(json) {
   const ipynbCells = json.cells || [];
   ipynbCells.forEach(c => {
     const src = Array.isArray(c.source) ? c.source.join('') : (c.source || '');
+    // PyHiroba独自の折りたたみ状態（metadata.pyhiroba.collapsed）を読み込む
+    const collapsed = !!(c.metadata && c.metadata.pyhiroba && c.metadata.pyhiroba.collapsed);
     if (c.cell_type === 'code') {
-      cells.push({ id: nextId++, type: 'code', content: src, slides: [] });
+      cells.push({ id: nextId++, type: 'code', content: src, slides: [], collapsed });
     } else if (c.cell_type === 'markdown') {
-      cells.push({ id: nextId++, type: 'text', content: src, slides: [] });
+      cells.push({ id: nextId++, type: 'text', content: src, slides: [], collapsed });
     }
     // raw セルはスキップ
   });
@@ -945,12 +947,14 @@ function downloadIpynb() {
     },
     cells: cells.map((cell, idx) => {
       const source = toIpynbSource(cell.content || '');
+      // 折りたたみ状態を独自メタデータに保存
+      const metadata = cell.collapsed ? { pyhiroba: { collapsed: true } } : {};
       if (cell.type === 'code') {
         return {
           cell_type: 'code',
           execution_count: null,
           id: `cell-${idx}`,
-          metadata: {},
+          metadata,
           outputs: [],
           source
         };
@@ -959,7 +963,7 @@ function downloadIpynb() {
         return {
           cell_type: 'markdown',
           id: `cell-${idx}`,
-          metadata: {},
+          metadata,
           source
         };
       }
@@ -1102,6 +1106,9 @@ function renderAll() {
   // 古いエディタインスタンスをクリア
   Object.keys(editors).forEach(id => { delete editors[id]; });
 
+  // 折りたたみで隠すセルを計算
+  const hiddenIds = computeCollapsedHidden();
+
   const container = document.getElementById('notebook-container');
   container.innerHTML = '';
 
@@ -1109,7 +1116,11 @@ function renderAll() {
     const wrapper = document.createElement('div');
     wrapper.className = 'cell-wrapper';
     wrapper.innerHTML = buildCellHTML(cell, idx);
+    if (hiddenIds.has(cell.id)) wrapper.style.display = 'none';
     container.appendChild(wrapper);
+
+    // 折りたたみで隠れているセルは、エディタ初期化・出力復元をスキップ
+    if (hiddenIds.has(cell.id)) return;
 
     // コードセルのエディタ初期化
     if (cell.type === 'code') {
@@ -1154,12 +1165,63 @@ function renderAll() {
 }
 
 /** セルのHTMLを構築する */
+// ============================================================
+// セクション折りたたみ（Colab風）
+// ============================================================
+
+/** テキストセルの見出しレベルを返す（見出しでなければ 0） */
+function headingLevel(cell) {
+  if (!cell || cell.type !== 'text' || !cell.content) return 0;
+  const firstLine = (cell.content.split('\n').find(l => l.trim() !== '') || '').trim();
+  const m = firstLine.match(/^(#{1,6})(?!#)/);
+  return m ? m[1].length : 0;
+}
+
+/** 見出しセル（index headerIdx）のセクションに含まれる子セル数を数える */
+function sectionChildCount(headerIdx) {
+  const L = headingLevel(cells[headerIdx]);
+  if (L === 0) return 0;
+  let count = 0;
+  for (let j = headerIdx + 1; j < cells.length; j++) {
+    const hl = headingLevel(cells[j]);
+    if (hl > 0 && hl <= L) break;   // 同レベル以上の見出しでセクション終了
+    count++;
+  }
+  return count;
+}
+
+/** 折りたたみで隠すべきセルID の集合を返す */
+function computeCollapsedHidden() {
+  const hidden = new Set();
+  const stack = [];  // 現在有効な「折りたたみ中セクション」の見出しレベル
+  for (const cell of cells) {
+    const hl = headingLevel(cell);
+    if (hl > 0) {
+      while (stack.length && stack[stack.length - 1] >= hl) stack.pop();
+    }
+    if (stack.length > 0) hidden.add(cell.id);
+    if (hl > 0 && cell.collapsed) stack.push(hl);
+  }
+  return hidden;
+}
+
+/** 見出しセルの折りたたみ/展開を切り替える */
+function toggleCollapse(id) {
+  const cell = cells.find(c => c.id === id);
+  if (!cell) return;
+  cell.collapsed = !cell.collapsed;
+  renderAll();
+}
+
 function buildCellHTML(cell, idx) {
   const isFirst = idx === 0;
   const isLast  = idx === cells.length - 1;
 
-  // 連続するテキストセルの2個目以降は、ツールバーを隠して文章をシームレスに見せる
-  const isContText = cell.type === 'text' && idx > 0 && cells[idx - 1] && cells[idx - 1].type === 'text';
+  // セクション折りたたみ用の情報
+  const hLevel      = headingLevel(cell);
+  const childCount  = hLevel > 0 ? sectionChildCount(idx) : 0;
+  const collapsible = hLevel > 0 && childCount > 0;
+  const isCollapsed = collapsible && !!cell.collapsed;
 
   let typeLabel, toolbarClass, contentHTML;
 
@@ -1182,7 +1244,11 @@ function buildCellHTML(cell, idx) {
   }
 
   return `
-    <div class="cell ${toolbarClass}${isContText ? ' cell-text-cont' : ''}" data-cell-id="${cell.id}">
+    <div class="cell ${toolbarClass}${collapsible ? ' is-collapse-header' : ''}" data-cell-id="${cell.id}">
+      ${collapsible ? `
+      <button class="cell-collapse-btn${isCollapsed ? ' is-collapsed' : ''}" onclick="event.stopPropagation(); toggleCollapse(${cell.id})" title="${isCollapsed ? '展開する' : '折りたたむ'}">
+        <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>` : ''}
       <div class="cell-toolbar">
         <div class="cell-toolbar-left">
           <span class="cell-number">[${idx + 1}]</span>
@@ -1220,6 +1286,8 @@ function buildCellHTML(cell, idx) {
         </div>
       </div>
       ${contentHTML}
+      ${isCollapsed ? `
+      <div class="cell-collapsed-note" onclick="toggleCollapse(${cell.id})">${childCount}個のセルを折りたたんでいます</div>` : ''}
     </div>
     <div class="cell-add-between">
       <button class="btn-add-between" onclick="addCell({afterId:${cell.id},type:'code'})" title="ここにセルを追加">+</button>
@@ -1507,20 +1575,14 @@ function autoGrowTextarea(ta) {
 }
 
 function finishTextEdit(id) {
-  const disp = document.getElementById(`text-disp-${id}`);
   const edit = document.getElementById(`text-edit-${id}`);
-  if (!disp || !edit) return;
-  const ta = edit.querySelector('textarea');
   const cell = cells.find(c => c.id === id);
+  const ta = edit ? edit.querySelector('textarea') : null;
   if (cell && ta) cell.content = ta.value;
-  disp.innerHTML = cell && cell.content && cell.content.trim()
-    ? renderMarkdown(cell.content)
-    : '<p class="placeholder">ここをクリックして編集... (Markdownが使えます)</p>';
-  edit.classList.add('hidden');
-  disp.classList.remove('hidden');
-  // 編集終了でツールバーを再び隠す（連続テキストセルの場合）
   const cellEl = document.querySelector(`.cell[data-cell-id="${id}"]`);
   if (cellEl) cellEl.classList.remove('editing');
+  // 見出しの追加・変更でセクション構成が変わりうるため、全体を再描画する
+  renderAll();
 }
 
 function toggleTextEdit(id) {

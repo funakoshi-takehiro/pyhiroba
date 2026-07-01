@@ -1682,10 +1682,47 @@ body {
   background: transparent;
   border-bottom-color: var(--line);
 }
-/* 連続テキストセルの2個目以降：ツールバーを隠してシームレスに。
+/* テキストセルは通常ツールバーを隠してシームレスに。
    クリック（編集）すると .editing が付いて再表示される。 */
-.cell-text-cont .cell-toolbar { display: none; }
-.cell-text-cont.editing .cell-toolbar { display: flex; }
+.cell-text .cell-toolbar { display: none; }
+.cell-text.editing .cell-toolbar { display: flex; }
+
+/* ── セクション折りたたみ（Colab風） ── */
+/* 折りたたみボタン（見出しセルの左上・控えめ） */
+.cell-collapse-btn {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 3;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--ink-4);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.cell-collapse-btn:hover { background: rgba(16,20,24,0.06); color: var(--ink-2); }
+.cell-collapse-btn .chev { transition: transform 0.15s ease; display: block; }
+.cell-collapse-btn.is-collapsed .chev { transform: rotate(-90deg); }
+/* 編集中はボタンを隠す（ツールバーと重ならないように） */
+.cell.editing .cell-collapse-btn { display: none; }
+/* 折りたたみボタンの分だけ、見出しテキストを右に寄せる */
+.cell.is-collapse-header .cell-text-display { padding-left: 42px; }
+/* 折りたたみ中のセル数表示（灰色・小さめ） */
+.cell-collapsed-note {
+  padding: 4px 20px 12px 42px;
+  font-size: 12px;
+  color: var(--ink-4);
+  cursor: pointer;
+  user-select: none;
+}
+.cell-collapsed-note:hover { color: var(--ink-2); text-decoration: underline; }
 .cell-text-display {
   padding: 16px 20px;
   min-height: 48px;
