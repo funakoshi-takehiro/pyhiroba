@@ -302,9 +302,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"
           integrity="sha384-odPBjvtXVM/5hOYIr3A1dB+flh0c3wAT3bSesIOqEGmyUA4JoKf/YTWy0XKOYAY7"
           crossorigin="anonymous"></script>
-  <!-- DOMPurify（Markdown / HTML出力のXSS無害化） -->
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"
-          integrity="sha384-XQqX/4yiUGu+oyr87jvWzRuqBUK/adrY0DunhL+tID9m/9dwSpV8h9Fk/Sg6ifVQ"
+  <!-- DOMPurify（Markdown / HTML出力のXSS無害化）。バージョンとintegrityは
+       .github/workflows/update-dompurify.yml が毎週最新3.x系へ自動更新する。 -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.11/dist/purify.min.js"
+          integrity="sha384-o44XUELLEnv/iSlA1NWxBweqbD4TSR0qgq2VzVsxtkHS989JJjGKSE9vkfo5MN4K"
           crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"
           integrity="sha384-tVslJOEkg7nVRW3Y3/ReGX0NnonNrbcmt1R5qFbQXQdGa2chRkoJYHAjAsv3zoTq"
@@ -339,7 +340,7 @@
           integrity="sha384-KKWa9jJ1MZvssLeOoXG6FiOAZfAgmzsIIfw8BXwI9+kYm0lPCbC6yTQPBC00F1/L"
           crossorigin="anonymous" id="MathJax-script" async></script>
 
-  <script src="js/app.js?v=20260701h"></script>
+  <script src="js/app.js?v=20260701i"></script>
 
 </body>
 </html>

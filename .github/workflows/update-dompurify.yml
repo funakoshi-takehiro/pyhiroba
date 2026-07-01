@@ -1,0 +1,68 @@
+name: Update DOMPurify
+
+# DOMPurify（XSS無害化ライブラリ）を毎週、最新の 3.x 系へ自動更新する。
+# SRI(integrity)を保つため、新バージョンの sha384 ハッシュを再計算して
+# index.html を書き換え、変更があれば自動コミット＆プッシュする。
+# メジャー更新（4.x など）はAPI互換性の都合で自動対象外（手動レビュー）。
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'   # 毎週月曜 00:00 UTC
+  workflow_dispatch: {}    # 手動実行も可能
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bump DOMPurify (latest 3.x) with fresh SRI
+        run: |
+          set -euo pipefail
+          FILE=index.html
+
+          # 現在のバージョンを取得（Perl依存の \K は使わず POSIX ERE で）
+          CUR_VER=$(grep -oE 'dompurify@[0-9]+\.[0-9]+\.[0-9]+' "$FILE" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+          echo "current version: $CUR_VER"
+
+          # 最新の 3.x 系バージョンを npm レジストリから取得
+          NEW_VER=$(curl -s https://registry.npmjs.org/dompurify \
+            | grep -oE '"version":"3\.[0-9]+\.[0-9]+"' \
+            | grep -oE '3\.[0-9]+\.[0-9]+' | sort -V | tail -1)
+          echo "latest 3.x:      $NEW_VER"
+
+          if [ -z "$NEW_VER" ]; then
+            echo "最新バージョンを解決できませんでした"; exit 1
+          fi
+          if [ "$NEW_VER" = "$CUR_VER" ]; then
+            echo "すでに最新です。更新なし。"; exit 0
+          fi
+
+          # 新バージョンの SRI ハッシュを計算
+          NEW_HASH="sha384-$(curl -sSL "https://cdn.jsdelivr.net/npm/dompurify@${NEW_VER}/dist/purify.min.js" \
+            | openssl dgst -sha384 -binary | openssl base64 -A)"
+          echo "new integrity:   $NEW_HASH"
+
+          # 現在のハッシュ（dompurify行の直後の integrity）を取得
+          CUR_HASH=$(grep -A2 'dompurify@' "$FILE" | grep -oE 'integrity="sha384-[^"]+"' | head -1 | sed -E 's/^integrity="//; s/"$//')
+
+          # index.html を書き換え（# を区切りにして / を含むハッシュに対応）
+          sed -i "s#dompurify@${CUR_VER}#dompurify@${NEW_VER}#" "$FILE"
+          sed -i "s#${CUR_HASH}#${NEW_HASH}#" "$FILE"
+
+          echo "CHANGED=1" >> "$GITHUB_ENV"
+          echo "NEW_VER=$NEW_VER" >> "$GITHUB_ENV"
+
+      - name: Commit & push
+        if: env.CHANGED == '1'
+        run: |
+          set -euo pipefail
+          git config user.name "Chakeo123"
+          git config user.email "funakoshi@freinweb.com"
+          git add index.html
+          git commit -m "DOMPurifyを${NEW_VER}に自動更新（SRI再計算）"
+          git push

@@ -34,6 +34,9 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
   setProgress(5, 'Pyodideを読み込んでいます...');
 
+  // 外部リンククリック時の確認ガードを有効化
+  initExternalLinkGuard();
+
   try {
     // Pyodide を Web Worker（別スレッド）で起動し、準備完了まで待つ
     await startWorker();
@@ -917,6 +920,16 @@ async function loadFromUrl(rawUrl) {
       const h1 = document.querySelector('#app-header h1');
       if (h1) h1.textContent = name;
     }
+
+    // 外部から読み込んだ教材であることの注意喚起
+    await showModal({
+      title: '外部から読み込んだ教材です',
+      message: 'これは外部から読み込んだ教材です。\n' +
+               'PyHiroba公式の教材、先生や学校からの共有など、\n' +
+               '信頼できる教材であることを確認してください。',
+      okText: '確認',
+      cancelText: null,
+    });
   } catch (err) {
     let msg;
     if (err.message === 'GD_404') {
@@ -1120,6 +1133,39 @@ function showModal(opts = {}) {
     overlay.classList.add('is-open');
     (cancelText === null ? okBtn : cancelBtn).focus();
   });
+}
+
+/**
+ * 外部ドメインへのリンククリックを横取りして確認モーダルを出す（フィッシング対策）。
+ * 教材（信頼できない可能性のあるMarkdown）内のリンクや、外部サイトへのリンクが対象。
+ * 同一オリジン・アンカー・mailto: 等は対象外。
+ */
+function initExternalLinkGuard() {
+  document.addEventListener('click', async (e) => {
+    // 修飾キー付き・中クリック等はブラウザ既定に任せる
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest ? e.target.closest('a[href]') : null;
+    if (!a) return;
+    const href = a.getAttribute('href') || '';
+    if (!/^https?:\/\//i.test(href)) return; // 相対URL・#・javascript:・mailto: は対象外
+
+    let url;
+    try { url = new URL(href, location.href); } catch (_) { return; }
+    if (url.origin === location.origin) return; // 同一サイト内は確認不要
+
+    // 外部リンク → 移動前に確認
+    e.preventDefault();
+    const ok = await showModal({
+      title: '外部のページへ移動します',
+      message: '次のURLへ移動します。信頼できるものか確認してください。\n\n' + url.href,
+      okText: '移動する',
+      cancelText: 'キャンセル',
+    });
+    if (ok) {
+      const w = window.open(url.href, '_blank', 'noopener,noreferrer');
+      if (!w) location.href = url.href; // ポップアップブロック時は同一タブで遷移
+    }
+  }, true); // capture段階で先取りして他のハンドラより先に判定する
 }
 
 /** セルを削除する */
