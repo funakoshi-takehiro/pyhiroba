@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=20260625g">
+  <link rel="stylesheet" href="css/style.css?v=20260625h">
 </head>
 <body>
 
@@ -132,6 +132,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 12 8 12 16 5 21"/><polygon points="12 3 19 8 19 16 12 21"/></svg>
         すべて実行
       </button>
+      <button class="btn-header btn-stop-run hidden" id="btn-stop-run" onclick="stopExecution()" title="実行を停止して環境を再起動します">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        停止
+      </button>
       <button class="btn-header btn-clear" onclick="clearAllOutputs()" title="すべての実行結果を消去します">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         出力をクリア
@@ -214,7 +218,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
-  <script src="js/app.js?v=20260625g"></script>
+  <script src="js/app.js?v=20260625h"></script>
 
 </body>
 </html>

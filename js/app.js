@@ -8,7 +8,11 @@
 // ============================================================
 // グローバル状態
 // ============================================================
-let pyodide = null;          // Pyodideインスタンス
+let pyWorker = null;         // Pyodide 実行ワーカー（別スレッド）
+let pyodideReady = false;    // ワーカーの準備完了フラグ
+let currentRun = null;       // 実行中のセル { runId, resolve, onPkg }
+let runIdCounter = 0;        // 実行の通し番号
+let stopRequested = false;   // 停止ボタンが押されたか
 let cells   = [];            // セルデータの配列
 let nextId  = 0;             // セルIDカウンター
 let editors = {};            // CodeMirrorインスタンス { id: editor }
@@ -31,22 +35,12 @@ async function initApp() {
   setProgress(5, 'Pyodideを読み込んでいます...');
 
   try {
-    // Pyodide本体の読み込み
-    pyodide = await loadPyodide({
-      indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'
-    });
-    setProgress(40, '基本ライブラリ（numpy, pandas, matplotlib）を読み込んでいます...');
-
-    // よく使うパッケージを先読み
-    await pyodide.loadPackage(['numpy', 'pandas', 'matplotlib']);
-    setProgress(80, 'Python実行環境を準備しています...');
-
-    // Python実行環境のセットアップ
-    await pyodide.runPythonAsync(PYTHON_SETUP_CODE);
+    // Pyodide を Web Worker（別スレッド）で起動し、準備完了まで待つ
+    await startWorker();
     setProgress(100, '準備完了！');
 
     // 少し待ってからロード画面を消す
-    await sleep(400);
+    await sleep(300);
     document.getElementById('loading-overlay').classList.add('hidden');
 
     // URL パラメータで分岐
@@ -67,6 +61,71 @@ async function initApp() {
   }
 }
 
+/** Pyodide ワーカーを起動し、準備完了まで待つ */
+function startWorker() {
+  return new Promise((resolve, reject) => {
+    pyodideReady = false;
+    try {
+      pyWorker = new Worker('js/pyodide-worker.js?v=20260625h');
+    } catch (e) {
+      reject(new Error('実行環境（Worker）を起動できませんでした')); return;
+    }
+    pyWorker.onmessage = (e) => {
+      const msg = e.data || {};
+      if (msg.type === 'progress') {
+        setProgress(msg.pct, msg.msg);
+      } else if (msg.type === 'ready') {
+        pyodideReady = true;
+        resolve();
+      } else if (msg.type === 'fatal') {
+        reject(new Error(msg.msg || '初期化に失敗しました'));
+      } else if (msg.type === 'pkg') {
+        if (currentRun && currentRun.runId === msg.runId && currentRun.onPkg) currentRun.onPkg(msg.msg);
+      } else if (msg.type === 'result') {
+        if (currentRun && currentRun.runId === msg.runId) {
+          const r = currentRun; currentRun = null; r.resolve(msg.result);
+        }
+      }
+    };
+    pyWorker.onerror = () => reject(new Error('実行環境（Worker）の読み込みに失敗しました'));
+  });
+}
+
+/** 実行を停止してワーカーを再起動する（無限ループ等を止める） */
+function stopExecution() {
+  if (!isRunning) return;
+  stopRequested = true;
+  const running = currentRun;
+  currentRun = null;
+  // ワーカーを終了（実行中のPythonを強制停止）
+  if (pyWorker) { pyWorker.terminate(); pyWorker = null; }
+  pyodideReady = false;
+  if (running) running.resolve({ status: 'done', stopped: true });
+  // 環境を再起動（変数はリセットされる）
+  reinitWorker();
+}
+
+/** 停止後などにワーカーを再起動する */
+async function reinitWorker() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+  setProgress(10, '実行を停止しました。環境を再起動しています...');
+  try {
+    await startWorker();
+    setProgress(100, '準備完了！');
+    await sleep(300);
+    if (overlay) overlay.classList.add('hidden');
+  } catch (e) {
+    setProgress(0, '再起動に失敗しました: ' + e.message);
+  }
+}
+
+/** ヘッダーの停止ボタンの表示切り替え */
+function showStopButton(show) {
+  const btn = document.getElementById('btn-stop-run');
+  if (btn) btn.classList.toggle('hidden', !show);
+}
+
 function setProgress(pct, msg) {
   const bar = document.getElementById('loading-bar');
   const status = document.getElementById('loading-status');
@@ -75,44 +134,6 @@ function setProgress(pct, msg) {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// ============================================================
-// Pythonセットアップコード
-// ============================================================
-const PYTHON_SETUP_CODE = `
-import sys, io, base64, traceback, builtins, ast as _ast
-
-# matplotlibを設定（画像として出力できるようにする）
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-# 日本語フォントの設定（利用可能な場合）
-try:
-    from matplotlib import rcParams
-    rcParams['font.family'] = 'DejaVu Sans'
-    rcParams['axes.unicode_minus'] = False
-except:
-    pass
-
-# 標準出力をキャプチャするクラス
-class _CapIO:
-    def __init__(self):
-        self._buf = []
-    def write(self, s):
-        if s:
-            self._buf.append(str(s))
-    def flush(self):
-        pass
-    def getvalue(self):
-        return ''.join(self._buf)
-
-# ノートブック全体で共有される変数空間
-_nb_globals = {}
-exec("", _nb_globals)
-
-print("✅ Python環境の準備ができました！")
-`;
 
 // ============================================================
 // レッスン定義（URLパラメータ ?lesson=xxx で切り替え）
@@ -1547,7 +1568,7 @@ function clearImage(id) {
 
 /** セル単体を実行 */
 async function runCell(id) {
-  if (!pyodide) {
+  if (!pyodideReady) {
     alert('Python環境がまだ準備できていません。しばらくお待ちください。');
     return;
   }
@@ -1561,6 +1582,7 @@ async function runCell(id) {
   if (!code.trim()) return;
 
   isRunning = true;
+  showStopButton(true);   // ヘッダーに停止ボタンを表示
 
   // UI：実行中状態に切り替え
   const cellEl = document.querySelector(`[data-cell-id="${id}"]`);
@@ -1575,72 +1597,58 @@ async function runCell(id) {
 
   renderOutput(id, { status: 'running' });
 
+  let result;
   try {
-    // import文を解析してパッケージを自動インストール
-    // まだ読み込んでいないライブラリが必要な場合は分かりやすいUIを表示する
-    try {
-      let pkgLoading = false;
-      await pyodide.loadPackagesFromImports(code, {
-        messageCallback: (msg) => {
-          // Pyodide が実際にダウンロードを始めると "Loading ..." が届く
-          if (!pkgLoading && /loading/i.test(msg)) {
-            pkgLoading = true;
-            const names = (msg.match(/Loading\s+(.+)/i) || [])[1] || '';
+    // ワーカーに実行を依頼し、結果が返るまで待つ（メインスレッドはブロックしない）
+    const runId = ++runIdCounter;
+    result = await new Promise((resolve) => {
+      currentRun = {
+        runId,
+        resolve,
+        onPkg: (m) => {
+          // ライブラリのダウンロードが始まったら分かりやすく表示
+          if (/loading/i.test(m)) {
+            const names = (m.match(/Loading\s+(.+)/i) || [])[1] || '';
             renderOutput(id, { status: 'loading-pkg', packages: names });
           }
         }
-      });
-      // 読み込みUIを出した場合は、実行中表示に戻す
-      if (pkgLoading) renderOutput(id, { status: 'running' });
-    } catch (_) { /* 失敗してもコード実行は試みる */ }
-
-    // コードをPythonに渡す
-    pyodide.globals.set('_cell_code', code);
-
-    // 実行
-    await pyodide.runPythonAsync(PYTHON_EXEC_CODE);
-
-    // 結果を取得
-    const stdout      = pyodide.globals.get('_out_text')    || '';
-    const stderr      = pyodide.globals.get('_err_text')    || '';
-    const errType     = pyodide.globals.get('_err_type');
-    const errMsg      = pyodide.globals.get('_err_msg');
-    const errTb       = pyodide.globals.get('_err_tb');
-    const displayHtml = pyodide.globals.get('_display_html') || '';
-    const lastDisplay = pyodide.globals.get('_last_display') || '';
-    const figsProxy   = pyodide.globals.get('_figures');
-    const figs = figsProxy ? figsProxy.toJs() : [];
-    if (figsProxy?.destroy) figsProxy.destroy();
-
-    const result = { status: 'done', stdout, stderr, errType, errMsg, errTb, figs, displayHtml, lastDisplay };
-    outputs[id] = result;
-    renderOutput(id, result);
-
+      };
+      pyWorker.postMessage({ type: 'run', runId, code });
+    });
   } catch (err) {
-    const result = {
-      status: 'done', stdout: '', stderr: '',
-      errType: 'SystemError', errMsg: err.message,
-      errTb: null, figs: []
-    };
-    outputs[id] = result;
-    renderOutput(id, result);
-  } finally {
-    isRunning = false;
-    if (cellEl) cellEl.classList.remove('running');
-    if (runBtn) {
-      runBtn.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg> 実行';
-      runBtn.disabled = false;
-      // 実行完了：ボタンを少し薄くして「実行済み」を示す
-      runBtn.classList.add('is-done');
-    }
+    result = { status: 'done', errType: 'SystemError', errMsg: (err && err.message) || String(err), stdout: '', stderr: '', figs: [] };
   }
+
+  isRunning = false;
+  showStopButton(false);
+  if (cellEl) cellEl.classList.remove('running');
+
+  // ボタンの表示を戻す
+  const rb = document.getElementById(`run-btn-${id}`);
+  if (rb) {
+    rb.innerHTML = '<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg> 実行';
+    rb.disabled = false;
+  }
+
+  if (result && result.stopped) {
+    // 停止された場合：出力に「停止しました」を表示（実行済みにはしない）
+    renderOutput(id, { status: 'stopped' });
+    return result;
+  }
+
+  outputs[id] = result;
+  renderOutput(id, result);
+  if (rb) rb.classList.add('is-done');   // 実行完了：ボタンを薄く
+  return result;
 }
 
 /** すべてのコードセルを順番に実行 */
 async function runAllCells() {
+  stopRequested = false;
   for (const cell of cells) {
     if (cell.type === 'code') {
-      await runCell(cell.id);
+      const r = await runCell(cell.id);
+      if (r && r.stopped) break;   // 停止されたら中断
       await sleep(50);
     }
   }
@@ -1652,75 +1660,6 @@ function clearAllOutputs() {
   document.querySelectorAll('.cell-output').forEach(el => { el.innerHTML = ''; });
 }
 
-// ============================================================
-// Python実行コード（各セル実行時に呼ぶ）
-// ============================================================
-const PYTHON_EXEC_CODE = `
-_out_cap = _CapIO()
-_err_cap = _CapIO()
-_old_out = sys.stdout
-_old_err = sys.stderr
-sys.stdout = _out_cap
-sys.stderr = _err_cap
-
-_err_type    = None
-_err_msg     = None
-_err_tb      = None
-_display_html = None   # DataFrame などの HTML repr
-_last_display = None   # その他の値の text repr
-
-# 前のグラフをクリア
-plt.close('all')
-
-try:
-    _tree = _ast.parse(_cell_code)
-    # 最後の文が「式」かどうか判定（Jupyter と同じ自動表示ロジック）
-    if _tree.body and isinstance(_tree.body[-1], _ast.Expr):
-        # 最後の式より前の行を exec
-        _exec_part = _tree.body[:-1]
-        if _exec_part:
-            _mod = _ast.Module(body=_exec_part, type_ignores=[])
-            _ast.fix_missing_locations(_mod)
-            exec(compile(_mod, '<セル>', 'exec'), _nb_globals)
-        # 最後の式を eval
-        _expr_node = _ast.Expression(body=_tree.body[-1].value)
-        _ast.fix_missing_locations(_expr_node)
-        _last_val = eval(compile(_expr_node, '<セル>', 'eval'), _nb_globals)
-        # None 以外なら表示
-        if _last_val is not None:
-            if hasattr(_last_val, '_repr_html_'):
-                _display_html = _last_val._repr_html_()
-            else:
-                _last_display = repr(_last_val)
-    else:
-        exec(compile(_cell_code, '<セル>', 'exec'), _nb_globals)
-except SystemExit:
-    pass
-except Exception as _e:
-    _err_type = type(_e).__name__
-    _err_msg  = str(_e)
-    _err_tb   = traceback.format_exc()
-finally:
-    sys.stdout = _old_out
-    sys.stderr = _old_err
-
-_out_text = _out_cap.getvalue()
-_err_text = _err_cap.getvalue()
-
-# matplotlibのグラフをPNG画像として取得
-_figures = []
-for _fn in plt.get_fignums():
-    try:
-        _fig = plt.figure(_fn)
-        _buf = io.BytesIO()
-        _fig.savefig(_buf, format='png', bbox_inches='tight', dpi=110)
-        _buf.seek(0)
-        _figures.append(base64.b64encode(_buf.read()).decode('utf-8'))
-    except Exception:
-        pass
-
-plt.close('all')
-`;
 
 // ============================================================
 // 出力表示
@@ -1744,6 +1683,15 @@ function renderOutput(id, result) {
         <span class="spinner">⚙</span>
         <span>ライブラリを読み込み中…${names ? `（${names}）` : ''}</span>
         <small>初回はダウンロードのため少し時間がかかります（数十秒程度）</small>
+      </div>`;
+    return;
+  }
+
+  if (result.status === 'stopped') {
+    el.innerHTML = `
+      <div class="output-stopped">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        実行を停止しました（Python環境を再起動したため、変数はリセットされました）
       </div>`;
     return;
   }
