@@ -166,8 +166,10 @@ function initExternalLinkGuard() {
 
     // 外部（別オリジン）リンク → 移動前に確認（フィッシング対策）
     if (url.origin !== location.origin) {
-      // PyHiroba公式が設置した信頼できるリンク（data-trusted）は確認なしで開く
-      if (a.hasAttribute('data-trusted')) return;
+      // PyHiroba公式が設置した信頼できるリンク（data-trusted）は確認なしで開く。
+      // ただしノートブック内（教材）のリンクは data-trusted があっても信用しない。
+      // （教材Markdownが data-trusted を偽装して確認を回避するのを防ぐ）
+      if (a.hasAttribute('data-trusted') && !a.closest('#notebook-container')) return;
       e.preventDefault();
       const ok = await showModal({
         title: '外部のページへ移動します',
@@ -539,6 +541,8 @@ function sanitizeHtml(html) {
       ADD_DATA_URI_TAGS: ['img'],
       // 対象は表示用HTMLのみ。iframe等の埋め込みは許可しない
       FORBID_TAGS: ['iframe', 'object', 'embed', 'form'],
+      // 教材が data-trusted を偽装して外部リンク確認を回避するのを防ぐ
+      FORBID_ATTR: ['data-trusted'],
     });
   }
   // フォールバック：ライブラリが無ければタグを一切通さない
