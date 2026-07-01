@@ -22,6 +22,7 @@ let isRunning = false;       // 実行中フラグ
 // 未保存（＝最後のダウンロード以降に変更があるか）フラグ
 let isDirty = false;         // 変更されたが未ダウンロード
 let suppressDirty = false;   // ノート読み込み中は変更として数えない
+let bypassUnloadOnce = false;// 外部リンク遷移など、意図的な離脱では未保存警告を出さない
 
 // ライトボックス状態
 let lbCellId = null;
@@ -78,6 +79,8 @@ async function initApp() {
   // タブを閉じる/リロード/戻る時、未保存ならブラウザ標準の離脱警告を出す
   // （タブ閉じ等ではブラウザ仕様上カスタムUIは出せないため、標準ダイアログで代替）
   window.addEventListener('beforeunload', (e) => {
+    // 外部リンクを開くなど、意図的な遷移では警告しない
+    if (bypassUnloadOnce) { bypassUnloadOnce = false; return; }
     if (isDirty) { e.preventDefault(); e.returnValue = ''; }
   });
 
@@ -837,11 +840,19 @@ function _readAndLoadIpynb(file, fromWelcome) {
       const h1 = document.querySelector('#app-header h1');
       if (h1) h1.textContent = name;
     } catch (err) {
-      alert('.ipynb ファイルの読み込みに失敗しました。\nファイルが壊れているか、形式が正しくない可能性があります。\n\n' + err.message);
+      showModal({
+        title: '読み込めませんでした',
+        message: '.ipynb ファイルの読み込みに失敗しました。\nファイルが壊れているか、形式が正しくない可能性があります。',
+        okText: '閉じる', cancelText: null,
+      });
     }
   };
   reader.onerror = function () {
-    alert('ファイルの読み込み中にエラーが発生しました。');
+    showModal({
+      title: '読み込めませんでした',
+      message: 'ファイルの読み込み中にエラーが発生しました。',
+      okText: '閉じる', cancelText: null,
+    });
   };
   reader.readAsText(file, 'UTF-8');
 }
@@ -1017,7 +1028,7 @@ async function loadFromUrl(rawUrl) {
             '（GitHubは raw URL、Google Drive / Colab は公開リンクをご利用ください）\n\n' +
             'エラー: ' + err.message;
     }
-    alert(msg);
+    await showModal({ title: '読み込めませんでした', message: msg, okText: '閉じる', cancelText: null });
   } finally {
     if (btn) { btn.textContent = '開く'; btn.disabled = false; }
   }
@@ -1268,7 +1279,9 @@ function initExternalLinkGuard() {
       });
       if (ok) {
         const w = window.open(url.href, '_blank', 'noopener,noreferrer');
-        if (!w) location.href = url.href; // ポップアップブロック時は同一タブで遷移
+        // 外部リンクは新しいタブで開くだけなので、未保存の確認は不要。
+        // ポップアップがブロックされた場合のみ同一タブで遷移し、その際も警告は出さない。
+        if (!w) { bypassUnloadOnce = true; location.href = url.href; }
       }
       return;
     }
@@ -1944,8 +1957,13 @@ function startTextEdit(id) {
 /** テキスト編集エリアを内容の高さに合わせて自動で広げる */
 function autoGrowTextarea(ta) {
   if (!ta) return;
+  // height を一旦 auto にすると、要素が縮んでページのスクロール位置が飛ぶことがある。
+  // 前後でスクロール位置を保存・復元して、編集中に画面が勝手に下へ動くのを防ぐ。
+  const scroller = document.scrollingElement || document.documentElement;
+  const prev = scroller.scrollTop;
   ta.style.height = 'auto';
   ta.style.height = (ta.scrollHeight + 2) + 'px';
+  scroller.scrollTop = prev;
 }
 
 function finishTextEdit(id) {
@@ -2020,7 +2038,11 @@ function clearImage(id) {
 /** セル単体を実行 */
 async function runCell(id) {
   if (!pyodideReady) {
-    alert('Python環境がまだ準備できていません。しばらくお待ちください。');
+    showModal({
+      title: 'もう少しお待ちください',
+      message: 'Python環境がまだ準備できていません。\n準備が終わってから実行してください。',
+      okText: '閉じる', cancelText: null,
+    });
     return;
   }
   if (isRunning) return;
