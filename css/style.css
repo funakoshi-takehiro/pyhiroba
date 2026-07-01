@@ -1031,8 +1031,8 @@ body {
   font-size: 13px;
   color: var(--ink-3);
 }
-/* ピッカー画面内に置いたLP共通フッターは上マージンを詰める */
-#welcome-overlay .v3-footer { margin-top: 0; }
+/* ピッカー画面内に置いたLP共通フッターは、カードとの間に少し余白を空ける */
+#welcome-overlay .v3-footer { margin-top: 56px; }
 
 @media (max-width: 720px) {
   .picker-grid { grid-template-columns: 1fr; }

@@ -2,6 +2,8 @@
    PyHiroba - Pyodide 実行ワーカー
    Python の実行をメインスレッドから切り離し、
    重い処理中でも画面が固まらないようにする。
+   起動を速くするため、ライブラリは事前ロードせず、
+   import されたときに自動で読み込む。
    ================================================== */
 
 /* eslint-disable no-restricted-globals */
@@ -13,20 +15,10 @@ let pyodide = null;
 // Pythonセットアップコード（環境の初期化）
 // ============================================================
 const PYTHON_SETUP_CODE = `
-import sys, io, base64, traceback, builtins, ast as _ast
+import sys, io, base64, traceback, ast as _ast, os as _os
 
-# matplotlibを設定（画像として出力できるようにする）
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-
-# 日本語フォントの設定（利用可能な場合）
-try:
-    from matplotlib import rcParams
-    rcParams['font.family'] = 'DejaVu Sans'
-    rcParams['axes.unicode_minus'] = False
-except:
-    pass
+# matplotlib が後で読み込まれたときに、画面表示なしの Agg バックエンドを使う
+_os.environ['MPLBACKEND'] = 'Agg'
 
 # 標準出力をキャプチャするクラス
 class _CapIO:
@@ -62,8 +54,12 @@ _err_tb      = None
 _display_html = None   # DataFrame などの HTML repr
 _last_display = None   # その他の値の text repr
 
-# 前のグラフをクリア
-plt.close('all')
+# 前のグラフをクリア（matplotlib が使われている場合のみ）
+if 'matplotlib.pyplot' in sys.modules:
+    try:
+        sys.modules['matplotlib.pyplot'].close('all')
+    except Exception:
+        pass
 
 try:
     _tree = _ast.parse(_cell_code)
@@ -100,31 +96,32 @@ finally:
 _out_text = _out_cap.getvalue()
 _err_text = _err_cap.getvalue()
 
-# matplotlibのグラフをPNG画像として取得
+# matplotlibのグラフをPNG画像として取得（matplotlib が使われている場合のみ）
 _figures = []
-for _fn in plt.get_fignums():
+if 'matplotlib.pyplot' in sys.modules:
+    _plt = sys.modules['matplotlib.pyplot']
+    for _fn in _plt.get_fignums():
+        try:
+            _fig = _plt.figure(_fn)
+            _buf = io.BytesIO()
+            _fig.savefig(_buf, format='png', bbox_inches='tight', dpi=110)
+            _buf.seek(0)
+            _figures.append(base64.b64encode(_buf.read()).decode('utf-8'))
+        except Exception:
+            pass
     try:
-        _fig = plt.figure(_fn)
-        _buf = io.BytesIO()
-        _fig.savefig(_buf, format='png', bbox_inches='tight', dpi=110)
-        _buf.seek(0)
-        _figures.append(base64.b64encode(_buf.read()).decode('utf-8'))
+        _plt.close('all')
     except Exception:
         pass
-
-plt.close('all')
 `;
 
 // ============================================================
-// 初期化
+// 初期化（ライブラリは事前ロードしない＝起動が速い）
 // ============================================================
 async function init() {
   try {
-    postMessage({ type: 'progress', pct: 10, msg: 'Pyodideを読み込んでいます...' });
+    postMessage({ type: 'progress', pct: 20, msg: 'Pyodideを読み込んでいます...' });
     pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' });
-
-    postMessage({ type: 'progress', pct: 40, msg: '基本ライブラリ（numpy, pandas, matplotlib）を読み込んでいます...' });
-    await pyodide.loadPackage(['numpy', 'pandas', 'matplotlib']);
 
     postMessage({ type: 'progress', pct: 80, msg: 'Python実行環境を準備しています...' });
     await pyodide.runPythonAsync(PYTHON_SETUP_CODE);
@@ -140,7 +137,7 @@ async function init() {
 // コード実行
 // ============================================================
 async function runCode(runId, code) {
-  // import文を解析してパッケージを自動ロード
+  // import文を解析してパッケージを自動ロード（初回のみダウンロード）
   try {
     await pyodide.loadPackagesFromImports(code, {
       messageCallback: (m) => postMessage({ type: 'pkg', runId, msg: m })

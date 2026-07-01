@@ -66,7 +66,7 @@ function startWorker() {
   return new Promise((resolve, reject) => {
     pyodideReady = false;
     try {
-      pyWorker = new Worker('js/pyodide-worker.js?v=20260625h');
+      pyWorker = new Worker('js/pyodide-worker.js?v=20260625i');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
