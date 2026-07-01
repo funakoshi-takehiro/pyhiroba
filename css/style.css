@@ -1970,13 +1970,14 @@ body {
 .cell-add-between {
   display: flex;
   justify-content: center;
+  align-items: center;
   height: 0;
   overflow: visible;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
   position: relative;
   z-index: 10;
-  margin: -8px 0;
+  margin: 0;
 }
 .cell-wrapper:hover .cell-add-between,
 .cell-add-between:focus-within {
@@ -1986,19 +1987,26 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   padding: 0;
-  background: var(--accent);
-  color: #fff;
-  border: none;
+  /* 目立たない控えめなグレーの小さな＋ */
+  background: #fff;
+  color: var(--ink-4);
+  border: 1px solid var(--line);
   border-radius: 50%;
   cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  transition: background 0.15s ease, transform 0.1s;
+  box-shadow: 0 1px 2px rgba(16, 20, 24, 0.08);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  /* セル間の余白は保ったまま、＋の中心をセルの下ラインに重ねる（.cell の margin-bottom 分だけ上へ） */
+  transform: translateY(-16px);
 }
-.btn-add-between svg { display: block; }
-.btn-add-between:hover { background: var(--accent-dk); transform: scale(1.12); }
+.btn-add-between svg { display: block; width: 12px; height: 12px; }
+.btn-add-between:hover {
+  background: var(--bg-2);
+  color: var(--ink-2);
+  border-color: var(--ink-4);
+}
 
 /* ---------- セルラッパー ---------- */
 .cell-wrapper {
