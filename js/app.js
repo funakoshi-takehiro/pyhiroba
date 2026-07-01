@@ -1274,6 +1274,7 @@ function buildTextContent(cell) {
       <textarea
         onblur="finishTextEdit(${cell.id})"
         onkeydown="onTextKeydown(event, ${cell.id})"
+        oninput="autoGrowTextarea(this)"
       >${escHtml(cell.content)}</textarea>
       <div class="text-editor-hint">Shift+Enter または Esc で確定</div>
     </div>`;
@@ -1491,7 +1492,18 @@ function startTextEdit(id) {
   disp.classList.add('hidden');
   edit.classList.remove('hidden');
   const ta = edit.querySelector('textarea');
-  if (ta) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+  if (ta) {
+    autoGrowTextarea(ta);   // 内容の高さに合わせて広げる（縮み防止）
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  }
+}
+
+/** テキスト編集エリアを内容の高さに合わせて自動で広げる */
+function autoGrowTextarea(ta) {
+  if (!ta) return;
+  ta.style.height = 'auto';
+  ta.style.height = (ta.scrollHeight + 2) + 'px';
 }
 
 function finishTextEdit(id) {
