@@ -2416,6 +2416,9 @@ body {
   line-height: 1.7;
   color: var(--ink-3);
   white-space: pre-line;
+  /* 長いURLなどがモーダルからはみ出さないよう、必要なら途中で改行する */
+  overflow-wrap: anywhere;
+  word-break: break-word;
   margin-bottom: 22px;
 }
 .pmodal-actions {
