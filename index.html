@@ -3,6 +3,28 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!--
+    Content-Security-Policy（最低限）
+    ・object-src none / base-uri self でプラグイン埋め込み・base乗っ取りを遮断
+    ・script/style/font を既知のCDNに限定
+    ・Pyodide(WASM)のため script-src に 'unsafe-eval' が必須
+    ・インラインの onclick= や設定スクリプトのため 'unsafe-inline' は残す（=script面の保護は限定的）
+    ・?nb= で任意URLの.ipynbを読み込む機能があるため connect-src / img-src は https: を広く許可
+    ・frame-ancestors は <meta> では無効（HTTPヘッダー専用）なので未指定
+  -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+    worker-src 'self' blob:;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+    font-src 'self' https://fonts.gstatic.com data:;
+    img-src 'self' data: blob: https:;
+    connect-src 'self' blob: data: https:;
+    object-src 'none';
+    base-uri 'self';
+  ">
+
   <title>PyHiroba（ぱいひろば）| Python実行環境</title>
 
   <!-- ファビコン -->
@@ -272,6 +294,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+  <!-- DOMPurify（Markdown / HTML出力のXSS無害化） -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.7/dist/purify.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 
   <!-- MathJax（LaTeX数式の表示）。$...$ / $$...$$ / \(...\) / \[...\] / \begin{...}\end{...} に対応 -->
@@ -301,7 +325,7 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" id="MathJax-script" async></script>
 
-  <script src="js/app.js?v=20260701c"></script>
+  <script src="js/app.js?v=20260701h"></script>
 
 </body>
 </html>

@@ -1430,7 +1430,26 @@ function buildCodeContent(cell) {
 function renderMarkdown(src) {
   const { text, math } = protectMath(String(src == null ? '' : src));
   const html = marked.parse(preprocessMarkdown(text));
-  return restoreMath(html, math);
+  // 数式を戻したあと、DOMPurify で無害化（XSS対策）してから表示する
+  return sanitizeHtml(restoreMath(html, math));
+}
+
+/**
+ * HTML文字列を DOMPurify で無害化する（<script>・onerror等・javascript:URI を除去）。
+ * 数式（$...$ / \begin{...}）はテキストとして保持され、data:画像・表・スタイルは残す。
+ * DOMPurify 未ロード時は、安全側に倒してタグを全てエスケープする。
+ */
+function sanitizeHtml(html) {
+  if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+    return window.DOMPurify.sanitize(html, {
+      // data:URI の画像（スライド等）を確実に許可する
+      ADD_DATA_URI_TAGS: ['img'],
+      // 対象は表示用HTMLのみ。iframe等の埋め込みは許可しない
+      FORBID_TAGS: ['iframe', 'object', 'embed', 'form'],
+    });
+  }
+  // フォールバック：ライブラリが無ければタグを一切通さない
+  return escHtml(html);
 }
 
 /**
@@ -1553,7 +1572,7 @@ function buildImageContent(cell) {
     return `
       <div class="cell-image-area">
         <div class="cell-image-display">
-          <img src="${cell.content}" alt="画像">
+          <img src="${escHtml(cell.content)}" alt="画像">
         </div>
         <button class="btn-icon" onclick="clearImage(${cell.id})" style="margin-top:8px;">
           ✕ 画像を削除
@@ -1595,7 +1614,7 @@ function buildSlideContent(cell) {
 
   const thumbs = cell.slides.map((src, i) => `
     <div class="slide-thumb-wrap" onclick="openSlide(${cell.id},${i})">
-      <img src="${src}" alt="スライド${i+1}">
+      <img src="${escHtml(src)}" alt="スライド${i+1}">
       <span class="slide-num">${i+1}</span>
       <button class="slide-thumb-del" onclick="event.stopPropagation();deleteSlide(${cell.id},${i})" title="削除">✕</button>
     </div>`).join('');
@@ -1992,9 +2011,9 @@ function renderOutput(id, result) {
     });
   }
 
-  // DataFrame など _repr_html_() を持つオブジェクト
+  // DataFrame など _repr_html_() を持つオブジェクト（無害化してから表示）
   if (result.displayHtml) {
-    html += `<div class="output-html">${result.displayHtml}</div>`;
+    html += `<div class="output-html">${sanitizeHtml(result.displayHtml)}</div>`;
   }
 
   // その他の値の text repr（数値・リスト・文字列など）
