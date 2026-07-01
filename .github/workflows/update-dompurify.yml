@@ -18,7 +18,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # サプライチェーン対策としてコミットSHAで固定（Dependabotが更新を自動PR）
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Bump DOMPurify (latest 3.x) with fresh SRI
         run: |
