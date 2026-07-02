@@ -191,7 +191,7 @@ function initExternalLinkGuard() {
       e.preventDefault();
       const choice = await showModal({
         title: '保存されていない変更があります',
-        message: 'このノートブックの変更は、まだダウンロードされていません。\nどうしますか？',
+        message: 'このノートブックの変更は、\nまだ保存（ダウンロード）されていません。',
         buttons: [
           { label: 'ダウンロード', value: 'download', variant: 'primary' },
           { label: '終了する',     value: 'quit',     variant: 'default' },
