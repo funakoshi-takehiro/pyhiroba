@@ -169,12 +169,22 @@ async function loadFromUrlInput() {
   await loadFromUrl(url);
 }
 
+/** 直前のページが PyHiroba 自身（同一オリジン）かどうか。公開教材ページ等からの遷移判定に使う。 */
+function referrerIsSameOrigin() {
+  try {
+    return !!document.referrer && new URL(document.referrer).origin === location.origin;
+  } catch (_) {
+    return false;
+  }
+}
+
 /**
  * URL（または Drive ファイルID）から .ipynb をフェッチしてロードする。
  * ?nb= / ?gdrive= パラメータ経由でも使用。
  * Colab / Google Drive の公開リンク、GitHub の URL に対応。
+ * @param {Object} opts { trusted } trusted:true のとき「外部から読み込んだ」注意を出さない
  */
-async function loadFromUrl(rawUrl) {
+async function loadFromUrl(rawUrl, opts = {}) {
   const btn = document.querySelector('.picker-url-row button');
   if (btn) { btn.textContent = '読込中...'; btn.disabled = true; }
 
@@ -214,15 +224,18 @@ async function loadFromUrl(rawUrl) {
       if (h1) h1.textContent = name;
     }
 
-    // 外部から読み込んだ教材であることの注意喚起
-    await showModal({
-      title: '外部から読み込んだ教材です',
-      message: 'これは外部から読み込んだ教材です。\n' +
-               'PyHiroba公式の教材、先生や学校からの共有など、\n' +
-               '信頼できる教材であることを確認してください。',
-      okText: '確認',
-      cancelText: null,
-    });
+    // 外部から読み込んだ教材であることの注意喚起。
+    // 公開教材ページなど PyHiroba 自身から開いた場合（trusted）は出さない。
+    if (!opts.trusted) {
+      await showModal({
+        title: '外部から読み込んだ教材です',
+        message: 'これは外部から読み込んだ教材です。\n' +
+                 'PyHiroba公式の教材、先生や学校からの共有など、\n' +
+                 '信頼できる教材であることを確認してください。',
+        okText: '確認',
+        cancelText: null,
+      });
+    }
   } catch (err) {
     let msg;
     if (err.message === 'NB_TOO_BIG') {

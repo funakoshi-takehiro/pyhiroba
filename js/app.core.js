@@ -95,12 +95,14 @@ async function initApp() {
 
     // URL パラメータで分岐
     const params = new URLSearchParams(window.location.search);
+    // PyHiroba 自身（公開教材ページ等）からの遷移なら「外部から読み込んだ」注意は不要
+    const fromSite = referrerIsSameOrigin();
     if (params.get('lesson')) {
       buildDefaultNotebook();              // ?lesson=xxx → レッスン直接ロード
     } else if (params.get('gdrive')) {
-      await loadFromUrl(params.get('gdrive')); // ?gdrive=ID/URL → Drive直接ロード
+      await loadFromUrl(params.get('gdrive'), { trusted: fromSite }); // ?gdrive=ID/URL → Drive直接ロード
     } else if (params.get('nb')) {
-      await loadFromUrl(params.get('nb'));   // ?nb=URL → .ipynb 直接ロード（Colab/Drive可）
+      await loadFromUrl(params.get('nb'), { trusted: fromSite });   // ?nb=URL → .ipynb 直接ロード（Colab/Drive可）
     } else {
       showWelcomeScreen();                 // パラメータなし → ウェルカム画面
     }
