@@ -9,15 +9,51 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="icon" type="image/png" href="../favicon-64.png">
   <link rel="apple-touch-icon" href="../apple-touch-icon.png">
-  <meta name="description" content="授業でそのまま使える公開教材の一覧（準備中）。">
+  <meta name="description" content="授業でそのまま使える公開教材の一覧。ワンクリックで PyHiroba 上に開けます。">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css?v=20260701m">
   <style>
-    /* このページ用に説明文を少し大きく・濃く */
     .guide-hero p { font-size: 17px; color: var(--ink-2); }
+
+    /* お知らせ（アンケート・協力のお願い） */
+    .mat-notice {
+      display: flex; gap: 14px; align-items: flex-start;
+      background: var(--accent-soft); border: 1px solid var(--accent-border);
+      border-radius: 14px; padding: 16px 18px; margin: 0 0 16px;
+    }
+    .mat-notice .ic { flex: 0 0 auto; color: var(--accent); margin-top: 1px; }
+    .mat-notice p { margin: 0; font-size: 14.5px; line-height: 1.8; color: var(--ink-2); }
+    .mat-notice a { color: var(--accent-dk); font-weight: 700; }
+    .mat-notice.plain { background: #f8fafc; border-color: var(--line); }
+    .mat-notice.plain .ic { color: var(--ink-4); }
+
+    /* 教材リスト */
+    #materials-list { margin: 24px 0 8px; }
+    .mat-item {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px;
+      background: #fff; margin-bottom: 10px; transition: border-color .15s, box-shadow .15s;
+    }
+    .mat-item:hover { border-color: var(--accent-border); box-shadow: 0 2px 10px rgba(2,141,174,0.06); }
+    .mat-name { font-size: 15px; font-weight: 600; color: var(--ink); word-break: break-word; }
+    .mat-open {
+      flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; border-radius: 999px; background: var(--accent); color: #fff;
+      text-decoration: none; font-weight: 700; font-size: 13.5px; white-space: nowrap;
+      transition: background .15s;
+    }
+    .mat-open:hover { background: var(--accent-dk); }
+    .mat-state { text-align: center; padding: 48px 24px; color: var(--ink-3); font-size: 14.5px; }
+    .mat-state a { color: var(--accent-dk); font-weight: 700; }
+    .mat-spinner {
+      width: 22px; height: 22px; border: 3px solid var(--accent-border);
+      border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 12px;
+      animation: matspin 0.8s linear infinite;
+    }
+    @keyframes matspin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -34,12 +70,39 @@
     <section class="guide-hero">
       <div class="guide-eyebrow">MATERIALS</div>
       <h1>公開教材の一覧</h1>
-      <p>授業でそのまま使える公開教材を、こちらで一覧として紹介する予定です。</p>
+      <p>授業でそのまま使える公開教材です。「開く」を押すと、PyHiroba 上でそのまま開けます。</p>
     </section>
 
-    <div style="margin-top:40px; text-align:center; padding:64px 24px; background:#f8fafc; border:1px dashed var(--accent-border); border-radius:18px;">
-      <div style="font-size:28px; font-weight:900; color:var(--accent); letter-spacing:0.04em; margin-bottom:10px;">準備中…</div>
-      <p style="color:var(--ink-3); font-size:14.5px; margin:0;">現在準備を進めています。公開までしばらくお待ちください。</p>
+    <!-- アンケートのお願い -->
+    <div class="mat-notice">
+      <span class="ic" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h4"/></svg>
+      </span>
+      <p>
+        <strong>ご利用の前に、アンケートへのご回答をお願いしています。</strong><br>
+        よりよい教材づくりのため、ぜひご協力ください。
+        <a href="https://forms.gle/VR29SWzAsfNi1djV9" target="_blank" rel="noopener">アンケートに回答する →</a>
+      </p>
+    </div>
+
+    <!-- 教材リスト（Driveから自動取得） -->
+    <div id="materials-list">
+      <div class="mat-state">
+        <div class="mat-spinner"></div>
+        教材を読み込んでいます…
+      </div>
+    </div>
+
+    <!-- 教材公開・協力のお願い -->
+    <div class="mat-notice plain">
+      <span class="ic" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      </span>
+      <p>
+        自作の教材をここで公開したい方、または公開教材の充実にご協力いただける方は、
+        <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせ</a>
+        よりお気軽にご連絡ください。
+      </p>
     </div>
 
     <div class="guide-foot">
@@ -87,6 +150,48 @@
       </div>
     </div>
   </footer>
+
+  <script>
+    (function () {
+      // 公開教材フォルダの一覧を返す Google Apps Script のURL。
+      // （匿名のDrive APIキーではフォルダ内を列挙できないため、Apps Scriptを経由する）
+      var MATERIALS_API_URL = "";  // 例: https://script.google.com/macros/s/XXXXXXXX/exec
+      var FOLDER_URL = "https://drive.google.com/drive/folders/1_NKe-GGJmlFXOQvyJmyQylKAFq3-2XMg";
+
+      var listEl = document.getElementById("materials-list");
+
+      function esc(s) { var d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+
+      function showState(html) {
+        listEl.innerHTML = '<div class="mat-state">' + html + '</div>';
+      }
+      function showNotReady(msg) {
+        showState(msg +
+          '<div style="margin-top:12px"><a target="_blank" rel="noopener" href="' + FOLDER_URL + '">Google Drive のフォルダを開く</a></div>');
+      }
+
+      function render(files) {
+        files.sort(function (a, b) { return String(a.name).localeCompare(String(b.name), "ja", { numeric: true }); });
+        if (!files.length) { showNotReady("公開中の教材がまだありません。"); return; }
+        listEl.innerHTML = files.map(function (f) {
+          var disp = String(f.name).replace(/\.ipynb$/i, "");
+          return '<div class="mat-item">' +
+                   '<span class="mat-name">' + esc(disp) + '</span>' +
+                   '<a class="mat-open" href="../?gdrive=' + encodeURIComponent(f.id) + '">開く →</a>' +
+                 '</div>';
+        }).join("");
+      }
+
+      if (!MATERIALS_API_URL) {
+        showNotReady("教材一覧を準備中です。");
+        return;
+      }
+      fetch(MATERIALS_API_URL)
+        .then(function (r) { if (!r.ok) throw new Error("http"); return r.json(); })
+        .then(function (data) { render((data && data.files) || []); })
+        .catch(function () { showNotReady("教材一覧を読み込めませんでした。時間をおいてお試しください。"); });
+    })();
+  </script>
 
 </body>
 </html>
