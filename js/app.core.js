@@ -118,7 +118,7 @@ function startWorker() {
   return new Promise((resolve, reject) => {
     pyodideReady = false;
     try {
-      pyWorker = new Worker('js/pyodide-worker.js?v=20260625i');
+      pyWorker = new Worker('js/pyodide-worker.js?v=20260702c');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
@@ -133,6 +133,8 @@ function startWorker() {
         reject(new Error(msg.msg || '初期化に失敗しました'));
       } else if (msg.type === 'pkg') {
         if (currentRun && currentRun.runId === msg.runId && currentRun.onPkg) currentRun.onPkg(msg.msg);
+      } else if (msg.type === 'pip') {
+        if (currentRun && currentRun.runId === msg.runId && currentRun.onPip) currentRun.onPip(msg.pkg);
       } else if (msg.type === 'result') {
         if (currentRun && currentRun.runId === msg.runId) {
           const r = currentRun; currentRun = null; r.resolve(msg.result);

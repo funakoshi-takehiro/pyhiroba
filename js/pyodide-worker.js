@@ -136,15 +136,59 @@ async function init() {
 // ============================================================
 // コード実行
 // ============================================================
+// Colab流の !pip install / %pip install や、その他の ! / % コマンド行を抽出する。
+// これらは Python の文法ではないため、実行用コードからは取り除く（行数は維持）。
+function extractDirectives(code) {
+  const lines = code.split('\n');
+  const pipPkgs = [];
+  const unsupported = [];
+  const cleaned = lines.map((line) => {
+    // !pip install / %pip install / !pip3 install ...
+    const m = line.match(/^\s*[!%]\s*pip[0-9]*\s+install\s+(.+)$/);
+    if (m) {
+      m[1].replace(/\s+#.*$/, '').trim().split(/\s+/).forEach((tok) => {
+        if (!tok || tok.startsWith('-')) return;         // -q --upgrade 等のフラグは無視
+        pipPkgs.push(tok.replace(/^["']|["']$/g, ''));   // 前後のクオートを除去
+      });
+      return '';
+    }
+    // %matplotlib inline などのマジックは黙って無視（Colab互換／Pyodideでは不要）
+    if (/^\s*%\s*matplotlib\b/.test(line)) return '';
+    // それ以外の ! / % 行（Pythonではないコマンド）→ 非対応として記録
+    const sh = line.match(/^\s*[!%]\s*(\S.*)$/);
+    if (sh) { unsupported.push(sh[1].trim()); return ''; }
+    return line;
+  }).join('\n');
+  return { cleaned, pipPkgs, unsupported };
+}
+
 async function runCode(runId, code) {
+  const { cleaned, pipPkgs, unsupported } = extractDirectives(code);
+
+  // !pip install → micropip でインストール（Pyodideの pip 相当）
+  const pipResults = [];
+  if (pipPkgs.length) {
+    try { await pyodide.loadPackage('micropip'); } catch (_) {}
+    for (const pkg of pipPkgs) {
+      postMessage({ type: 'pip', runId, pkg });
+      try {
+        pyodide.globals.set('_pip_pkg', pkg);
+        await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg)');
+        pipResults.push({ pkg: pkg, ok: true });
+      } catch (e) {
+        pipResults.push({ pkg: pkg, ok: false, error: String((e && e.message) || e) });
+      }
+    }
+  }
+
   // import文を解析してパッケージを自動ロード（初回のみダウンロード）
   try {
-    await pyodide.loadPackagesFromImports(code, {
+    await pyodide.loadPackagesFromImports(cleaned, {
       messageCallback: (m) => postMessage({ type: 'pkg', runId, msg: m })
     });
   } catch (_) { /* 失敗してもコード実行は試みる */ }
 
-  pyodide.globals.set('_cell_code', code);
+  pyodide.globals.set('_cell_code', cleaned);
 
   try {
     await pyodide.runPythonAsync(PYTHON_EXEC_CODE);
@@ -165,6 +209,8 @@ async function runCode(runId, code) {
         displayHtml: g('_display_html') || '',
         lastDisplay: g('_last_display') || '',
         figs: figs,
+        pip: pipResults,
+        unsupported: unsupported,
       }
     });
   } catch (err) {
@@ -173,6 +219,7 @@ async function runCode(runId, code) {
         status: 'done', stdout: '', stderr: '',
         errType: 'SystemError', errMsg: String((err && err.message) || err),
         errTb: null, figs: [], displayHtml: '', lastDisplay: '',
+        pip: pipResults, unsupported: unsupported,
       }
     });
   }

@@ -1807,6 +1807,31 @@ body {
   font-size: 12px;
   font-weight: 400;
 }
+
+/* !pip install の結果表示 */
+.output-pip {
+  font-size: 13px;
+  line-height: 1.7;
+  padding: 9px 13px;
+  border-radius: 9px;
+  margin-bottom: 8px;
+}
+.output-pip.is-ok {
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent-dk);
+  font-weight: 600;
+}
+.output-pip.is-err {
+  background: #fdecec;
+  border: 1px solid #f6c9c9;
+  color: #b83a3a;
+  font-weight: 600;
+}
+.output-pip .pip-reason {
+  color: var(--ink-2);
+  font-weight: 400;
+}
 .cell-text-editor textarea {
   width: 100%;
   min-height: 120px;

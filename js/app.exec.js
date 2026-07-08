@@ -76,6 +76,10 @@ async function runCell(id) {
             const names = (m.match(/Loading\s+(.+)/i) || [])[1] || '';
             renderOutput(id, { status: 'loading-pkg', packages: names });
           }
+        },
+        onPip: (pkg) => {
+          // !pip install 実行中の表示
+          renderOutput(id, { status: 'installing-pip', packages: pkg });
         }
       };
       pyWorker.postMessage({ type: 'run', runId, code });
@@ -131,6 +135,31 @@ function clearAllOutputs() {
 // ============================================================
 // 出力表示
 // ============================================================
+
+/** よく試されるが、ブラウザ環境では動かないライブラリの分かりやすい理由 */
+const PIP_INCOMPATIBLE = {
+  gradio: 'gradio は画面表示に専用のサーバーが必要なため、ブラウザ内では動作しません。',
+  streamlit: 'streamlit はサーバーが必要なため、ブラウザ内では動作しません。',
+  flask: 'flask はサーバーを起動するライブラリのため、ブラウザ内では動作しません。',
+  django: 'django はサーバーを起動するライブラリのため、ブラウザ内では動作しません。',
+  tensorflow: 'tensorflow は大きなネイティブ（C/GPU）依存があり、ブラウザ環境では利用できません。',
+  torch: 'PyTorch（torch）は大きなネイティブ依存があり、ブラウザ環境では利用できません。',
+  'opencv-python': 'opencv-python はネイティブ依存のため、ブラウザ環境では利用できません。',
+};
+
+/** pip インストール失敗を、初学者向けの日本語メッセージに変換する */
+function translatePipError(pkg, rawError) {
+  const base = String(pkg).split(/[=<>!~[ ]/)[0].trim().toLowerCase();
+  if (PIP_INCOMPATIBLE[base]) return PIP_INCOMPATIBLE[base];
+  if (/pure Python 3 wheel/i.test(rawError || '')) {
+    return 'このライブラリは、C言語やRust製の部品を含むため、ブラウザ上のPython（Pyodide）では利用できません。';
+  }
+  if (/Can't fetch metadata|404|not ?found/i.test(rawError || '')) {
+    return 'ライブラリが見つかりませんでした。名前のつづりを確認してください。';
+  }
+  return 'このライブラリはブラウザ環境ではインストールできませんでした。（対応していないライブラリの可能性があります）';
+}
+
 function renderOutput(id, result) {
   const el = document.getElementById(`output-${id}`);
   if (!el) return;
@@ -154,6 +183,17 @@ function renderOutput(id, result) {
     return;
   }
 
+  if (result.status === 'installing-pip') {
+    const names = result.packages ? escHtml(result.packages) : '';
+    el.innerHTML = `
+      <div class="output-running output-loading-pkg">
+        <span class="spinner">⚙</span>
+        <span>ライブラリをインストール中…${names ? `（${names}）` : ''}</span>
+        <small>初回はダウンロードのため少し時間がかかります</small>
+      </div>`;
+    return;
+  }
+
   if (result.status === 'stopped') {
     el.innerHTML = `
       <div class="output-stopped">
@@ -170,6 +210,28 @@ function renderOutput(id, result) {
     const ranOk = !result.errMsg;
     html += `<div class="output-done-badge ${ranOk ? 'is-ok' : 'is-err'}">`
           + `<span class="done-check">${ranOk ? '✓' : '!'}</span> 実行済み</div>`;
+  }
+
+  // !pip install の結果
+  if (result.pip && result.pip.length) {
+    result.pip.forEach((r) => {
+      if (r.ok) {
+        html += `<div class="output-pip is-ok">✓ 「${escHtml(r.pkg)}」をインストールしました</div>`;
+      } else {
+        html += `<div class="output-pip is-err">`
+              + `⚠ 「${escHtml(r.pkg)}」はインストールできませんでした<br>`
+              + `<span class="pip-reason">${escHtml(translatePipError(r.pkg, r.error))}</span></div>`;
+      }
+    });
+  }
+
+  // 非対応の ! / % コマンド
+  if (result.unsupported && result.unsupported.length) {
+    result.unsupported.forEach((cmd) => {
+      html += `<div class="output-pip is-err">`
+            + `⚠ 「${escHtml(cmd)}」はこの環境では使えません<br>`
+            + `<span class="pip-reason">PyHiroba はブラウザ内で動くため、pip install 以外のコマンド（シェルコマンド）は使えません。</span></div>`;
+    });
   }
 
   // 標準出力
