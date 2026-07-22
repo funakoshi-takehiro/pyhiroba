@@ -299,7 +299,7 @@ body {
 /* ---------- 特徴グリッド ---------- */
 .v3-feat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 1px;
   max-width: 1080px;
   margin: 0 auto;
@@ -307,10 +307,6 @@ body {
   border: 1px solid var(--line);
   border-radius: 18px;
   overflow: hidden;
-}
-/* 中くらいの画面では2列に */
-@media (max-width: 980px) {
-  .v3-feat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 .v3-feat {
   background: var(--paper);
