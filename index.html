@@ -57,9 +57,12 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=20260702c">
+  <link rel="stylesheet" href="css/style.css?v=20260702e">
 </head>
 <body>
+
+  <!-- キーボードで最初にTabすると現れる「本文へスキップ」 -->
+  <a href="#main-content" class="skip-link">本文へスキップ</a>
 
   <!-- ===== ウェルカム画面（Picker） ===== -->
   <div id="welcome-overlay" class="hidden">
@@ -182,7 +185,7 @@
   </div>
 
   <!-- ===== ヘッダー ===== -->
-  <header id="app-header">
+  <header id="app-header" aria-label="ヘッダー・ツールバー">
     <div class="header-left">
       <div class="header-title-group">
         <h1>PyHiroba</h1>
@@ -358,11 +361,11 @@
           crossorigin="anonymous" id="MathJax-script" async></script>
 
   <!-- アプリ本体（役割ごとに分割・この順序で読み込む） -->
-  <script src="js/app.core.js?v=20260702d"></script>
-  <script src="js/app.lessons.js?v=20260702c"></script>
-  <script src="js/app.io.js?v=20260702d"></script>
-  <script src="js/app.notebook.js?v=20260702c"></script>
-  <script src="js/app.exec.js?v=20260702c"></script>
+  <script src="js/app.core.js?v=20260702e"></script>
+  <script src="js/app.lessons.js?v=20260702e"></script>
+  <script src="js/app.io.js?v=20260702e"></script>
+  <script src="js/app.notebook.js?v=20260702e"></script>
+  <script src="js/app.exec.js?v=20260702e"></script>
 
 </body>
 </html>

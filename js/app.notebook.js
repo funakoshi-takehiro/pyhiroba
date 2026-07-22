@@ -340,6 +340,9 @@ function renderAll() {
           // コード補完は無効（要件より）
           extraKeys: {
             'Shift-Enter': () => runCell(cell.id),
+            // Esc でエディタからフォーカスを外す（Tabが字下げに使われ抜けられない
+            // ＝キーボードトラップになるのを防ぐ。Esc→Tabで次の要素へ移動できる）
+            'Esc': cm => cm.getInputField().blur(),
             'Tab': cm => {
               if (cm.somethingSelected()) {
                 cm.indentSelection('add');
@@ -459,7 +462,7 @@ function buildCellHTML(cell, idx) {
   return `
     <div class="cell ${toolbarClass}${collapsible ? ' is-collapse-header' : ''}" data-cell-id="${cell.id}">
       ${collapsible ? `
-      <button class="cell-collapse-btn${isCollapsed ? ' is-collapsed' : ''}" onclick="event.stopPropagation(); toggleCollapse(${cell.id})" title="${isCollapsed ? '展開する' : '折りたたむ'}">
+      <button class="cell-collapse-btn${isCollapsed ? ' is-collapsed' : ''}" onclick="event.stopPropagation(); toggleCollapse(${cell.id})" title="${isCollapsed ? '展開する' : '折りたたむ'}" aria-label="${isCollapsed ? 'このセクションを展開' : 'このセクションを折りたたむ'}" aria-expanded="${isCollapsed ? 'false' : 'true'}">
         <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>` : ''}
       <div class="cell-toolbar" onmousedown="event.preventDefault()">
@@ -493,9 +496,9 @@ function buildCellHTML(cell, idx) {
               ${cell.type === 'image' ? '🖼 画像' : '🎞 スライド'}
             </button>` : ''}
           </div>
-          <button class="btn-icon" onclick="moveCellUp(${cell.id})"   ${isFirst ? 'disabled' : ''} title="上に移動">↑</button>
-          <button class="btn-icon" onclick="moveCellDown(${cell.id})" ${isLast  ? 'disabled' : ''} title="下に移動">↓</button>
-          <button class="btn-icon btn-delete" onclick="deleteCell(${cell.id})" title="このセルを削除">✕</button>
+          <button class="btn-icon" onclick="moveCellUp(${cell.id})"   ${isFirst ? 'disabled' : ''} title="上に移動" aria-label="セルを上に移動">↑</button>
+          <button class="btn-icon" onclick="moveCellDown(${cell.id})" ${isLast  ? 'disabled' : ''} title="下に移動" aria-label="セルを下に移動">↓</button>
+          <button class="btn-icon btn-delete" onclick="deleteCell(${cell.id})" title="このセルを削除" aria-label="このセルを削除">✕</button>
         </div>
       </div>
       ${contentHTML}
@@ -514,7 +517,7 @@ function buildCodeContent(cell) {
     <div class="cell-editor">
       <textarea class="cell-code-ta" data-id="${cell.id}">${escHtml(cell.content)}</textarea>
     </div>
-    <div class="cell-output" id="output-${cell.id}"></div>`;
+    <div class="cell-output" id="output-${cell.id}" aria-live="polite" aria-atomic="false"></div>`;
 }
 
 /**
@@ -618,12 +621,17 @@ function buildTextContent(cell) {
   const media = hasContent && isMediaOnlyMarkdown(cell.content);
   const rendered = hasContent
     ? renderMarkdown(cell.content)
-    : '<p class="placeholder">ここをクリックして編集... (Markdownが使えます)</p>';
+    : '<p class="placeholder">ここをクリック、または Enter キーで編集できます（Markdown対応）</p>';
   // 画像だけのセルはクリックで拡大表示、それ以外はクリックで編集
   const dispClass = media ? 'cell-text-display is-media' : 'cell-text-display';
   const onClick   = media ? `openTextImage(${cell.id})` : `startTextEdit(${cell.id})`;
+  const kbHint    = media ? 'Enterキーで画像を拡大' : 'Enterキーで編集';
+  // tabindex/onkeydown でキーボードからも編集開始できるようにする。
+  // 中のリンク等にフォーカスがある場合は誤発火しないよう currentTarget を確認。
   return `
-    <div class="${dispClass}" id="text-disp-${cell.id}" onclick="${onClick}">
+    <div class="${dispClass}" id="text-disp-${cell.id}" tabindex="0" title="${kbHint}"
+      onclick="${onClick}"
+      onkeydown="if(event.key==='Enter'&&event.target===event.currentTarget){event.preventDefault();${onClick};}">
       ${rendered}
     </div>
     <div class="cell-text-editor hidden" id="text-edit-${cell.id}">
