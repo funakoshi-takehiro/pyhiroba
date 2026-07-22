@@ -169,10 +169,17 @@ async function loadFromUrlInput() {
   await loadFromUrl(url);
 }
 
-/** 直前のページが PyHiroba 自身（同一オリジン）かどうか。公開教材ページ等からの遷移判定に使う。 */
-function referrerIsSameOrigin() {
+/**
+ * 直前のページが PyHiroba の「公開教材ページ」かどうか。
+ * ここからの ?gdrive= / ?nb= 読み込みだけを信頼扱いにする。
+ * ※ 単なる同一オリジン判定にすると、悪意ある教材内リンク（同一オリジンreferrerになる）から
+ *   警告なしで連鎖的に外部教材を読み込めてしまうため、公開教材ページに限定する。
+ */
+function referrerIsMaterialsPage() {
   try {
-    return !!document.referrer && new URL(document.referrer).origin === location.origin;
+    if (!document.referrer) return false;
+    const r = new URL(document.referrer);
+    return r.origin === location.origin && /\/lp\/materials\.html$/.test(r.pathname);
   } catch (_) {
     return false;
   }

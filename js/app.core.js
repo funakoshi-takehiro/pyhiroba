@@ -96,7 +96,7 @@ async function initApp() {
     // URL パラメータで分岐
     const params = new URLSearchParams(window.location.search);
     // PyHiroba 自身（公開教材ページ等）からの遷移なら「外部から読み込んだ」注意は不要
-    const fromSite = referrerIsSameOrigin();
+    const fromSite = referrerIsMaterialsPage();
     if (params.get('lesson')) {
       buildDefaultNotebook();              // ?lesson=xxx → レッスン直接ロード
     } else if (params.get('gdrive')) {
