@@ -118,7 +118,7 @@ function startWorker() {
   return new Promise((resolve, reject) => {
     pyodideReady = false;
     try {
-      pyWorker = new Worker('js/pyodide-worker.js?v=20260702c');
+      pyWorker = new Worker('js/pyodide-worker.js?v=20260722a');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }

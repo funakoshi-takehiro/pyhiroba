@@ -41,7 +41,6 @@ lp/                     紹介ページとドキュメント
   materials.html        公開教材の一覧
   guide-publish.html    自作教材の公開方法
   terms.html            利用規約
-  privacy.html          プライバシーポリシー
 .github/workflows/      DOMPurify を毎週最新化する自動更新
 ogp.png, favicon*       OGP画像・アイコン
 ```
