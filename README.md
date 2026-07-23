@@ -29,6 +29,7 @@
 index.html              アプリ本体（ノートブック画面）
 css/style.css           スタイル
 js/
+  theme.js              ダークモード切替（全ページ共通・head内で同期読み込み）
   app.core.js           グローバル状態・初期化・Worker との通信
   app.lessons.js        教材データ・デフォルトノート・ウェルカム画面
   app.io.js             .ipynb の読み書き・URL / Google Drive からの読み込み

@@ -86,12 +86,13 @@ function loadIpynb(json) {
   const ipynbCells = json.cells || [];
   ipynbCells.forEach(c => {
     const src = Array.isArray(c.source) ? c.source.join('') : (c.source || '');
-    // PyHiroba独自の折りたたみ状態（metadata.pyhiroba.collapsed）を読み込む
-    const collapsed = !!(c.metadata && c.metadata.pyhiroba && c.metadata.pyhiroba.collapsed);
+    // PyHiroba独自メタデータ（折りたたみ状態・セル種別）を読み込む
+    const pyMeta = (c.metadata && c.metadata.pyhiroba) || {};
+    const collapsed = !!pyMeta.collapsed;
     if (c.cell_type === 'code') {
       cells.push({ id: nextId++, type: 'code', content: src, slides: [], collapsed });
     } else if (c.cell_type === 'markdown') {
-      cells.push({ id: nextId++, type: 'text', content: src, slides: [], collapsed });
+      cells.push(markdownToCell(src, pyMeta.cellType, collapsed));
     }
     // raw セルはスキップ
   });
@@ -106,6 +107,26 @@ function loadIpynb(json) {
   isDirty = false;
   // 読み込んだノートブックは一番上から表示する
   window.scrollTo(0, 0);
+}
+
+/**
+ * .ipynb の markdown セルを PyHiroba のセルに変換する。
+ * PyHiroba が書き出した画像/スライドセルは metadata.pyhiroba.cellType を手がかりに
+ * 元の種別へ復元する。ただし Colab 等で本文が書き足されていた場合は、
+ * 内容を失わないようテキストセルのまま読み込む（安全側）。
+ */
+function markdownToCell(src, cellType, collapsed) {
+  if (cellType === 'image' || cellType === 'slide') {
+    const mediaOnly = !src.trim() || isMediaOnlyMarkdown(src);
+    if (mediaOnly) {
+      const srcs = extractImageSrcs(src);
+      if (cellType === 'image') {
+        return { id: nextId++, type: 'image', content: srcs[0] || '', slides: [], collapsed };
+      }
+      return { id: nextId++, type: 'slide', content: '', slides: srcs, collapsed };
+    }
+  }
+  return { id: nextId++, type: 'text', content: src, slides: [], collapsed };
 }
 
 // ============================================================
@@ -272,11 +293,26 @@ async function loadFromUrl(rawUrl, opts = {}) {
   }
 }
 
-/** 現在のノートブックを .ipynb としてダウンロード */
-function downloadIpynb() {
+/**
+ * 画像/スライドセルの中身を Markdown（データURI画像）として文字列化する。
+ * Colab / Jupyter で開いても画像がそのまま表示される形式にする。
+ * テキスト・コードセルは content をそのまま返す。
+ */
+function mediaCellToMarkdown(cell) {
+  if (cell.type === 'image') {
+    return cell.content ? `![画像](${cell.content})` : '';
+  }
+  if (cell.type === 'slide') {
+    return (cell.slides || []).map((src, i) => `![スライド${i + 1}](${src})`).join('\n\n');
+  }
+  return cell.content || '';
+}
+
+/** 現在のノートブックを .ipynb 形式の JSON オブジェクトに変換する */
+function buildIpynbJson() {
   saveAllEditors();
 
-  const nb = {
+  return {
     nbformat: 4,
     nbformat_minor: 5,
     metadata: {
@@ -291,9 +327,11 @@ function downloadIpynb() {
       }
     },
     cells: cells.map((cell, idx) => {
-      const source = toIpynbSource(cell.content || '');
-      // 折りたたみ状態を独自メタデータに保存
-      const metadata = cell.collapsed ? { pyhiroba: { collapsed: true } } : {};
+      // 折りたたみ状態・セル種別（画像/スライド）を独自メタデータに保存
+      const pyMeta = {};
+      if (cell.collapsed) pyMeta.collapsed = true;
+      if (cell.type === 'image' || cell.type === 'slide') pyMeta.cellType = cell.type;
+      const metadata = Object.keys(pyMeta).length ? { pyhiroba: pyMeta } : {};
       if (cell.type === 'code') {
         return {
           cell_type: 'code',
@@ -301,19 +339,24 @@ function downloadIpynb() {
           id: `cell-${idx}`,
           metadata,
           outputs: [],
-          source
+          source: toIpynbSource(cell.content || '')
         };
       } else {
-        // text / slide → markdown として出力
+        // text / image / slide → markdown として出力（画像はデータURIのMarkdown画像に変換）
         return {
           cell_type: 'markdown',
           id: `cell-${idx}`,
           metadata,
-          source
+          source: toIpynbSource(mediaCellToMarkdown(cell))
         };
       }
     })
   };
+}
+
+/** 現在のノートブックを .ipynb としてダウンロード */
+function downloadIpynb() {
+  const nb = buildIpynbJson();
 
   const blob = new Blob([JSON.stringify(nb, null, 2)], { type: 'application/json' });
   const blobUrl = URL.createObjectURL(blob);
@@ -332,6 +375,20 @@ function downloadIpynb() {
 
   // ダウンロードしたので「未保存」状態を解除する
   isDirty = false;
+
+  // 読み込み上限（8MB）を超えるファイルは PyHiroba で開き直せないため注意を出す
+  // （画像・スライドをたくさん埋め込むと超えることがある）
+  if (blob.size > MAX_IPYNB_BYTES) {
+    const mb = Math.round(MAX_IPYNB_BYTES / (1024 * 1024));
+    showModal({
+      title: '保存しました（サイズに注意）',
+      message: `保存した .ipynb が ${mb}MB を超えています。\n` +
+               'このままでは PyHiroba で開き直すことができません。\n' +
+               '画像・スライドの枚数を減らすか、ノートブックを分割してください。',
+      okText: '閉じる',
+      cancelText: null,
+    });
+  }
 }
 
 /** content 文字列を .ipynb の source 配列形式に変換 */

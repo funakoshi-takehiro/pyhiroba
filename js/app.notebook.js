@@ -254,14 +254,53 @@ function moveCellDown(id) {
   }
 }
 
-/** セルのタイプを変更 */
-function changeCellType(id, newType) {
+/** セルのタイプを変更（画像を失わないよう、必要に応じて中身も変換する） */
+async function changeCellType(id, newType) {
   saveEditorContent(id);
   const cell = cells.find(c => c.id === id);
-  if (cell) {
-    cell.type = newType;
-    if (newType === 'slide' && !cell.slides) cell.slides = [];
+  if (!cell || cell.type === newType) return;
+
+  if (cell.type === 'image' || cell.type === 'slide') {
+    // 画像/スライド → 他タイプ
+    const srcs = cell.type === 'image'
+      ? (cell.content ? [cell.content] : [])
+      : (cell.slides || []);
+    if (newType === 'text') {
+      // 画像を Markdown として埋め込む（表示はそのまま・失われない）
+      cell.content = srcs.map((src, i) =>
+        `![${cell.type === 'image' ? '画像' : 'スライド' + (i + 1)}](${src})`).join('\n\n');
+      cell.slides = [];
+    } else if (newType === 'code') {
+      // コードセルでは画像を表示できないため、確認してから破棄する
+      if (srcs.length) {
+        const ok = await showModal({
+          title: 'コードセルに変更しますか？',
+          message: 'このセルの画像は削除されます。\n画像を残したい場合は「テキスト」に変更してください。',
+          okText: '変更する',
+          cancelText: 'キャンセル',
+          danger: true,
+        });
+        if (!ok) return;
+      }
+      cell.content = '';
+      cell.slides = [];
+    } else {
+      // 画像 ⇔ スライドの相互変換（UIには無いが、呼ばれても壊れないように）
+      if (newType === 'slide') { cell.slides = srcs; cell.content = ''; }
+      else { cell.content = srcs[0] || ''; cell.slides = []; }
+    }
+  } else if (newType === 'slide') {
+    // テキスト → スライド：Markdown 内の画像を取り出してスライド化する。
+    // 文章が消えてしまわないよう「画像だけのセル」に限定（ボタンも画像だけのセルにしか出さない）
+    if (!isMediaOnlyMarkdown(cell.content)) return;
+    const srcs = extractImageSrcs(cell.content || '');
+    if (!srcs.length) return;
+    cell.slides = srcs;
+    cell.content = '';
   }
+
+  cell.type = newType;
+  if (!cell.slides) cell.slides = [];
   markDirty();
   renderAll();
 }
@@ -626,13 +665,19 @@ function buildTextContent(cell) {
   const dispClass = media ? 'cell-text-display is-media' : 'cell-text-display';
   const onClick   = media ? `openTextImage(${cell.id})` : `startTextEdit(${cell.id})`;
   const kbHint    = media ? 'Enterキーで画像を拡大' : 'Enterキーで編集';
+  // 画像だけのセルには「スライドに変換」チップを重ねて表示する（ホバー/フォーカスで出現）。
+  // テキストセルのツールバーは非編集時は隠れており、画像だけのセルはクリックで拡大＝
+  // 編集モードに入れないため、スライド変換の入り口はこのチップに置く。
+  const toSlideChip = media ? `
+      <button class="media-to-slide-chip" title="画像をスライドセルに変換"
+        onclick="event.stopPropagation();changeCellType(${cell.id},'slide')">🎞 スライドに変換</button>` : '';
   // tabindex/onkeydown でキーボードからも編集開始できるようにする。
   // 中のリンク等にフォーカスがある場合は誤発火しないよう currentTarget を確認。
   return `
     <div class="${dispClass}" id="text-disp-${cell.id}" tabindex="0" title="${kbHint}"
       onclick="${onClick}"
       onkeydown="if(event.key==='Enter'&&event.target===event.currentTarget){event.preventDefault();${onClick};}">
-      ${rendered}
+      ${rendered}${toSlideChip}
     </div>
     <div class="cell-text-editor hidden" id="text-edit-${cell.id}">
       <textarea
@@ -660,6 +705,23 @@ function isMediaOnlyMarkdown(content) {
     .replace(/<\/?(div|p|center|figure|br)[^>]*>/gi, '') // 装飾タグ
     .replace(/\s+/g, '');
   return stripped.length === 0;
+}
+
+/**
+ * Markdown 内の画像ソース（URL / データURI）を出現順にすべて取り出す。
+ * ![alt](src) と <img src="..."> の両方に対応。
+ * .ipynb ⇔ 画像/スライドセルの相互変換（app.io.js・changeCellType）で使う。
+ */
+function extractImageSrcs(content) {
+  const srcs = [];
+  if (!content) return srcs;
+  const re = /!\[[^\]]*\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)|<img[^>]*\ssrc=["']([^"']+)["']/gi;
+  let m;
+  while ((m = re.exec(content)) !== null) {
+    const src = m[1] || m[2];
+    if (src) srcs.push(src);
+  }
+  return srcs;
 }
 
 /** テキストセル内の最初の画像をライトボックスで拡大表示する */

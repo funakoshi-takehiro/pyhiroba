@@ -9,6 +9,9 @@
   <link rel="icon" type="image/svg+xml" href="../favicon.svg">
   <link rel="icon" type="image/png" href="../favicon-64.png">
   <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+
+  <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
+  <script src="../js/theme.js?v=20260723a"></script>
   <meta name="description" content="授業でそのまま使える公開教材の一覧。ワンクリックで PyHiroba 上に開けます。">
   <link rel="canonical" href="https://funakoshi-takehiro.github.io/pyhiroba/lp/materials.html">
 
@@ -31,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=20260722a">
+  <link rel="stylesheet" href="../css/style.css?v=20260723a">
   <style>
     .guide-hero p { font-size: 17px; color: var(--ink-2); }
 
@@ -71,6 +74,11 @@
       animation: matspin 0.8s linear infinite;
     }
     @keyframes matspin { to { transform: rotate(360deg); } }
+
+    /* ダークモード（このページ固有のハードコード色の調整） */
+    [data-theme="dark"] .mat-notice.plain { background: #1a2027; }
+    [data-theme="dark"] .mat-item { background: var(--paper); }
+    [data-theme="dark"] .mat-open { color: #0e1418; }
   </style>
 </head>
 <body>
@@ -164,6 +172,11 @@
       </div>
       <div class="v3-footer-bottom">
         <span>© 2026 PyHiroba — 日本の学校現場向けPython実行環境</span>
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
+          <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          ダークモード
+        </button>
       </div>
     </div>
   </footer>
