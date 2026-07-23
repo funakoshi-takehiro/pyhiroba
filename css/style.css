@@ -375,6 +375,31 @@ body {
   gap: 12px 24px;
   margin-top: 4px;
 }
+/* 特徴カード内のダークモード切替。
+   フッターのピル型ボタン(.theme-toggle)を、カード内リンク(.v3-feat-link)に
+   なじむ「下線調のトグル」に上書きする。状態同期・アイコン出し分けは
+   theme.js / 既存CSS の .theme-toggle の仕組みをそのまま利用する。 */
+.v3-feat .theme-toggle {
+  margin-top: 8px;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  gap: 6px;
+}
+.v3-feat .theme-toggle:hover { background: none; color: var(--accent); }
+.v3-feat .theme-toggle .theme-lbl {
+  border-bottom: 1px solid color-mix(in oklab, var(--accent) 38%, transparent);
+  transition: border-color 0.15s;
+}
+.v3-feat .theme-toggle:hover .theme-lbl { border-bottom-color: currentColor; }
+/* ラベルは状態で出し分け（初期＝ライトなので「ダークにする」を表示） */
+.v3-feat .theme-toggle .theme-label-light { display: none; }
+[data-theme="dark"] .v3-feat .theme-toggle .theme-label-dark { display: none; }
+[data-theme="dark"] .v3-feat .theme-toggle .theme-label-light { display: inline; }
 
 /* ---------- ノートブックプレビュー ---------- */
 .v3-preview-wrap {
@@ -2581,10 +2606,11 @@ select:focus-visible,
   background: rgba(16,20,24,0.04);
 }
 .theme-toggle svg { display: block; flex-shrink: 0; }
-/* アイコンはテーマに応じて月／太陽を切り替える */
-.theme-ic-sun { display: none; }
-[data-theme="dark"] .theme-ic-moon { display: none; }
-[data-theme="dark"] .theme-ic-sun { display: block; }
+/* アイコンはテーマに応じて月／太陽を切り替える。
+   .theme-toggle svg（詳細度0,1,1）に負けないよう .theme-toggle 配下で指定する。 */
+.theme-toggle .theme-ic-sun { display: none; }
+[data-theme="dark"] .theme-toggle .theme-ic-moon { display: none; }
+[data-theme="dark"] .theme-toggle .theme-ic-sun { display: block; }
 [data-theme="dark"] .theme-toggle:hover { background: rgba(255,255,255,0.07); }
 
 /* ============================================================
