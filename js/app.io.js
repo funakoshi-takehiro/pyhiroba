@@ -121,7 +121,9 @@ function markdownToCell(src, cellType, collapsed) {
     if (mediaOnly) {
       const srcs = extractImageSrcs(src);
       if (cellType === 'image') {
-        return { id: nextId++, type: 'image', content: srcs[0] || '', slides: [], collapsed };
+        // 最初の画像の alt（代替テキスト）も復元する
+        const am = src.match(/!\[([^\]]*)\]\(/);
+        return { id: nextId++, type: 'image', content: srcs[0] || '', alt: am ? am[1] : '', slides: [], collapsed };
       }
       return { id: nextId++, type: 'slide', content: '', slides: srcs, collapsed };
     }
@@ -300,7 +302,7 @@ async function loadFromUrl(rawUrl, opts = {}) {
  */
 function mediaCellToMarkdown(cell) {
   if (cell.type === 'image') {
-    return cell.content ? `![画像](${cell.content})` : '';
+    return cell.content ? `![${cell.alt || ''}](${cell.content})` : '';
   }
   if (cell.type === 'slide') {
     return (cell.slides || []).map((src, i) => `![スライド${i + 1}](${src})`).join('\n\n');

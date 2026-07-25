@@ -14,7 +14,8 @@ function addCell(opts = {}) {
     id:      nextId++,
     type:    opts.type    || 'code',
     content: opts.content || '',
-    slides:  opts.slides  || []
+    slides:  opts.slides  || [],
+    alt:     opts.alt     || ''   // 画像セルの代替テキスト（スクリーンリーダー用）
   };
 
   if (opts.afterId != null) {
@@ -266,9 +267,11 @@ async function changeCellType(id, newType) {
       ? (cell.content ? [cell.content] : [])
       : (cell.slides || []);
     if (newType === 'text') {
-      // 画像を Markdown として埋め込む（表示はそのまま・失われない）
+      // 画像を Markdown として埋め込む（表示はそのまま・失われない）。
+      // 画像セルは代替テキスト(cell.alt)を alt として引き継ぐ。
+      const isImg = cell.type === 'image';
       cell.content = srcs.map((src, i) =>
-        `![${cell.type === 'image' ? '画像' : 'スライド' + (i + 1)}](${src})`).join('\n\n');
+        `![${isImg ? (cell.alt || '') : 'スライド' + (i + 1)}](${src})`).join('\n\n');
       cell.slides = [];
     } else if (newType === 'code') {
       // コードセルでは画像を表示できないため、確認してから破棄する
@@ -392,6 +395,9 @@ function renderAll() {
           }
         });
         editors[cell.id] = editor;
+
+        // スクリーンリーダー用に「何番目のセルのコードか」を伝える（CodeMirror内部の入力欄に付与）
+        try { editor.getInputField().setAttribute('aria-label', `セル${idx + 1}のコード`); } catch (_) { /* 取得できない環境では無視 */ }
 
         // ユーザーによる編集を「未保存」として記録（初期化時の setValue は除外）
         editor.on('change', (cm, chg) => {
@@ -741,9 +747,13 @@ function buildImageContent(cell) {
     return `
       <div class="cell-image-area">
         <div class="cell-image-display">
-          <img src="${escHtml(cell.content)}" alt="画像">
+          <img src="${escHtml(cell.content)}" alt="${escHtml(cell.alt || '画像')}">
         </div>
-        <button class="btn-icon" onclick="clearImage(${cell.id})" style="margin-top:8px;">
+        <input class="image-alt-input" type="text" value="${escHtml(cell.alt || '')}"
+          placeholder="代替テキスト（画像の説明・スクリーンリーダー用／任意）"
+          aria-label="画像の代替テキスト"
+          oninput="setImageAlt(${cell.id}, this.value)">
+        <button class="btn-icon btn-image-remove" onclick="clearImage(${cell.id})">
           ✕ 画像を削除
         </button>
       </div>`;
@@ -989,8 +999,18 @@ function onImageDrop(event, id) {
 
 function clearImage(id) {
   const cell = cells.find(c => c.id === id);
-  if (cell) { cell.content = ''; }
+  if (cell) { cell.content = ''; cell.alt = ''; }
   markDirty();
   renderAll();
+}
+
+/** 画像セルの代替テキスト（alt）を更新する。入力中は再描画せず、img の alt だけ即時反映する。 */
+function setImageAlt(id, value) {
+  const cell = cells.find(c => c.id === id);
+  if (!cell) return;
+  cell.alt = value;
+  const img = document.querySelector(`.cell[data-cell-id="${id}"] .cell-image-display img`);
+  if (img) img.alt = value || '画像';
+  markDirty();
 }
 

@@ -2083,6 +2083,26 @@ body {
   margin-bottom: 8px;
 }
 
+/* ---------- 画像セル ---------- */
+.cell-image-area { padding: 14px 16px; }
+.cell-image-display { text-align: center; }
+.cell-image-display img { max-width: 100%; height: auto; border-radius: 10px; }
+.image-alt-input {
+  display: block;
+  width: 100%;
+  margin: 10px 0 0;
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+.image-alt-input:focus { outline: none; border-color: var(--accent); }
+.image-alt-input::placeholder { color: var(--ink-4); }
+.btn-image-remove { margin-top: 8px; }
+
 /* ---------- スライドセル ---------- */
 .cell-slide .cell-toolbar {
   background: transparent;
