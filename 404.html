@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ページが見つかりません | PyHiroba（ぱいひろば）</title>
   <meta name="robots" content="noindex">
+
+  <!-- クリックジャッキング対策：他サイトの<iframe>に埋め込まれた状態での表示を防ぐ -->
+  <script>
+    (function(){try{if(window.self!==window.top){document.documentElement.style.setProperty('display','none','important');window.top.location=window.self.location;}}catch(e){try{document.documentElement.style.setProperty('display','none','important');}catch(_){}}})();
+  </script>
   <meta name="description" content="お探しのページは見つかりませんでした。PyHiroba（ぱいひろば）のトップページからやり直してください。">
 
   <!-- ファビコン（本番は /pyhiroba/ 配下・絶対パスで参照） -->

@@ -7,6 +7,30 @@
    ================================================== */
 'use strict';
 
+/* --------------------------------------------------------------
+   クリックジャッキング対策（全ページ共通・最優先で実行）
+   悪意あるサイトが PyHiroba を透明な <iframe> で自分のページに重ね、
+   利用者に「見えないボタン」を押させる攻撃を防ぐ。
+   ・他サイトの枠内で開かれた場合は、まず画面を隠す
+   ・可能なら本来のURL（枠なし）へ抜け出す
+   ・抜け出せない設定（サンドボックス）のときは、隠したまま操作させない
+   ※ frame-ancestors（本来のHTTPヘッダー対策）は GitHub Pages では
+     付与できないため、この JavaScript による対策で補う。
+   -------------------------------------------------------------- */
+(function () {
+  try {
+    if (window.self !== window.top) {
+      // 埋め込まれている → まず全体を隠す（重ねられたワナのクリックを無効化）
+      document.documentElement.style.setProperty('display', 'none', 'important');
+      // 本来のURLへ抜け出す（枠を破る）。別オリジンでも遷移の指定は許可される
+      window.top.location = window.self.location;
+    }
+  } catch (_) {
+    // サンドボックス等で枠から抜け出せない場合はここに来る。隠したままにする。
+    try { document.documentElement.style.setProperty('display', 'none', 'important'); } catch (__) {}
+  }
+})();
+
 (function () {
   const KEY = 'pyhiroba-theme';
 
