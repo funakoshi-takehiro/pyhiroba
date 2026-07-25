@@ -127,7 +127,9 @@ async function init() {
     await pyodide.runPythonAsync(PYTHON_SETUP_CODE);
 
     postMessage({ type: 'progress', pct: 100, msg: '準備完了！' });
-    postMessage({ type: 'ready' });
+    // indexURL は上の loadPyodide と同じ値。メインスレッドが Service Worker への
+    // Pyodideコア先読み依頼に使う（値を変えるときは両方あわせて更新すること）。
+    postMessage({ type: 'ready', indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' });
   } catch (err) {
     postMessage({ type: 'fatal', msg: String((err && err.message) || err) });
   }

@@ -10,6 +10,7 @@
 // ============================================================
 let pyWorker = null;         // Pyodide 実行ワーカー（別スレッド）
 let pyodideReady = false;    // ワーカーの準備完了フラグ
+let pyodideIndexURL = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'; // Pyodide配信元（Service Workerでのキャッシュに使用）
 let currentRun = null;       // 実行中のセル { runId, resolve, onPkg }
 let runIdCounter = 0;        // 実行の通し番号
 let stopRequested = false;   // 停止ボタンが押されたか
@@ -71,7 +72,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function initApp() {
+  // 対応環境チェック（WebAssembly / Web Worker が無ければ動かせない）。
+  // 古い端末や機能制限されたブラウザで「青い画面のまま固まる」のを防ぎ、案内を出す。
+  if (typeof WebAssembly === 'undefined' || typeof Worker === 'undefined') {
+    showUnsupportedBrowser();
+    return;
+  }
+
   setProgress(5, 'Pyodideを読み込んでいます...');
+
+  // オフライン対応（初回ロード後にアプリ資産・Pyodideをキャッシュ）
+  registerServiceWorker();
 
   // 外部リンククリック時の確認ガードを有効化
   initExternalLinkGuard();
@@ -108,8 +119,9 @@ async function initApp() {
     }
 
   } catch (err) {
-    setProgress(0, `⚠ 読み込みエラー: ${err.message}`);
     console.error(err);
+    // 青い読み込み画面のまま固めず、原因の見当と対処（許可ドメイン・再試行）を出す
+    showLoadFailure(err);
   }
 }
 
@@ -117,20 +129,40 @@ async function initApp() {
 function startWorker() {
   return new Promise((resolve, reject) => {
     pyodideReady = false;
+    let settled = false;
+    let timer = null;
+    // 一定時間まったく進捗が無ければ「ネットワーク遮断の可能性」として失敗扱いにする。
+    // 進捗メッセージのたびに延長するので、低速回線での正常ロードは誤検知しない。
+    const STALL_MS = 90000;
+    const finish = (fn, arg) => {
+      if (settled) return;
+      settled = true;
+      if (timer) { clearTimeout(timer); timer = null; }
+      fn(arg);
+    };
+    const bumpTimer = () => {
+      if (settled) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
+    };
     try {
-      pyWorker = new Worker('js/pyodide-worker.js?v=20260722a');
+      pyWorker = new Worker('js/pyodide-worker.js?v=20260725a');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
+    bumpTimer();
     pyWorker.onmessage = (e) => {
       const msg = e.data || {};
       if (msg.type === 'progress') {
+        bumpTimer();               // 進捗があるうちは待ち続ける
         setProgress(msg.pct, msg.msg);
       } else if (msg.type === 'ready') {
         pyodideReady = true;
-        resolve();
+        if (msg.indexURL) pyodideIndexURL = msg.indexURL;
+        finish(resolve);
+        precachePyodide();         // 初回ロード成功後、コアをSWキャッシュへ
       } else if (msg.type === 'fatal') {
-        reject(new Error(msg.msg || '初期化に失敗しました'));
+        finish(reject, new Error(msg.msg || '初期化に失敗しました'));
       } else if (msg.type === 'pkg') {
         if (currentRun && currentRun.runId === msg.runId && currentRun.onPkg) currentRun.onPkg(msg.msg);
       } else if (msg.type === 'pip') {
@@ -141,7 +173,7 @@ function startWorker() {
         }
       }
     };
-    pyWorker.onerror = () => reject(new Error('実行環境（Worker）の読み込みに失敗しました'));
+    pyWorker.onerror = () => finish(reject, new Error('WORKER_LOAD_FAILED'));
   });
 }
 
@@ -172,6 +204,82 @@ async function reinitWorker() {
   } catch (e) {
     setProgress(0, '再起動に失敗しました: ' + e.message);
   }
+}
+
+// ============================================================
+// オフライン対応（Service Worker）・環境エラーの案内
+// ============================================================
+
+/** Service Worker を登録し、初回ロード後のオフライン利用・帯域節約を有効にする */
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  // 初期ロードと競合しないよう load 後に登録。相対パス 'sw.js' で現ディレクトリをスコープにする。
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* 失敗しても通常動作に影響なし */ });
+  });
+}
+
+/** Pyodide のコアファイルを Service Worker のキャッシュへ保存するよう依頼する */
+function precachePyodide() {
+  try {
+    const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (!ctrl) return;                 // SW未制御（初回の有効化前など）はスキップ
+    const base = pyodideIndexURL;
+    ctrl.postMessage({
+      type: 'cache-urls',
+      urls: [
+        base + 'pyodide.js',
+        base + 'pyodide.asm.js',
+        base + 'pyodide.asm.wasm',
+        base + 'python_stdlib.zip',
+        base + 'pyodide-lock.json',
+      ],
+    });
+  } catch (e) { /* 失敗しても実害なし */ }
+}
+
+/** 対応していないブラウザ向けの案内を表示する */
+function showUnsupportedBrowser() {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+  const normal = document.getElementById('loading-box-normal');
+  const errBox = document.getElementById('loading-error');
+  if (normal) normal.classList.add('hidden');
+  if (!errBox) return;
+  const t = document.getElementById('loading-error-title');
+  const msg = document.getElementById('loading-error-msg');
+  const domains = document.getElementById('loading-error-domains');
+  const retry = errBox.querySelector('.loading-retry');
+  if (t) t.textContent = 'お使いのブラウザではご利用いただけません';
+  if (msg) msg.textContent = 'PyHiroba は、最新の Chrome / Edge / Safari / Firefox でご利用ください（WebAssembly と Web Worker に対応したブラウザが必要です）。';
+  if (domains) domains.classList.add('hidden');
+  if (retry) retry.classList.add('hidden');
+  errBox.classList.remove('hidden');
+}
+
+/** 実行環境の読み込み失敗時に、原因の見当と対処（許可ドメイン・再試行）を表示する */
+function showLoadFailure(err) {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.classList.remove('hidden');
+  const normal = document.getElementById('loading-box-normal');
+  const errBox = document.getElementById('loading-error');
+  if (normal) normal.classList.add('hidden');
+  if (!errBox) {
+    // 失敗UIが無い場合の最低限のフォールバック
+    setProgress(0, `⚠ 読み込みエラー: ${(err && err.message) || '不明なエラー'}`);
+    return;
+  }
+  const m = (err && err.message) || '';
+  const networky = !m || m === 'TIMEOUT' || m === 'WORKER_LOAD_FAILED' || /Worker|読み込み|network|fetch/i.test(m);
+  const msg = document.getElementById('loading-error-msg');
+  const domains = document.getElementById('loading-error-domains');
+  if (msg) {
+    msg.textContent = networky
+      ? '学校・組織のネットワークが、動作に必要な配信元を遮断している可能性があります。少し待っても変わらない場合は、下記のご確認をお願いします。'
+      : ('エラー: ' + (m || '不明なエラー'));
+  }
+  if (domains) domains.classList.toggle('hidden', !networky);
+  errBox.classList.remove('hidden');
 }
 
 /** ヘッダーの停止ボタンの表示切り替え */

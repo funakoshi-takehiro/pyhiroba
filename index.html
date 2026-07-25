@@ -63,8 +63,27 @@
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/style.css?v=20260723c">
+
+  <!-- 実行環境の読み込み失敗・非対応ブラウザ時の案内（同一オリジンで確実に表示できるようインライン化） -->
+  <style>
+    .loading-error { max-width: 520px; }
+    .loading-error h2 { margin-bottom: 16px; }
+    .loading-error p { font-size: 15px; line-height: 1.9; opacity: 0.95; margin-bottom: 16px; }
+    .loading-allowlist { text-align: left; background: rgba(255,255,255,0.14); border-radius: 12px; padding: 14px 16px; margin: 0 auto 18px; }
+    .loading-allowlist p { margin-bottom: 8px; font-weight: 700; opacity: 1; }
+    .loading-allowlist code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.9; color: #eafaff; }
+    .loading-retry { background: #fff; color: #01617a; border: none; border-radius: 999px; padding: 11px 26px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .loading-retry:hover { background: #eafaff; }
+  </style>
 </head>
 <body>
+
+  <!-- JavaScript 無効時の案内（アプリはJS必須） -->
+  <noscript>
+    <div style="position:fixed;inset:0;z-index:99999;background:#028DAE;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:16px;line-height:1.9;">
+      PyHiroba を利用するには、ブラウザの JavaScript を有効にしてください。
+    </div>
+  </noscript>
 
   <!-- キーボードで最初にTabすると現れる「本文へスキップ」 -->
   <a href="#main-content" class="skip-link">本文へスキップ</a>
@@ -185,12 +204,22 @@
 
   <!-- ===== 読み込み画面 ===== -->
   <div id="loading-overlay">
-    <div class="loading-box">
+    <div class="loading-box" id="loading-box-normal">
       <h2>Python環境を準備しています</h2>
       <div class="loading-bar-outer">
         <div class="loading-bar-inner" id="loading-bar"></div>
       </div>
       <p id="loading-status">起動中...</p>
+    </div>
+    <!-- 読み込み失敗・非対応ブラウザ時に JS から表示する案内 -->
+    <div class="loading-box loading-error hidden" id="loading-error" role="alert">
+      <h2 id="loading-error-title">実行環境を読み込めませんでした</h2>
+      <p id="loading-error-msg"></p>
+      <div id="loading-error-domains" class="loading-allowlist hidden">
+        <p>情報担当の先生へ：次のドメインへの接続許可をご確認ください。</p>
+        <code>cdn.jsdelivr.net<br>cdnjs.cloudflare.com<br>fonts.googleapis.com ／ fonts.gstatic.com</code>
+      </div>
+      <button type="button" class="loading-retry" onclick="location.reload()">もう一度試す</button>
     </div>
   </div>
 
@@ -376,7 +405,7 @@
           crossorigin="anonymous" id="MathJax-script" async></script>
 
   <!-- アプリ本体（役割ごとに分割・この順序で読み込む） -->
-  <script src="js/app.core.js?v=20260722a"></script>
+  <script src="js/app.core.js?v=20260725a"></script>
   <script src="js/app.lessons.js?v=20260722a"></script>
   <script src="js/app.io.js?v=20260723c"></script>
   <script src="js/app.notebook.js?v=20260723c"></script>
