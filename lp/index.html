@@ -99,7 +99,7 @@
             <div>
               <div class="v3-feat-num">FEATURE / 01</div>
               <h3>無料で利用可能</h3>
-              <p>完全無料、広告なしでご利用いただけます。人数や利用回数の制限もありません。なお、先生方にはご利用開始前に、簡単なアンケートのご回答をお願いしています。</p>
+              <p>完全無料、広告なしでご利用いただけます。人数や利用回数の制限もありません。なお、先生方にはご利用開始前に、簡単なアンケートのご回答をお願いしています。<a class="v3-feat-link" href="https://forms.gle/VR29SWzAsfNi1djV9" target="_blank" rel="noopener">アンケートに回答する →</a></p>
             </div>
           </div>
 
@@ -125,7 +125,10 @@
             <div>
               <div class="v3-feat-num">FEATURE / 03</div>
               <h3>授業で使いやすい仕組み</h3>
-              <p>プログラミングのコードだけでなく、授業スライドや説明テキストも同じノートブック上で併用できます。さらに、各端末のブラウザ内で動作するため、校内WiFiに負荷をかけずにクラス全員での一斉実行も可能です。</p>
+              <p>プログラミングのコードだけでなく、授業スライドや説明テキストも同じノートブック上で併用できます。オリジナル教材づくりにも活用でき、作った教材はURLひとつで生徒に配布できます。さらに、各端末のブラウザ内で動作するため、校内WiFiに負荷をかけずにクラス全員での一斉実行も可能です。</p>
+              <div class="v3-feat-links">
+                <a class="v3-feat-link" href="guide-publish.html">自作教材の公開方法 →</a>
+              </div>
             </div>
           </div>
 
@@ -151,10 +154,9 @@
             <div>
               <div class="v3-feat-num">FEATURE / 05</div>
               <h3>先生の負担を下げる工夫</h3>
-              <p>生徒のアカウント管理は不要。URLを共有するだけで授業前の準備が完了し、環境設定や更新作業もいりません。さらに、公開されている既存教材はもちろん、自作した教材も使用可能です。</p>
+              <p>生徒のアカウント管理は不要。URLを共有するだけで授業前の準備が完了し、環境設定や更新作業もいりません。公開されている既存の教材をそのまま使えるので、はじめての先生でもすぐに授業を始められます。</p>
               <div class="v3-feat-links">
                 <a class="v3-feat-link" href="materials.html">公開教材の一覧 →</a>
-                <a class="v3-feat-link" href="guide-publish.html">自作教材の公開方法 →</a>
               </div>
             </div>
           </div>
@@ -184,11 +186,19 @@
 
     <!-- プレビュー -->
     <section class="v3-features" id="preview" style="padding-top:0">
+      <style>
+        #preview .v3-nb-btn-primary, #preview .v3-nb-btn-ghost, #preview .v3-nb-cell-run { cursor: pointer; }
+        .v3-preview-note { margin-top:10px; color:var(--ink-3); font-size:14.5px; line-height:1.85; max-width:680px; }
+        .v3-preview-note b { color:var(--ink-2); font-weight:700; }
+        .v3-preview-cta { text-align:center; margin-top:24px; }
+        .v3-preview-cta .v3-hint { display:block; margin-top:10px; color:var(--ink-4); font-size:13px; }
+      </style>
       <div class="container">
         <div class="v3-section-head">
           <div>
             <div class="v3-section-eyebrow">PREVIEW</div>
             <h2 class="v3-section-title">プレビュー</h2>
+            <p class="v3-preview-note">下の画面は、PyHiroba の動作イメージ（<b>自動再生のデモ</b>）です。ボタンを押すと、実際に使える PyHiroba が開きます。</p>
           </div>
         </div>
         <div class="v3-preview-wrap">
@@ -199,13 +209,17 @@
                 <span class="v3-nb-title" style="color:var(--accent);font-weight:900;">PyHiroba</span><span class="v3-nb-sub">ぱいひろば</span>
               </div>
               <div class="v3-nb-actions">
-                <span class="v3-nb-btn v3-nb-btn-primary">▶▶ すべて実行</span>
-                <span class="v3-nb-btn v3-nb-btn-ghost">出力をクリア</span>
+                <span class="v3-nb-btn v3-nb-btn-primary" title="クリックすると実際のPyHirobaが開きます">▶▶ すべて実行</span>
+                <span class="v3-nb-btn v3-nb-btn-ghost" title="クリックすると実際のPyHirobaが開きます">出力をクリア</span>
                 <span class="v3-nb-help">？</span>
               </div>
             </div>
             <div class="v3-nb-body" id="nb-anim-body"></div>
           </div>
+        </div>
+        <div class="v3-preview-cta">
+          <a class="v3-btn v3-btn-primary" href="../">実際に触ってみる →</a>
+          <span class="v3-hint">上のデモはイメージです。クリックで本物のPyHirobaが開きます。</span>
         </div>
       </div>
     </section>
@@ -404,6 +418,18 @@
     var nbBody = document.getElementById('nb-anim-body');
     if (!nbBody) return;
 
+    /* モックのボタン（実行 / すべて実行 / 出力をクリア）はクリックで実アプリを開く。
+       上部の静的ボタンも、動的生成されるセルの実行ボタンも #preview への委譲でまとめて拾う。
+       これで「実行を押しても動かない」という誤解を防ぐ。 */
+    var previewRoot = document.getElementById('preview');
+    if (previewRoot) {
+      previewRoot.addEventListener('click', function (e) {
+        if (e.target.closest && e.target.closest('.v3-nb-btn-primary, .v3-nb-btn-ghost, .v3-nb-cell-run')) {
+          window.location.href = '../';
+        }
+      });
+    }
+
     var cellIdx = 0, charIdx = 0;
 
     /* セル DOM を生成して nbBody に追加（コード／テキスト両対応） */
@@ -420,7 +446,7 @@
       // 右側：コードセルは「実行」ボタン＋移動/削除、テキストセルは移動/削除のみ
       var rightSide = isText
         ? '<span class="v3-nb-ico" style="margin-left:auto">&#8593;</span><span class="v3-nb-ico">&#8595;</span><span class="v3-nb-ico">&#10005;</span>'
-        : '<span class="v3-nb-cell-run"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>実行</span>'
+        : '<span class="v3-nb-cell-run" title="クリックすると実際のPyHirobaが開きます"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>実行</span>'
           + '<span class="v3-nb-ico">&#8593;</span><span class="v3-nb-ico">&#8595;</span><span class="v3-nb-ico">&#10005;</span>';
 
       var bodyHtml = isText
