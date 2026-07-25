@@ -35,7 +35,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../css/style.css?v=20260723c">
+  <link rel="stylesheet" href="../css/style.css?v=20260725a">
 </head>
 <body>
 
@@ -187,18 +187,25 @@
     <!-- プレビュー -->
     <section class="v3-features" id="preview" style="padding-top:0">
       <style>
+        html { scroll-behavior: smooth; }
         #preview .v3-nb-btn-primary, #preview .v3-nb-btn-ghost, #preview .v3-nb-cell-run { cursor: pointer; }
         .v3-preview-note { margin-top:10px; color:var(--ink-3); font-size:14.5px; line-height:1.85; max-width:680px; }
         .v3-preview-note b { color:var(--ink-2); font-weight:700; }
-        .v3-preview-cta { text-align:center; margin-top:24px; }
-        .v3-preview-cta .v3-hint { display:block; margin-top:10px; color:var(--ink-4); font-size:13px; }
+        .v3-preview-launch { text-align:center; margin-top:24px; }
+        .v3-preview-launch .v3-hint { display:block; margin-top:10px; color:var(--ink-4); font-size:13px; }
+        @media (max-width: 600px) {
+          #preview .v3-nb-bar { flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+          #preview .v3-nb-actions { gap: 6px; }
+          #preview .v3-nb-btn { padding: 5px 9px; font-size: 11.5px; }
+          .v3-preview-note { font-size: 14px; }
+        }
       </style>
       <div class="container">
         <div class="v3-section-head">
           <div>
             <div class="v3-section-eyebrow">PREVIEW</div>
             <h2 class="v3-section-title">プレビュー</h2>
-            <p class="v3-preview-note">下の画面は、PyHiroba の動作イメージ（<b>自動再生のデモ</b>）です。ボタンを押すと、実際に使える PyHiroba が開きます。</p>
+            <p class="v3-preview-note">下の画面は、PyHiroba の動作イメージ（<b>自動再生のデモ</b>）です。ご利用にはお申し込み（アンケート）が必要です。始め方は下の「ご利用方法」をご確認ください。</p>
           </div>
         </div>
         <div class="v3-preview-wrap">
@@ -209,17 +216,17 @@
                 <span class="v3-nb-title" style="color:var(--accent);font-weight:900;">PyHiroba</span><span class="v3-nb-sub">ぱいひろば</span>
               </div>
               <div class="v3-nb-actions">
-                <span class="v3-nb-btn v3-nb-btn-primary" title="クリックすると実際のPyHirobaが開きます">▶▶ すべて実行</span>
-                <span class="v3-nb-btn v3-nb-btn-ghost" title="クリックすると実際のPyHirobaが開きます">出力をクリア</span>
+                <span class="v3-nb-btn v3-nb-btn-primary" title="クリックするとご利用方法へ移動します">▶▶ すべて実行</span>
+                <span class="v3-nb-btn v3-nb-btn-ghost" title="クリックするとご利用方法へ移動します">出力をクリア</span>
                 <span class="v3-nb-help">？</span>
               </div>
             </div>
             <div class="v3-nb-body" id="nb-anim-body"></div>
           </div>
         </div>
-        <div class="v3-preview-cta">
-          <a class="v3-btn v3-btn-primary" href="../">実際に触ってみる →</a>
-          <span class="v3-hint">上のデモはイメージです。クリックで本物のPyHirobaが開きます。</span>
+        <div class="v3-preview-launch">
+          <a class="v3-btn v3-btn-primary" href="#faq">ご利用方法を見る →</a>
+          <span class="v3-hint">上のデモはイメージです。ご利用の流れは「ご利用方法」でご案内します。</span>
         </div>
       </div>
     </section>
@@ -258,6 +265,7 @@
               <div class="v3-step-num">3</div>
               <div class="v3-step-body">
                 <div class="v3-step-title">実際の講義で使用</div>
+                <div class="v3-step-desc">パソコン（PC）でのご利用を推奨しています。スマートフォンやタブレットでは画面が小さくコードの入力がしづらいため、授業でのご利用は推奨していません。</div>
               </div>
             </li>
 
@@ -418,14 +426,15 @@
     var nbBody = document.getElementById('nb-anim-body');
     if (!nbBody) return;
 
-    /* モックのボタン（実行 / すべて実行 / 出力をクリア）はクリックで実アプリを開く。
+    /* モックのボタン（実行 / すべて実行 / 出力をクリア）はクリックで「ご利用方法」へ誘導する。
        上部の静的ボタンも、動的生成されるセルの実行ボタンも #preview への委譲でまとめて拾う。
-       これで「実行を押しても動かない」という誤解を防ぐ。 */
+       これで「実行を押しても動かない」という誤解を防ぎ、利用開始（アンケート）へ導く。 */
     var previewRoot = document.getElementById('preview');
     if (previewRoot) {
       previewRoot.addEventListener('click', function (e) {
         if (e.target.closest && e.target.closest('.v3-nb-btn-primary, .v3-nb-btn-ghost, .v3-nb-cell-run')) {
-          window.location.href = '../';
+          // 「ご利用方法」へ確実に移動する（アンカー方式）。スムーズさは CSS の scroll-behavior で付与。
+          window.location.hash = 'faq';
         }
       });
     }
@@ -446,7 +455,7 @@
       // 右側：コードセルは「実行」ボタン＋移動/削除、テキストセルは移動/削除のみ
       var rightSide = isText
         ? '<span class="v3-nb-ico" style="margin-left:auto">&#8593;</span><span class="v3-nb-ico">&#8595;</span><span class="v3-nb-ico">&#10005;</span>'
-        : '<span class="v3-nb-cell-run" title="クリックすると実際のPyHirobaが開きます"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>実行</span>'
+        : '<span class="v3-nb-cell-run" title="クリックするとご利用方法へ移動します"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>実行</span>'
           + '<span class="v3-nb-ico">&#8593;</span><span class="v3-nb-ico">&#8595;</span><span class="v3-nb-ico">&#10005;</span>';
 
       var bodyHtml = isText

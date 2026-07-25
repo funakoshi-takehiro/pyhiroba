@@ -36,7 +36,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../css/style.css?v=20260723c">
+  <link rel="stylesheet" href="../css/style.css?v=20260725a">
 
   <style>
     .err-page {
@@ -160,9 +160,13 @@
       .err-hero h1 { font-size: 24px; }
       .err-stat-item { padding: 4px 24px; }
       .err-stat-num { font-size: 36px; }
-      .err-table { font-size: 13px; }
+      .err-table { font-size: 13px; table-layout: fixed; }
       .err-cause { width: auto; }
       .err-table th:nth-child(2), .err-table td:nth-child(2) { display: none; }
+      /* 長い英語のエラー名（例：ModuleNotFoundError）を折り返し、テーブルを画面内に収める */
+      .err-table th, .err-table td { padding: 8px; overflow-wrap: anywhere; word-break: break-word; }
+      .err-table th { white-space: normal; }
+      .err-type { white-space: normal; word-break: break-word; }
     }
 
     /* ダークモード（このページ固有のハードコード色の調整） */

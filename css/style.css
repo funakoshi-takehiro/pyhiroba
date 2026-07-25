@@ -809,9 +809,18 @@ body {
   .v3-hero-name { font-size: 64px; }
   .v3-hero-h1 { font-size: 20px; white-space: normal; }
   .v3-section-title { font-size: 28px; }
-  .v3-feat-grid { grid-template-columns: 1fr; }
-  .v3-feat { padding: 24px; min-height: unset; }
-  .v3-faq { grid-template-columns: 1fr; }
+  .v3-feat-grid { grid-template-columns: minmax(0, 1fr); }
+  .v3-feat { padding: 24px; min-height: unset; min-width: 0; }
+  .v3-feat > div { min-width: 0; }
+  /* 長いカード内リンク（例：安心・安全への取り組みはこちら →）を折り返し、横あふれを防ぐ */
+  .v3-feat-link { white-space: normal; }
+  .v3-feat p { overflow-wrap: anywhere; }
+  .v3-faq { grid-template-columns: 1fr; padding: 24px 18px; }
+  /* ご利用方法ステップ：本文やボタンがはみ出さないよう縮小を許可 */
+  .v3-use-step { min-width: 0; }
+  .v3-step-body { min-width: 0; }
+  /* 長いボタン（例：アンケートに回答する →）を折り返して枠内に収める */
+  .v3-use-step .v3-btn { white-space: normal; height: auto; min-height: 44px; padding: 10px 18px; }
   .v3-footer-top { grid-template-columns: 1fr; gap: 32px; }
   .v3-footer-cols { grid-template-columns: 1fr 1fr; }
 }
