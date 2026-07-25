@@ -21,7 +21,7 @@
 | MathJax | 数式（LaTeX）の表示 |
 | DOMPurify | 表示前の HTML 無害化（XSS 対策） |
 
-外部ライブラリは CDN から読み込み、`integrity`（SRI）で改ざんを検知します。ライセンスは [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) を参照してください。
+CodeMirror・marked・DOMPurify・MathJax は `vendor/` に同梱（自ホスト）しており、学校などの閉域網・フィルタ環境でも読み込めます。Pyodide のみ CDN（jsDelivr）から読み込み、Service Worker が初回ロード後にキャッシュします。ライセンスは [THIRD-PARTY-LICENSES.md](THIRD-PARTY-LICENSES.md) を参照してください。
 
 ## ファイル構成
 
@@ -36,6 +36,8 @@ js/
   app.notebook.js       セル操作・描画・モーダル・テキスト/画像/スライド編集
   app.exec.js           Python 実行・出力表示・エラー/警告の日本語化
   pyodide-worker.js     Pyodide を Worker で動かす実行エンジン
+sw.js                   Service Worker（初回ロード後のオフライン対応・帯域節約）
+vendor/                 自ホストの外部ライブラリ（CodeMirror / marked / DOMPurify / MathJax）
 lp/                     紹介ページとドキュメント
   index.html            ランディングページ
   errors.html           日本語化対応エラーの一覧

@@ -15,9 +15,9 @@
   -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
     worker-src 'self' blob:;
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     font-src 'self' https://fonts.gstatic.com data:;
     img-src 'self' data: blob: https:;
     connect-src 'self' blob: data: https:;
@@ -52,10 +52,8 @@
   <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
   <script src="js/theme.js?v=20260723a"></script>
 
-  <!-- CodeMirror 5 (コードエディタ) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
-        integrity="sha384-zaeBlB/vwYsDRSlFajnDd7OydJ0cWk+c2OWybl3eSUf6hW2EbhlCsQPqKr3gkznT"
-        crossorigin="anonymous">
+  <!-- CodeMirror 5 (コードエディタ・自ホスト) -->
+  <link rel="stylesheet" href="vendor/codemirror/codemirror.min.css?v=20260725a">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -356,21 +354,16 @@
     <div class="lightbox-counter" id="lightbox-counter"></div>
   </div>
 
-  <!-- ===== スクリプト（改ざん検知のため SRI: integrity を付与） ===== -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"
-          integrity="sha384-ZYmwuq4n2gOcNxMSiJ6jyTj+BbIrilr7p6dlq6q5nmSWKmsH9UU4K1qqjycMkfmR"
-          crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"
-          integrity="sha384-Xy+2exU6lBoT4OpUOtnQb+cUpn+nlJQEHvRobWVtwz6wIsw4oNoO7xyd/l8rYgMy"
-          crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"
-          integrity="sha384-odPBjvtXVM/5hOYIr3A1dB+flh0c3wAT3bSesIOqEGmyUA4JoKf/YTWy0XKOYAY7"
-          crossorigin="anonymous"></script>
-  <!-- DOMPurify（Markdown / HTML出力のXSS無害化）。バージョンとintegrityは
-       .github/workflows/update-dompurify.yml が毎週最新3.x系へ自動更新する。 -->
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.12/dist/purify.min.js"
-          integrity="sha384-piCcpDdJ7qVeK4Tv8Z6Hpcr3ZBIgP16TxQTPVfsLFdZ5uDgwc3Y8Ho7oUnqf12qu"
-          crossorigin="anonymous"></script>
+  <!-- ===== スクリプト =====
+       CodeMirror / marked / DOMPurify / MathJax は vendor/ に自ホスト（学校の閉域網・フィルタ対策）。
+       Pyodide のみ jsDelivr から読み込み、Service Worker がキャッシュする。 -->
+  <script src="vendor/codemirror/codemirror.min.js?v=20260725a"></script>
+  <script src="vendor/codemirror/python.min.js?v=20260725a"></script>
+  <script src="vendor/marked/marked.min.js?v=20260725a"></script>
+  <!-- DOMPurify（Markdown / HTML出力のXSS無害化）。自ホスト。
+       .github/workflows/update-dompurify.yml が毎週最新3.x系へ自動更新（ファイル差し替え）する。
+       ファイル名にバージョンを含めてキャッシュを更新する。 -->
+  <script src="vendor/dompurify/purify-3.4.12.min.js"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"
           integrity="sha384-tVslJOEkg7nVRW3Y3/ReGX0NnonNrbcmt1R5qFbQXQdGa2chRkoJYHAjAsv3zoTq"
           crossorigin="anonymous"></script>
@@ -400,9 +393,9 @@
       }
     };
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"
-          integrity="sha384-KKWa9jJ1MZvssLeOoXG6FiOAZfAgmzsIIfw8BXwI9+kYm0lPCbC6yTQPBC00F1/L"
-          crossorigin="anonymous" id="MathJax-script" async></script>
+  <!-- MathJax は vendor/ に自ホスト（単体の tex-svg.js。基本＋AMS数式に対応。
+       ごく特殊な LaTeX 拡張の自動読み込みには非対応） -->
+  <script src="vendor/mathjax/tex-svg.js?v=20260725a" id="MathJax-script" async></script>
 
   <!-- アプリ本体（役割ごとに分割・この順序で読み込む） -->
   <script src="js/app.core.js?v=20260725a"></script>
