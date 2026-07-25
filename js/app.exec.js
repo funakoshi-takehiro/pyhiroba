@@ -270,9 +270,12 @@ function renderOutput(id, result) {
   // グラフ画像
   if (result.figs && result.figs.length > 0) {
     result.figs.forEach((b64, i) => {
+      // b64 は原則 base64 文字列だが、教材コードが base64.b64encode 等を差し替えて
+      // 任意文字列を混入できるため、必ずエスケープする（figs 経由の DOM XSS 対策）。
+      // 正規の base64（A-Za-z0-9+/=）は escHtml で変化しないため表示に影響はない。
       html += `
         <div class="output-figure">
-          <img src="data:image/png;base64,${b64}" alt="グラフ ${i + 1}">
+          <img src="data:image/png;base64,${escHtml(b64)}" alt="グラフ ${i + 1}">
         </div>`;
     });
   }
