@@ -146,7 +146,7 @@ function startWorker() {
       timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
     };
     try {
-      pyWorker = new Worker('js/pyodide-worker.js?v=20260725a');
+      pyWorker = new Worker('js/pyodide-worker.js?v=20260725b');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
@@ -157,6 +157,7 @@ function startWorker() {
         bumpTimer();               // 進捗があるうちは待ち続ける
         setProgress(msg.pct, msg.msg);
       } else if (msg.type === 'ready') {
+        if (settled) return;       // タイムアウト後に遅れて来た ready は無視（失敗表示との不整合防止）
         pyodideReady = true;
         if (msg.indexURL) pyodideIndexURL = msg.indexURL;
         finish(resolve);
@@ -173,8 +174,35 @@ function startWorker() {
         }
       }
     };
-    pyWorker.onerror = () => finish(reject, new Error('WORKER_LOAD_FAILED'));
+    pyWorker.onerror = () => {
+      if (!settled) { finish(reject, new Error('WORKER_LOAD_FAILED')); return; }
+      handleWorkerCrash();   // 準備完了後（実行中など）のクラッシュ → フリーズさせず復帰
+    };
+    pyWorker.onmessageerror = () => {
+      if (settled) handleWorkerCrash();
+    };
   });
+}
+
+/**
+ * 実行中などにワーカーが異常終了した場合の復帰処理。
+ * 実行中のセルがあれば「環境が停止した」旨のエラー結果で解決してスピナーを解除し、
+ * 環境を再起動する（60秒待たずに復帰＝フリーズ防止）。
+ */
+function handleWorkerCrash() {
+  pyodideReady = false;
+  const running = currentRun;
+  currentRun = null;
+  if (pyWorker) { try { pyWorker.terminate(); } catch (e) { /* 既に停止 */ } pyWorker = null; }
+  if (running && typeof running.resolve === 'function') {
+    running.resolve({
+      status: 'done', stdout: '', stderr: '',
+      errType: 'SystemError',
+      errMsg: '実行環境が予期せず停止しました（メモリ不足などの可能性があります）。環境を再起動します。',
+      errTb: null, figs: [], displayHtml: '', lastDisplay: '', pip: [], unsupported: [],
+    });
+  }
+  reinitWorker();
 }
 
 /** 実行を停止してワーカーを再起動する（無限ループ等を止める） */

@@ -122,8 +122,8 @@ function markdownToCell(src, cellType, collapsed) {
       const srcs = extractImageSrcs(src);
       if (cellType === 'image') {
         // 最初の画像の alt（代替テキスト）も復元する
-        const am = src.match(/!\[([^\]]*)\]\(/);
-        return { id: nextId++, type: 'image', content: srcs[0] || '', alt: am ? am[1] : '', slides: [], collapsed };
+        const am = src.match(/!\[((?:\\.|[^\]])*)\]\(/);
+        return { id: nextId++, type: 'image', content: srcs[0] || '', alt: am ? unescapeMdAlt(am[1]) : '', slides: [], collapsed };
       }
       return { id: nextId++, type: 'slide', content: '', slides: srcs, collapsed };
     }
@@ -302,7 +302,7 @@ async function loadFromUrl(rawUrl, opts = {}) {
  */
 function mediaCellToMarkdown(cell) {
   if (cell.type === 'image') {
-    return cell.content ? `![${cell.alt || ''}](${cell.content})` : '';
+    return cell.content ? `![${escapeMdAlt(cell.alt)}](${cell.content})` : '';
   }
   if (cell.type === 'slide') {
     return (cell.slides || []).map((src, i) => `![スライド${i + 1}](${src})`).join('\n\n');
@@ -367,7 +367,7 @@ function downloadIpynb() {
   // タイトルからファイル名を生成
   const titleMatch = document.title.match(/^(.+?) - /);
   const filename = titleMatch
-    ? titleMatch[1].replace(/[^\w\-_ ]/g, '_') + '.ipynb'
+    ? (titleMatch[1].replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').trim() || 'notebook') + '.ipynb'
     : 'notebook.ipynb';
   a.download = filename;
   document.body.appendChild(a);

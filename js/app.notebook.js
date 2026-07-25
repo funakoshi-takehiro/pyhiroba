@@ -271,7 +271,7 @@ async function changeCellType(id, newType) {
       // 画像セルは代替テキスト(cell.alt)を alt として引き継ぐ。
       const isImg = cell.type === 'image';
       cell.content = srcs.map((src, i) =>
-        `![${isImg ? (cell.alt || '') : 'スライド' + (i + 1)}](${src})`).join('\n\n');
+        `![${isImg ? escapeMdAlt(cell.alt) : 'スライド' + (i + 1)}](${src})`).join('\n\n');
       cell.slides = [];
     } else if (newType === 'code') {
       // コードセルでは画像を表示できないため、確認してから破棄する
@@ -573,8 +573,8 @@ function buildCodeContent(cell) {
 function renderMarkdown(src) {
   const { text, math } = protectMath(String(src == null ? '' : src));
   const html = marked.parse(preprocessMarkdown(text));
-  // 数式を戻したあと、DOMPurify で無害化（XSS対策）してから表示する
-  return sanitizeHtml(restoreMath(html, math));
+  // 数式を戻したあと、教材用の厳しめ DOMPurify（<style>等を禁止）で無害化してから表示する
+  return sanitizeMarkdownHtml(restoreMath(html, math));
 }
 
 /**
@@ -582,7 +582,21 @@ function renderMarkdown(src) {
  * 数式（$...$ / \begin{...}）はテキストとして保持され、data:画像・表・スタイルは残す。
  * DOMPurify 未ロード時は、安全側に倒してタグを全てエスケープする。
  */
+/** DOMPurify に一度だけフックを登録：全リンクに rel=noopener を付与（タブナビ・中クリック対策の多層防御） */
+let _dompurifyHooked = false;
+function ensureDompurifyHooks() {
+  if (_dompurifyHooked || !window.DOMPurify || typeof window.DOMPurify.addHook !== 'function') return;
+  _dompurifyHooked = true;
+  window.DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+    if (node.tagName === 'A' && node.hasAttribute('href')) {
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
+  });
+}
+
+/** 出力（DataFrame等の _repr_html_）用の無害化。pandas Styler の <style> は表整形に必要なため許容する。 */
 function sanitizeHtml(html) {
+  ensureDompurifyHooks();
   if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
     return window.DOMPurify.sanitize(html, {
       // data:URI の画像（スライド等）を確実に許可する
@@ -594,6 +608,24 @@ function sanitizeHtml(html) {
     });
   }
   // フォールバック：ライブラリが無ければタグを一切通さない
+  return escHtml(html);
+}
+
+/**
+ * 教材（信頼できない可能性のある Markdown）用の無害化。sanitizeHtml に加え、
+ * <style> と style属性・svg/math/foreignObject を禁止する。
+ * これらは「全画面を覆う偽ログイン等のフィッシングUI」や「CSSビーコンによる追跡」に
+ * 悪用され得る（スクリプト無しでも成立）。DataFrame等の出力は sanitizeHtml 側を使う。
+ */
+function sanitizeMarkdownHtml(html) {
+  ensureDompurifyHooks();
+  if (window.DOMPurify && typeof window.DOMPurify.sanitize === 'function') {
+    return window.DOMPurify.sanitize(html, {
+      ADD_DATA_URI_TAGS: ['img'],
+      FORBID_TAGS: ['iframe', 'object', 'embed', 'form', 'style', 'svg', 'math', 'foreignObject'],
+      FORBID_ATTR: ['data-trusted', 'style'],
+    });
+  }
   return escHtml(html);
 }
 
@@ -702,11 +734,11 @@ function buildTextContent(cell) {
  */
 function isMediaOnlyMarkdown(content) {
   if (!content) return false;
-  const hasImage = /!\[[^\]]*\]\([^)]+\)|<img[\s>]/i.test(content);
+  const hasImage = /!\[(?:\\.|[^\]])*\]\([^)]+\)|<img[\s>]/i.test(content);
   if (!hasImage) return false;
   // 画像・装飾タグ・空白を取り除いて、文章が残らなければ「画像だけ」
   const stripped = content
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, '')      // Markdown画像
+    .replace(/!\[(?:\\.|[^\]])*\]\([^)]*\)/g, '')      // Markdown画像
     .replace(/<img[^>]*>/gi, '')               // <img>
     .replace(/<\/?(div|p|center|figure|br)[^>]*>/gi, '') // 装飾タグ
     .replace(/\s+/g, '');
@@ -718,10 +750,19 @@ function isMediaOnlyMarkdown(content) {
  * ![alt](src) と <img src="..."> の両方に対応。
  * .ipynb ⇔ 画像/スライドセルの相互変換（app.io.js・changeCellType）で使う。
  */
+/** 画像の代替テキストを Markdown の alt スロット用にエスケープ（\ [ ] を退避）。Colab でも表示・往復できる。 */
+function escapeMdAlt(alt) {
+  return String(alt == null ? '' : alt).replace(/[\\\[\]]/g, '\\$&');
+}
+/** escapeMdAlt の逆（読み込み時に元へ戻す） */
+function unescapeMdAlt(s) {
+  return String(s == null ? '' : s).replace(/\\([\\\[\]])/g, '$1');
+}
+
 function extractImageSrcs(content) {
   const srcs = [];
   if (!content) return srcs;
-  const re = /!\[[^\]]*\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)|<img[^>]*\ssrc=["']([^"']+)["']/gi;
+  const re = /!\[(?:\\.|[^\]])*\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)|<img[^>]*\ssrc=["']([^"']+)["']/gi;
   let m;
   while ((m = re.exec(content)) !== null) {
     const src = m[1] || m[2];
@@ -735,7 +776,7 @@ function openTextImage(id) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
   let src = null;
-  const md  = cell.content.match(/!\[[^\]]*\]\(([^)]+)\)/);
+  const md  = cell.content.match(/!\[(?:\\.|[^\]])*\]\(([^)]+)\)/);
   const tag = cell.content.match(/<img[^>]*\ssrc=["']([^"']+)["']/i);
   if (md)  src = md[1];
   else if (tag) src = tag[1];
@@ -833,14 +874,19 @@ function loadSlideFiles(id, files) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
   if (!cell.slides) cell.slides = [];
+  // 選択した順序を保つため、読み込み結果はインデックス位置に格納してから push する
+  const results = new Array(files.length);
   let remaining = files.length;
-  files.forEach(file => {
+  const done = () => {
+    if (--remaining !== 0) return;
+    results.forEach((src) => { if (src) cell.slides.push(src); });
+    markDirty();
+    renderAll();
+  };
+  files.forEach((file, i) => {
     const reader = new FileReader();
-    reader.onload = e => {
-      cell.slides.push(e.target.result);
-      remaining--;
-      if (remaining === 0) { markDirty(); renderAll(); }
-    };
+    reader.onload = e => { results[i] = e.target.result; done(); };
+    reader.onerror = () => { results[i] = null; done(); };  // 失敗してもカウンタを進める
     reader.readAsDataURL(file);
   });
 }

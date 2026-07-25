@@ -13,7 +13,7 @@
    ================================================== */
 'use strict';
 
-const VERSION = 'pyhiroba-v1-20260725';
+const VERSION = 'pyhiroba-v2-20260725';
 const CACHE = VERSION;
 
 // 同一オリジンで先読みしておく最小限のシェル（相対パス＝スコープ基準）
@@ -36,6 +36,20 @@ function isBypassHost(host) {
       || host === 'forms.gle'
       || /(^|\.)github\.com$/.test(host)
       || /(^|\.)githubusercontent\.com$/.test(host);
+}
+
+// Pyodide コアの想定 SHA-256（16進）。SRI の無い worker/precache 経路で、初回ロード時の
+// 中間者による差し替えを検知し、一致したものだけキャッシュする。Pyodideを更新する際は要更新。
+const PYODIDE_HASHES = {
+  'pyodide.js': '037907919d58ac79dbee2eee57e96507b79fad58260ab847dc6200443915c20f',
+  'pyodide.asm.js': '704e56d209d8b867c8dd42e754a246db0175e448d59a46530803bdddfdfc78e0',
+  'pyodide.asm.wasm': '8f631d8453672664131b2d4c9c41f3adf5d32e9efda2cb421d3fdf38cab57a21',
+  'python_stdlib.zip': '0dd443755a0244ae3052f2e0834413d68c43f362c651edd47b785ea9d26e4853',
+  'pyodide-lock.json': '0cb7ca8faf9c35af92b4d261996ddd51dd9a6c1074ee59279f1570d67af29644',
+};
+async function _sha256hex(buf) {
+  const d = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(d)).map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 self.addEventListener('install', (event) => {
@@ -64,9 +78,18 @@ self.addEventListener('message', (event) => {
     event.waitUntil((async () => {
       const cache = await caches.open(CACHE);
       await Promise.allSettled(data.urls.map(async (u) => {
+        // Pyodide 配信元のプレフィックスに限定（任意URLのキャッシュ注入を防ぐ）
+        if (!/^https:\/\/cdn\.jsdelivr\.net\/pyodide\//.test(u)) return;
         try {
           const res = await fetch(u, { mode: 'cors', credentials: 'omit' });
-          if (res && (res.status === 200 || res.type === 'opaque')) await cache.put(u, res.clone());
+          if (!res || res.status !== 200) return;
+          const name = u.split('/').pop().split('?')[0];
+          const expected = PYODIDE_HASHES[name];
+          if (expected) {
+            const got = await _sha256hex(await res.clone().arrayBuffer());
+            if (got !== expected) return;   // 改ざん検知：キャッシュしない
+          }
+          await cache.put(u, res.clone());
         } catch (e) { /* 個別失敗は無視 */ }
       }));
     })());
@@ -87,8 +110,14 @@ self.addEventListener('fetch', (event) => {
 
   if (isHTML) { event.respondWith(networkFirst(req)); return; }
 
-  if (sameOrigin || isCacheableHost(url.hostname)) {
-    event.respondWith(cacheFirst(req));
+  if (sameOrigin) {
+    // 同一オリジンの JS/CSS/vendor は常に最新を優先（キャッシュ汚染でのXSS永続化や
+    // ?v= 更新忘れによる古い資産の固着を防ぐ）。オフライン時はキャッシュにフォールバック。
+    event.respondWith(networkFirst(req));
+    return;
+  }
+  if (isCacheableHost(url.hostname)) {
+    event.respondWith(cacheFirst(req));   // 不変CDN（Pyodide/フォント）は cache-first
   }
   // それ以外は既定（ネットワーク）
 });

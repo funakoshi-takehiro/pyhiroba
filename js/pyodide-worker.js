@@ -41,6 +41,12 @@ exec("", _nb_globals)
 // Python実行コード（各セル実行時に呼ぶ）
 // ============================================================
 const PYTHON_EXEC_CODE = `
+# 実行するコードを linecache に登録し、トレースバックに該当行が出るようにする。
+# ファイル名 '<セル>' は SyntaxError.filename・compile のファイル名と一致させ、
+# メイン側（app.exec.js）の行番号/該当コード抽出が機能するようにする。
+import linecache as _linecache
+_linecache.cache['<セル>'] = (len(_cell_code), None, _cell_code.splitlines(keepends=True), '<セル>')
+
 _out_cap = _CapIO()
 _err_cap = _CapIO()
 _old_out = sys.stdout
@@ -62,7 +68,7 @@ if 'matplotlib.pyplot' in sys.modules:
         pass
 
 try:
-    _tree = _ast.parse(_cell_code)
+    _tree = _ast.parse(_cell_code, '<セル>')
     # 最後の文が「式」かどうか判定（Jupyter と同じ自動表示ロジック）
     if _tree.body and isinstance(_tree.body[-1], _ast.Expr):
         # 最後の式より前の行を exec
@@ -116,21 +122,79 @@ if 'matplotlib.pyplot' in sys.modules:
 `;
 
 // ============================================================
+// 踏み台/DoS 対策：ワーカーからの外向き通信を「許可制＋レート制限」にする
+// ============================================================
+// 生徒/教材の Python は js.fetch / pyfetch / XMLHttpRequest / WebSocket 等で任意ホストへ
+// 通信でき（ページのCSPはワーカーに効かない）、学校のIPを加害元にした DoS・内部探索・
+// 情報流出の踏み台になり得る。そこでユーザーコード実行前に通信原語を封鎖する。
+// Pyodide 自身のパッケージ取得（jsDelivr）と !pip install（PyPI）は許可リストで通す。
+const NET_ALLOW_PREFIXES = [
+  'https://cdn.jsdelivr.net/pyodide/',   // Pyodide本体・同梱パッケージ
+  'https://pypi.org/',                    // micropip（!pip install）
+  'https://files.pythonhosted.org/',      // micropip のwheel配布
+];
+const NET_MAX_REQ_PER_RUN = 800;          // 1実行あたりの許可リクエスト上限（DoSループ抑止）
+let _netReqCount = 0;
+
+function _netAllowed(url) {
+  try { const u = String(url); return NET_ALLOW_PREFIXES.some((p) => u.startsWith(p)); }
+  catch (e) { return false; }
+}
+
+function lockdownNetwork() {
+  const realFetch = (typeof self.fetch === 'function') ? self.fetch.bind(self) : null;
+  // fetch は許可リスト＋レート制限でラップ（js.fetch / pyodide.http.pyfetch もこれを通る）
+  self.fetch = function (input, init) {
+    const url = (input && input.url) ? input.url : input;
+    if (!_netAllowed(url)) {
+      return Promise.reject(new Error('PyHiroba: 外部サーバーへの通信は無効化されています（学習環境の安全のため）。'));
+    }
+    if (++_netReqCount > NET_MAX_REQ_PER_RUN) {
+      return Promise.reject(new Error('PyHiroba: 通信回数が上限に達しました。'));
+    }
+    return realFetch ? realFetch(input, init) : Promise.reject(new Error('fetch unavailable'));
+  };
+  // fetch 以外の外向き経路を封鎖（バイパス防止）。Pyodide はこれらをパッケージ取得に使わない。
+  const blocked = function () { throw new Error('PyHiroba: この通信機能は無効化されています。'); };
+  const kill = (name) => { try { self[name] = blocked; } catch (e) { /* 差し替え不可なら無視 */ } };
+  kill('XMLHttpRequest');
+  kill('WebSocket');
+  kill('EventSource');
+  kill('Worker');          // ネストしたWorkerでのバイパス防止
+  kill('SharedWorker');
+  kill('importScripts');   // 任意JSの取得＆実行の防止（起動後は不要）
+  try { if (self.navigator && 'sendBeacon' in self.navigator) self.navigator.sendBeacon = blocked; } catch (e) {}
+}
+
+// ============================================================
 // 初期化（ライブラリは事前ロードしない＝起動が速い）
 // ============================================================
 async function init() {
+  let heartbeat = null;
   try {
     postMessage({ type: 'progress', pct: 20, msg: 'Pyodideを読み込んでいます...' });
+    // loadPyodide 中（数十MBのWASM/stdlibのDL）は進捗が出ないため、定期的にハートビートを
+    // 送り、メイン側のストールタイムアウト誤発火（低速回線での正常DLの失敗扱い）を防ぐ。
+    let _hbPct = 20;
+    heartbeat = setInterval(() => {
+      _hbPct = Math.min(_hbPct + 4, 75);
+      postMessage({ type: 'progress', pct: _hbPct, msg: 'Pyodideを読み込んでいます...' });
+    }, 10000);
     pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' });
+    clearInterval(heartbeat); heartbeat = null;
 
     postMessage({ type: 'progress', pct: 80, msg: 'Python実行環境を準備しています...' });
     await pyodide.runPythonAsync(PYTHON_SETUP_CODE);
+
+    // ユーザーコード実行前に外向き通信を封鎖（Pyodide のパッケージ取得は許可リストで維持）
+    lockdownNetwork();
 
     postMessage({ type: 'progress', pct: 100, msg: '準備完了！' });
     // indexURL は上の loadPyodide と同じ値。メインスレッドが Service Worker への
     // Pyodideコア先読み依頼に使う（値を変えるときは両方あわせて更新すること）。
     postMessage({ type: 'ready', indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' });
   } catch (err) {
+    if (heartbeat) clearInterval(heartbeat);
     postMessage({ type: 'fatal', msg: String((err && err.message) || err) });
   }
 }
@@ -165,6 +229,7 @@ function extractDirectives(code) {
 }
 
 async function runCode(runId, code) {
+  _netReqCount = 0;   // 実行ごとに通信レート上限をリセット
   const { cleaned, pipPkgs, unsupported } = extractDirectives(code);
 
   // !pip install → micropip でインストール（Pyodideの pip 相当）
