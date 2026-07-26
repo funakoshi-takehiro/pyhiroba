@@ -214,8 +214,8 @@
 
   <!-- トップバー -->
   <header class="nf-topbar">
-    <a href="/pyhiroba/lp/" class="nf-logo" id="nf-logo-link">PyHiroba</a>
-    <a href="/pyhiroba/lp/" class="nf-back" id="nf-back-link">
+    <a href="/pyhiroba/" class="nf-logo" id="nf-logo-link">PyHiroba</a>
+    <a href="/pyhiroba/" class="nf-back" id="nf-back-link">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
       トップへ
     </a>
@@ -229,11 +229,11 @@
       <h1>ページが見つかりませんでした</h1>
       <p>お探しのページは、移動または削除されたか、URL が間違っている可能性があります。下のボタンからやり直してください。</p>
       <div class="nf-actions">
-        <a class="nf-btn nf-btn-primary" href="/pyhiroba/lp/" id="nf-home-link">
+        <a class="nf-btn nf-btn-primary" href="/pyhiroba/" id="nf-home-link">
           PyHiroba トップへ
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </a>
-        <a class="nf-btn nf-btn-ghost" href="/pyhiroba/" id="nf-app-link">
+        <a class="nf-btn nf-btn-ghost" href="/pyhiroba/nb/" id="nf-app-link">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
           ノートブックを開く
         </a>
@@ -245,10 +245,10 @@
   <footer class="nf-footer">
     <div class="nf-footer-row">
       <nav class="nf-footer-links" id="nf-footer-links">
-        <a href="/pyhiroba/lp/" data-path="lp/">トップ</a>
-        <a href="/pyhiroba/lp/errors.html" data-path="lp/errors.html">対応エラーの一覧</a>
-        <a href="/pyhiroba/lp/materials.html" data-path="lp/materials.html">公開教材の一覧</a>
-        <a href="/pyhiroba/lp/terms.html" data-path="lp/terms.html">利用規約</a>
+        <a href="/pyhiroba/" data-path="">トップ</a>
+        <a href="/pyhiroba/errors.html" data-path="errors.html">対応エラーの一覧</a>
+        <a href="/pyhiroba/materials.html" data-path="materials.html">公開教材の一覧</a>
+        <a href="/pyhiroba/terms.html" data-path="terms.html">利用規約</a>
       </nav>
       <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
         <span class="nf-copy">© 2026 PyHiroba</span>
@@ -275,10 +275,10 @@
       }
       var base = siteBase();
       var set = function (id, path) { var el = document.getElementById(id); if (el) el.href = base + path; };
-      set('nf-logo-link', 'lp/');
-      set('nf-back-link', 'lp/');
-      set('nf-home-link', 'lp/');
-      set('nf-app-link', '');
+      set('nf-logo-link', '');
+      set('nf-back-link', '');
+      set('nf-home-link', '');
+      set('nf-app-link', 'nb/');
       var links = document.querySelectorAll('#nf-footer-links a[data-path]');
       for (var i = 0; i < links.length; i++) links[i].href = base + links[i].getAttribute('data-path');
     })();

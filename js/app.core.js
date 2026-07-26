@@ -146,7 +146,7 @@ function startWorker() {
       timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
     };
     try {
-      pyWorker = new Worker('js/pyodide-worker.js?v=20260725b');
+      pyWorker = new Worker('../js/pyodide-worker.js?v=20260725b');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
@@ -241,9 +241,10 @@ async function reinitWorker() {
 /** Service Worker を登録し、初回ロード後のオフライン利用・帯域節約を有効にする */
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
-  // 初期ロードと競合しないよう load 後に登録。相対パス 'sw.js' で現ディレクトリをスコープにする。
+  // 初期ロードと競合しないよう load 後に登録。アプリは /nb/ 配下なので '../sw.js'（＝ルートの sw.js）
+  // を登録し、スコープは '/'（サイト全体）になる。ルートの CSS/JS もキャッシュ対象にできる。
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => { /* 失敗しても通常動作に影響なし */ });
+    navigator.serviceWorker.register('../sw.js').catch(() => { /* 失敗しても通常動作に影響なし */ });
   });
 }
 

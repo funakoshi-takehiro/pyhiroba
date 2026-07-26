@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!--
+    Content-Security-Policy（最低限）
+    ・object-src none / base-uri self でプラグイン埋め込み・base乗っ取りを遮断
+    ・script/style/font を既知のCDNに限定
+    ・Pyodide(WASM)のため script-src に 'unsafe-eval' が必須
+    ・インラインの onclick= や設定スクリプトのため 'unsafe-inline' は残す（=script面の保護は限定的）
+    ・?nb= で任意URLの.ipynbを読み込む機能があるため connect-src / img-src は https: を広く許可
+    ・frame-ancestors は <meta> では無効（HTTPヘッダー専用）なので未指定
+  -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net;
+    worker-src 'self' blob:;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src 'self' https://fonts.gstatic.com data:;
+    img-src 'self' data: blob: https:;
+    connect-src 'self' blob: data: https:;
+    object-src 'none';
+    base-uri 'self';
+  ">
+
+  <title>PyHiroba（ぱいひろば）| Python実行環境</title>
+  <meta name="description" content="インストール不要・登録不要。ブラウザだけでPythonプログラミングが学べる、日本の高校生向けの学習環境です。">
+  <link rel="canonical" href="https://funakoshi-takehiro.github.io/pyhiroba/nb/">
+
+  <!-- SNS共有用のプレビューカード（OGP / Twitter Card） -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="PyHiroba（ぱいひろば）">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:title" content="PyHiroba（ぱいひろば）| ブラウザで学べるPython学習環境">
+  <meta property="og:description" content="インストール不要・登録不要。ブラウザだけでPythonプログラミングが学べる、日本の高校生向けの学習環境です。">
+  <meta property="og:url" content="https://funakoshi-takehiro.github.io/pyhiroba/nb/">
+  <meta property="og:image" content="https://funakoshi-takehiro.github.io/pyhiroba/ogp.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PyHiroba（ぱいひろば）| ブラウザで学べるPython学習環境">
+  <meta name="twitter:description" content="インストール不要・登録不要。ブラウザだけでPythonプログラミングが学べる、日本の高校生向けの学習環境です。">
+  <meta name="twitter:image" content="https://funakoshi-takehiro.github.io/pyhiroba/ogp.png">
+
+  <!-- ファビコン -->
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
+  <link rel="icon" type="image/png" href="../favicon-64.png">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+
+  <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
+  <script src="../js/theme.js?v=20260725a"></script>
+
+  <!-- CodeMirror 5 (コードエディタ・自ホスト) -->
+  <link rel="stylesheet" href="../vendor/codemirror/codemirror.min.css?v=20260725a">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="../css/style.css?v=20260726a">
+
+  <!-- 実行環境の読み込み失敗・非対応ブラウザ時の案内（同一オリジンで確実に表示できるようインライン化） -->
+  <style>
+    .loading-error { max-width: 520px; }
+    .loading-error h2 { margin-bottom: 16px; }
+    .loading-error p { font-size: 15px; line-height: 1.9; opacity: 0.95; margin-bottom: 16px; }
+    .loading-allowlist { text-align: left; background: rgba(255,255,255,0.14); border-radius: 12px; padding: 14px 16px; margin: 0 auto 18px; }
+    .loading-allowlist p { margin-bottom: 8px; font-weight: 700; opacity: 1; }
+    .loading-allowlist code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.9; color: #eafaff; }
+    .loading-retry { background: #fff; color: #01617a; border: none; border-radius: 999px; padding: 11px 26px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+    .loading-retry:hover { background: #eafaff; }
+  </style>
+</head>
+<body>
+
+  <!-- JavaScript 無効時の案内（アプリはJS必須） -->
+  <noscript>
+    <div style="position:fixed;inset:0;z-index:99999;background:#028DAE;color:#fff;display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:16px;line-height:1.9;">
+      PyHiroba を利用するには、ブラウザの JavaScript を有効にしてください。
+    </div>
+  </noscript>
+
+  <!-- キーボードで最初にTabすると現れる「本文へスキップ」 -->
+  <a href="#main-content" class="skip-link">本文へスキップ</a>
+
+  <!-- ===== ウェルカム画面（Picker） ===== -->
+  <div id="welcome-overlay" class="hidden">
+    <header class="picker-nav">
+      <a href="../" class="picker-logo">PyHiroba</a>
+    </header>
+
+    <div class="picker-main">
+      <div class="picker-wrap">
+        <div class="picker-hero">
+          <div class="picker-kana">ぱいひろば</div>
+          <h1 class="picker-name" id="picker-name"></h1>
+          <p class="picker-question">どこから始めますか？</p>
+        </div>
+
+        <div class="picker-grid">
+
+          <!-- PyHirobaについて -->
+          <a class="picker-card pc1" href="../">
+            <div class="picker-deco"></div>
+            <div class="picker-ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            </div>
+            <h3>PyHirobaについて</h3>
+            <p>サービスの詳細を確認する</p>
+          </a>
+
+          <!-- 新規ノートブック -->
+          <button class="picker-card pc2" onclick="openNewNotebook()">
+            <div class="picker-deco"></div>
+            <div class="picker-ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
+            </div>
+            <h3>新規ノートブック</h3>
+            <p>空のノートブックを開く</p>
+          </button>
+
+          <!-- ファイルを開く -->
+          <label class="picker-card pc3" for="ipynb-upload">
+            <div class="picker-deco"></div>
+            <div class="picker-ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <h3>ファイルを開く</h3>
+            <p>.ipynb をアップロード</p>
+          </label>
+          <input type="file" id="ipynb-upload" accept=".ipynb" style="display:none"
+            onchange="onIpynbUpload(event)">
+
+          <!-- URLから開く -->
+          <div class="picker-card pc4">
+            <div class="picker-deco"></div>
+            <div class="picker-ic">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72"/></svg>
+            </div>
+            <h3>URLから開く</h3>
+            <div class="picker-url-row">
+              <input type="url" id="nb-url-input"
+                placeholder="Colab / Google Drive / GitHub のリンク"
+                onkeydown="if(event.key==='Enter') loadFromUrlInput()">
+              <button onclick="loadFromUrlInput()">開く</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- フッター（LPと共通） -->
+    <footer class="v3-footer">
+      <div class="container">
+        <div class="v3-footer-top">
+          <div>
+            <div class="v3-footer-logo">PyHiroba<span class="v3-footer-kana">（ぱいひろば）</span></div>
+            <p class="v3-footer-tagline">すべての日本の生徒が安心してPythonプログラミングを学べる広場。</p>
+            <div style="margin-top:24px">
+              <a class="v3-btn v3-btn-primary" href="../#faq">
+                ご利用はこちら
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+              </a>
+            </div>
+          </div>
+          <div class="v3-footer-cols">
+            <div>
+              <h5>サービス</h5>
+              <a href="../#features">特徴</a>
+              <a href="../#preview">プレビュー</a>
+              <a href="../#faq">ご利用方法</a>
+            </div>
+            <div>
+              <h5>リソース</h5>
+              <a href="../errors.html">対応エラーの一覧</a>
+              <a href="../materials.html">公開教材の一覧</a>
+              <a href="../guide-publish.html">自作教材の公開方法</a>
+            </div>
+            <div>
+              <h5>規約・プライバシー</h5>
+              <a href="../terms.html">利用規約</a>
+              <a href="https://www.u-tokyo.ac.jp/ja/general/privacy_policy.html" target="_blank" rel="noopener" data-trusted>プライバシーポリシー</a>
+              <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener" data-trusted>お問い合わせ</a>
+            </div>
+          </div>
+        </div>
+        <div class="v3-footer-bottom">
+          <span>© 2026 PyHiroba — 日本の学校現場向けPython実行環境</span>
+          <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
+            <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            ダークモード
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ===== 読み込み画面 ===== -->
+  <div id="loading-overlay">
+    <div class="loading-box" id="loading-box-normal">
+      <h2>Python環境を準備しています</h2>
+      <div class="loading-bar-outer">
+        <div class="loading-bar-inner" id="loading-bar"></div>
+      </div>
+      <p id="loading-status">起動中...</p>
+    </div>
+    <!-- 読み込み失敗・非対応ブラウザ時に JS から表示する案内 -->
+    <div class="loading-box loading-error hidden" id="loading-error" role="alert">
+      <h2 id="loading-error-title">実行環境を読み込めませんでした</h2>
+      <p id="loading-error-msg"></p>
+      <div id="loading-error-domains" class="loading-allowlist hidden">
+        <p>情報担当の先生へ：次のドメインへの接続許可をご確認ください。</p>
+        <code>cdn.jsdelivr.net（Python実行環境）<br>fonts.googleapis.com ／ fonts.gstatic.com（フォント・任意）</code>
+      </div>
+      <button type="button" class="loading-retry" onclick="location.reload()">もう一度試す</button>
+    </div>
+  </div>
+
+  <!-- ===== ヘッダー ===== -->
+  <header id="app-header" aria-label="ヘッダー・ツールバー">
+    <div class="header-left">
+      <div class="header-title-group">
+        <h1>PyHiroba</h1>
+        <span class="header-subtitle">ぱいひろば</span>
+      </div>
+    </div>
+    <div class="header-right" id="header-actions">
+      <button class="btn-header btn-clear" onclick="downloadIpynb()" title=".ipynb形式でダウンロード">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        ダウンロード
+      </button>
+      <button class="btn-header btn-clear" onclick="document.getElementById('ipynb-header-upload').click()" title=".ipynbファイルを読み込む">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        インポート
+      </button>
+      <input type="file" id="ipynb-header-upload" accept=".ipynb" style="display:none"
+        onchange="onIpynbHeaderUpload(event)">
+      <button class="btn-header btn-run-all" onclick="runAllCells()" title="すべてのコードセルを順番に実行します">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><polygon points="5 3 12 8 12 16 5 21"/><polygon points="12 3 19 8 19 16 12 21"/></svg>
+        すべて実行
+      </button>
+      <button class="btn-header btn-stop-run hidden" id="btn-stop-run" onclick="stopExecution()" title="実行を停止して環境を再起動します">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        停止
+      </button>
+      <button class="btn-header btn-clear" onclick="clearAllOutputs()" title="すべての実行結果を消去します">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        出力をクリア
+      </button>
+      <button class="btn-header btn-clear" onclick="toggleHelp()" title="使い方ガイドを表示">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        使い方
+      </button>
+      <a class="btn-header btn-about" href="../" title="TOPページへ">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        TOPにもどる
+      </a>
+    </div>
+    <button class="header-menu-btn" id="header-menu-btn" type="button" onclick="toggleHeaderMenu()" aria-label="メニューを開く" aria-expanded="false" aria-controls="header-actions" title="メニュー">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+  </header>
+
+  <script>
+    /* ヘッダーのハンバーガーメニュー開閉（狭い画面用）。CSP は 'unsafe-inline' 許可済み。 */
+    function toggleHeaderMenu() {
+      var h = document.getElementById('app-header');
+      if (!h) return;
+      var open = h.classList.toggle('menu-open');
+      var b = document.getElementById('header-menu-btn');
+      if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    document.addEventListener('click', function (e) {
+      var h = document.getElementById('app-header');
+      if (!h || !h.classList.contains('menu-open')) return;
+      var b = document.getElementById('header-menu-btn');
+      var t = e.target;
+      /* ハンバーガー自身のクリックは toggle 側で処理するので無視 */
+      if (b && (t === b || (b.contains && b.contains(t)))) return;
+      /* メニュー内の操作、またはメニュー外のどこかをクリックしたら閉じる */
+      h.classList.remove('menu-open');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+  </script>
+
+  <!-- ===== ヘルプパネル ===== -->
+  <div id="help-panel" class="hidden">
+    <div class="help-content">
+      <button class="help-close" onclick="toggleHelp()">✕ 閉じる</button>
+      <h3>📖 使い方ガイド</h3>
+      <table class="help-table">
+        <tr><th>操作</th><th>方法</th></tr>
+        <tr><td>コードを実行</td><td>▶ 実行 ボタン　または　<kbd>Shift</kbd>+<kbd>Enter</kbd></td></tr>
+        <tr><td>新しいセルを追加</td><td>セル下の ＋ ボタン、または画面下のボタン</td></tr>
+        <tr><td>セルを削除</td><td>セル右上の ✕ ボタン</td></tr>
+        <tr><td>セルの順番を変える</td><td>↑ ↓ ボタン</td></tr>
+        <tr><td>テキストを確定</td><td><kbd>Shift</kbd>+<kbd>Enter</kbd>　または　<kbd>Esc</kbd></td></tr>
+        <tr><td>インデント（字下げ）</td><td><kbd>Tab</kbd> キー（スペース4つ分）</td></tr>
+      </table>
+      <h3 style="margin-top:16px;">📚 使えるライブラリ</h3>
+      <p>import 文を書くと自動で読み込みます：</p>
+      <code>numpy, pandas, matplotlib, scikit-learn, Pillow, random, math, ...</code>
+      <h3 style="margin-top:16px;">💡 ポイント</h3>
+      <ul>
+        <li>上のセルで作った変数は、下のセルでも使えます</li>
+        <li>グラフはセルの下に自動で表示されます</li>
+        <li>エラーが出たら日本語の説明を参考に直しましょう</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ===== ノートブック本体 ===== -->
+  <main id="main-content">
+    <div id="notebook-container"></div>
+    <div id="bottom-add-bar">
+      <button class="btn-add-bottom" onclick="appendCell('code')">＋ コードセルを追加</button>
+      <button class="btn-add-bottom" onclick="appendCell('text')">＋ テキストセルを追加</button>
+      <button class="btn-add-bottom" onclick="appendCell('slide')">＋ スライドセルを追加</button>
+    </div>
+  </main>
+
+  <!-- ===== フッター（LPと共通） ===== -->
+  <footer class="v3-footer">
+    <div class="container">
+      <div class="v3-footer-top">
+        <div>
+          <div class="v3-footer-logo">PyHiroba<span class="v3-footer-kana">（ぱいひろば）</span></div>
+          <p class="v3-footer-tagline">すべての日本の生徒が安心してPythonプログラミングを学べる広場。</p>
+          <div style="margin-top:24px">
+            <a class="v3-btn v3-btn-primary" href="../">
+              PyHirobaについて
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="v3-footer-cols">
+          <div>
+            <h5>サービス</h5>
+            <a href="../#features">特徴</a>
+            <a href="../#preview">プレビュー</a>
+            <a href="../#faq">ご利用方法</a>
+          </div>
+          <div>
+            <h5>リソース</h5>
+            <a href="../errors.html">対応エラーの一覧</a>
+            <a href="../materials.html">公開教材の一覧</a>
+            <a href="../guide-publish.html">自作教材の公開方法</a>
+          </div>
+          <div>
+            <h5>規約・プライバシー</h5>
+            <a href="../terms.html">利用規約</a>
+            <a href="https://www.u-tokyo.ac.jp/ja/general/privacy_policy.html" target="_blank" rel="noopener" data-trusted>プライバシーポリシー</a>
+            <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener" data-trusted>お問い合わせ</a>
+          </div>
+        </div>
+      </div>
+      <div class="v3-footer-bottom">
+        <span>© 2026 PyHiroba — 日本の学校現場向けPython実行環境</span>
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
+          <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          ダークモード
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ===== スライドライトボックス ===== -->
+  <div id="slide-lightbox" class="slide-lightbox hidden" onclick="closeLightbox(event)">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <button class="lightbox-prev" onclick="lightboxNav(-1)">‹</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="">
+    <button class="lightbox-next" onclick="lightboxNav(1)">›</button>
+    <div class="lightbox-counter" id="lightbox-counter"></div>
+  </div>
+
+  <!-- ===== スクリプト =====
+       CodeMirror / marked / DOMPurify / MathJax は vendor/ に自ホスト（学校の閉域網・フィルタ対策）。
+       Pyodide のみ jsDelivr から読み込み、Service Worker がキャッシュする。 -->
+  <script src="../vendor/codemirror/codemirror.min.js?v=20260725a"></script>
+  <script src="../vendor/codemirror/python.min.js?v=20260725a"></script>
+  <script src="../vendor/marked/marked.min.js?v=20260725a"></script>
+  <!-- DOMPurify（Markdown / HTML出力のXSS無害化）。自ホスト。
+       .github/workflows/update-dompurify.yml が毎週最新3.x系へ自動更新（ファイル差し替え）する。
+       ファイル名にバージョンを含めてキャッシュを更新する。 -->
+  <script src="../vendor/dompurify/purify-3.4.12.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"
+          integrity="sha384-tVslJOEkg7nVRW3Y3/ReGX0NnonNrbcmt1R5qFbQXQdGa2chRkoJYHAjAsv3zoTq"
+          crossorigin="anonymous"></script>
+
+  <!-- MathJax（LaTeX数式の表示）。$...$ / $$...$$ / \(...\) / \[...\] / \begin{...}\end{...} に対応 -->
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEnvironments: true,
+        processEscapes: true,
+        tags: 'none'
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'],
+        ignoreHtmlClass: 'cell-editor|CodeMirror|cell-output'
+      },
+      startup: {
+        typeset: false,
+        ready: () => {
+          MathJax.startup.defaultReady();
+          MathJax.startup.promise.then(() => {
+            if (typeof typesetMath === 'function') typesetMath();
+          });
+        }
+      }
+    };
+  </script>
+  <!-- MathJax は vendor/ に自ホスト（単体の tex-svg.js。基本＋AMS数式に対応。
+       ごく特殊な LaTeX 拡張の自動読み込みには非対応） -->
+  <script src="../vendor/mathjax/tex-svg.js?v=20260725a" id="MathJax-script" async></script>
+
+  <!-- アプリ本体（役割ごとに分割・この順序で読み込む） -->
+  <script src="../js/app.core.js?v=20260726a"></script>
+  <script src="../js/app.lessons.js?v=20260722a"></script>
+  <script src="../js/app.io.js?v=20260725a"></script>
+  <script src="../js/app.notebook.js?v=20260725a"></script>
+  <script src="../js/app.exec.js?v=20260725a"></script>
+
+</body>
+</html>

@@ -6,14 +6,14 @@
   <title>自作教材の公開方法 | PyHiroba（ぱいひろば）</title>
 
   <!-- ファビコン -->
-  <link rel="icon" type="image/svg+xml" href="../favicon.svg">
-  <link rel="icon" type="image/png" href="../favicon-64.png">
-  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" href="favicon-64.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
-  <script src="../js/theme.js?v=20260725a"></script>
+  <script src="js/theme.js?v=20260725a"></script>
   <meta name="description" content="PyHirobaで作った演習ノートブックをGoogle Driveで公開し、URLひとつで生徒に配布する方法を解説します。">
-  <link rel="canonical" href="https://funakoshi-takehiro.github.io/pyhiroba/lp/guide-publish.html">
+  <link rel="canonical" href="https://funakoshi-takehiro.github.io/pyhiroba/guide-publish.html">
 
   <!-- SNS共有用のプレビューカード（OGP / Twitter Card） -->
   <meta property="og:type" content="article">
@@ -21,7 +21,7 @@
   <meta property="og:locale" content="ja_JP">
   <meta property="og:title" content="自作教材の公開方法 | PyHiroba（ぱいひろば）">
   <meta property="og:description" content="PyHirobaで作った演習ノートブックをGoogle Driveで公開し、URLひとつで生徒に配布する方法を解説します。">
-  <meta property="og:url" content="https://funakoshi-takehiro.github.io/pyhiroba/lp/guide-publish.html">
+  <meta property="og:url" content="https://funakoshi-takehiro.github.io/pyhiroba/guide-publish.html">
   <meta property="og:image" content="https://funakoshi-takehiro.github.io/pyhiroba/ogp.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
@@ -34,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../css/style.css?v=20260726a">
+  <link rel="stylesheet" href="css/style.css?v=20260726a">
   <style>
     /* このページ用に説明文を少し大きく・濃く */
     .guide-hero p { font-size: 17px; color: var(--ink-2); }
@@ -165,7 +165,7 @@
     (function () {
       try {
         if (!/^https?:/.test(location.protocol)) return; // ローカルfile://表示時は固定文を残す
-        var base = new URL('../', location.href).href;   // lp/ の親 ＝ アプリ本体
+        var base = new URL('nb/', location.href).href;   // ルート直下のLP → アプリ本体 /nb/
         var els = document.querySelectorAll('.app-base');
         for (var i = 0; i < els.length; i++) els[i].textContent = base;
       } catch (e) { /* 失敗時は固定のURL表示をそのまま使う */ }

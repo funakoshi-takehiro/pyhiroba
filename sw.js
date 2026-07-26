@@ -13,11 +13,12 @@
    ================================================== */
 'use strict';
 
-const VERSION = 'pyhiroba-v2-20260725';
+const VERSION = 'pyhiroba-v3-20260726';
 const CACHE = VERSION;
 
-// 同一オリジンで先読みしておく最小限のシェル（相対パス＝スコープ基準）
-const PRECACHE_URLS = ['./', './index.html'];
+// 同一オリジンで先読みしておく最小限のシェル。スコープは '/'（sw.js はルート）だが、
+// オフライン対応が必要なのはアプリ本体（/nb/）なので、そのシェルを先読みする。
+const PRECACHE_URLS = ['nb/', 'nb/index.html'];
 
 // キャッシュ対象にする不変CDN（URLにバージョンを含み実質不変）
 function isCacheableHost(host) {
@@ -145,7 +146,7 @@ async function networkFirst(req) {
   } catch (e) {
     const cached = await cache.match(req);
     if (cached) return cached;
-    const shell = (await cache.match('./index.html')) || (await cache.match('./'));
+    const shell = (await cache.match('nb/index.html')) || (await cache.match('nb/'));
     return shell || Response.error();
   }
 }
