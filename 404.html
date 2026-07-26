@@ -227,6 +227,28 @@
       outline: 3px solid var(--accent-dk); outline-offset: 2px; border-radius: 6px;
     }
 
+    /* トップページと共通のフッター（自己完結ページのためインライン化。配色は変数でダークにも追従） */
+    .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+    .v3-footer { margin-top: 56px; padding: 52px 0 28px; border-top: 1px solid var(--ink); background: var(--paper); }
+    .v3-footer-top { display: grid; grid-template-columns: 1.1fr 1.4fr; gap: 56px; padding-bottom: 40px; }
+    .v3-footer-logo { font-size: 30px; font-weight: 900; letter-spacing: -0.02em; color: #028DAE; font-family: var(--font-ui); }
+    [data-theme="dark"] .v3-footer-logo { color: var(--accent); }
+    .v3-footer-kana { font-size: 0.5em; font-weight: 700; color: var(--ink-3); margin-left: 10px; }
+    .v3-footer-tagline { margin: 14px 0 0; color: var(--ink-3); font-size: 14px; line-height: 1.7; max-width: 38ch; }
+    .v3-footer-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+    .v3-footer-cols h5 { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); margin: 0 0 14px; font-family: var(--font-code); }
+    .v3-footer-cols a { display: block; font-size: 14px; color: var(--ink-2); font-weight: 500; text-decoration: none; padding: 6px 0; transition: color 0.15s; }
+    .v3-footer-cols a:hover { color: var(--accent); }
+    .v3-footer-bottom { margin-top: 26px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; color: var(--ink-4); font-size: 12.5px; }
+
+    @media (max-width: 760px) {
+      .v3-footer-top { grid-template-columns: 1fr; gap: 32px; }
+      .v3-footer-cols { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 440px) {
+      .v3-footer-cols { grid-template-columns: 1fr; }
+    }
+
     @media (max-width: 560px) {
       .nf-code { font-size: 92px; }
       .nf-hero h1 { font-size: 24px; }
@@ -262,25 +284,49 @@
           PyHiroba トップへ
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
         </a>
-        <a class="nf-btn nf-btn-ghost" href="/pyhiroba/nb/" id="nf-app-link">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>
-          ノートブックを開く
-        </a>
       </div>
     </div>
   </main>
 
-  <!-- フッター -->
-  <footer class="nf-footer">
-    <div class="nf-footer-row">
-      <nav class="nf-footer-links" id="nf-footer-links">
-        <a href="/pyhiroba/" data-path="">トップ</a>
-        <a href="/pyhiroba/errors.html" data-path="errors.html">対応エラーの一覧</a>
-        <a href="/pyhiroba/materials.html" data-path="materials.html">公開教材の一覧</a>
-        <a href="/pyhiroba/terms.html" data-path="terms.html">利用規約</a>
-      </nav>
-      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-        <span class="nf-copy">© 2026 PyHiroba</span>
+  <!-- フッター（トップページと共通デザイン） -->
+  <footer class="v3-footer">
+    <div class="container">
+      <div class="v3-footer-top">
+        <div>
+          <div class="v3-footer-logo">PyHiroba<span class="v3-footer-kana">（ぱいひろば）</span></div>
+          <p class="v3-footer-tagline">すべての日本の生徒が安心してPythonプログラミングを学べる広場。</p>
+          <div style="margin-top:24px">
+            <a class="nf-btn nf-btn-primary" data-path="#faq">
+              ご利用はこちら
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="v3-footer-cols">
+          <div>
+            <h5>サービス</h5>
+            <a data-path="#features">特徴</a>
+            <a data-path="#preview">プレビュー</a>
+            <a data-path="#faq">ご利用方法</a>
+          </div>
+          <div>
+            <h5>リソース</h5>
+            <a data-path="errors.html">対応エラーの一覧</a>
+            <a data-path="materials.html">公開教材の一覧</a>
+            <a data-path="guide-publish.html">自作教材の公開方法</a>
+            <a data-path="setup.html">対応環境・導入ガイド</a>
+            <a data-path="security.html">安心・安全への取り組み</a>
+          </div>
+          <div>
+            <h5>規約・プライバシー</h5>
+            <a data-path="terms.html">利用規約</a>
+            <a href="https://www.u-tokyo.ac.jp/ja/general/privacy_policy.html" target="_blank" rel="noopener" data-trusted>プライバシーポリシー</a>
+            <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせ</a>
+          </div>
+        </div>
+      </div>
+      <div class="v3-footer-bottom">
+        <span>© 2026 PyHiroba — 日本の学校現場向けPython実行環境</span>
         <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
           <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
@@ -307,8 +353,8 @@
       set('nf-logo-link', '');
       set('nf-back-link', '');
       set('nf-home-link', '');
-      set('nf-app-link', 'nb/');
-      var links = document.querySelectorAll('#nf-footer-links a[data-path]');
+      // フッター（トップと共通）内の内部リンク・CTA を base 相対で解決
+      var links = document.querySelectorAll('.v3-footer [data-path]');
       for (var i = 0; i < links.length; i++) links[i].href = base + links[i].getAttribute('data-path');
     })();
   </script>
