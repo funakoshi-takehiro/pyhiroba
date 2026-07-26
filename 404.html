@@ -145,6 +145,30 @@
       font-size: 16px; color: var(--ink-3); line-height: 1.9;
       max-width: 460px; margin: 0 auto;
     }
+
+    /* Python エラー風の「やさしい案内」カード（PyHiroba らしさ＝怖いエラーを日本語ヒントに） */
+    .nf-cell {
+      max-width: 460px; margin: 26px auto 4px; text-align: left;
+      border: 1px solid var(--line); border-radius: 14px; background: var(--paper);
+      overflow: hidden; box-shadow: 0 1px 3px rgba(16,20,24,0.05), 0 12px 30px rgba(2,141,174,0.06);
+    }
+    .nf-cell-bar {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 14px; border-bottom: 1px solid var(--line); background: rgba(2,141,174,0.05);
+    }
+    .nf-dot { width: 9px; height: 9px; border-radius: 50%; }
+    .nf-dot:nth-child(1) { background: #f6c344; }
+    .nf-dot:nth-child(2) { background: #8fd06f; }
+    .nf-dot:nth-child(3) { background: #68c2e0; }
+    .nf-cell-label { margin-left: auto; font-family: var(--font-code); font-size: 11px; color: var(--ink-4); letter-spacing: 0.04em; }
+    .nf-cell-body {
+      margin: 0; padding: 14px 16px; font-family: var(--font-code);
+      font-size: 13.5px; line-height: 1.9; color: var(--ink-2);
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .nf-err { color: #d64545; font-weight: 600; }
+    :root[data-theme="dark"] .nf-err { color: #ff9b9b; }
+    .nf-hint { color: var(--accent-dk); }
     .nf-actions {
       display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;
       margin-top: 32px;
@@ -206,6 +230,7 @@
     @media (max-width: 560px) {
       .nf-code { font-size: 92px; }
       .nf-hero h1 { font-size: 24px; }
+      .nf-cell-body { font-size: 12.5px; padding: 12px 14px; }
       .nf-footer-row { justify-content: center; text-align: center; }
     }
   </style>
@@ -227,7 +252,11 @@
       <div class="nf-code">404</div>
       <div class="nf-eyebrow">PAGE NOT FOUND</div>
       <h1>ページが見つかりませんでした</h1>
-      <p>お探しのページは、移動または削除されたか、URL が間違っている可能性があります。下のボタンからやり直してください。</p>
+      <div class="nf-cell">
+        <div class="nf-cell-bar"><span class="nf-dot"></span><span class="nf-dot"></span><span class="nf-dot"></span><span class="nf-cell-label">PyHiroba</span></div>
+        <pre class="nf-cell-body"><span class="nf-err">NotFoundError</span>: お探しのページが見つかりません
+<span class="nf-hint">💡 URL の打ち間違いか、ページが移動したのかもしれません。下のボタンからやり直してみましょう。</span></pre>
+      </div>
       <div class="nf-actions">
         <a class="nf-btn nf-btn-primary" href="/pyhiroba/" id="nf-home-link">
           PyHiroba トップへ
