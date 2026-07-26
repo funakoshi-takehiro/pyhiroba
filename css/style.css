@@ -814,7 +814,10 @@ body {
   .v3-feat > div { min-width: 0; }
   /* 長いカード内リンク（例：安心・安全への取り組みはこちら →）を折り返し、横あふれを防ぐ */
   .v3-feat-link { white-space: normal; }
-  .v3-feat p { overflow-wrap: anywhere; }
+  /* スマホでは機能の文字を小さめにして読みやすく */
+  .v3-feat p { overflow-wrap: anywhere; font-size: 15px; line-height: 1.75; }
+  .v3-feat h3 { font-size: 18px; }
+  .v3-feat-num { font-size: 10px; }
   .v3-faq { grid-template-columns: 1fr; padding: 24px 18px; }
   /* ご利用方法ステップ：本文やボタンがはみ出さないよう縮小を許可 */
   .v3-use-step { min-width: 0; }
@@ -1066,12 +1069,19 @@ body {
 #welcome-overlay .v3-footer { margin-top: 56px; }
 
 @media (max-width: 720px) {
-  .picker-grid { grid-template-columns: 1fr; }
+  /* 列を minmax(0,1fr) にして、カード内の URL 入力欄の最小幅で列が広がり
+     画面外にはみ出す（＝スマホで左上だけ拡大表示される）のを防ぐ */
+  .picker-grid { grid-template-columns: minmax(0, 1fr); }
   .picker-name { font-size: 54px; }
+  .picker-card { min-width: 0; }
+  .picker-url-row { min-width: 0; }
+  .picker-url-row input { min-width: 0; width: 100%; }
 }
 @media (max-width: 480px) {
   .picker-card { padding: 24px 20px; }
   .picker-hero { margin-bottom: 32px; }
+  .picker-name { font-size: 44px; }
+  .picker-main { padding: 28px 14px; }
 }
 
 /* ======================================================
@@ -1195,6 +1205,23 @@ body {
   transition: background 0.15s ease, transform 0.15s, box-shadow 0.15s;
 }
 .btn-header:active { transform: scale(0.97); }
+/* ヘッダーのハンバーガーボタン（通常は非表示、狭い画面でのみ表示） */
+.header-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255,255,255,0.6);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s;
+}
+.header-menu-btn:hover { background: rgba(2,141,174,0.08); }
+.header-menu-btn:active { transform: scale(0.97); }
 .btn-run-all {
   background: linear-gradient(180deg, #03a4c8, #028DAE);
   color: #fff;
@@ -1444,6 +1471,16 @@ body {
 }
 .cell-editor .CodeMirror-selected {
   background: rgba(2,141,174,0.12);
+}
+/* コードセル編集中、CodeMirror 内部（入力用 textarea 等）にフォーカス枠を出さない。
+   セルの強調は外枠（.cell-focused）だけで十分。スマホのタッチ操作で
+   textarea:focus-visible のアウトラインが内側に二重表示されるのを防ぐ。 */
+.cell-editor .CodeMirror textarea:focus,
+.cell-editor .CodeMirror textarea:focus-visible,
+.cell-editor .CodeMirror-scroll:focus,
+.cell-editor .CodeMirror:focus,
+.cell-editor .CodeMirror:focus-within {
+  outline: none !important;
 }
 
 /* ---------- 出力エリア ---------- */
@@ -2369,6 +2406,27 @@ body {
   .header-subtitle { display: none; }
   .btn-header { padding: 6px 10px; font-size: 12px; }
   #bottom-add-bar { flex-direction: column; align-items: center; }
+  /* ヘッダーが収まらない小画面では、操作ボタンをハンバーガーのドロップダウンにまとめる。
+     #app-header は position:sticky なので、そのまま absolute の基準になる。 */
+  .header-menu-btn { display: inline-flex; }
+  .header-right {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 10px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    min-width: 190px;
+    padding: 8px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(16,20,24,0.16);
+    display: none;
+    z-index: 300;
+  }
+  #app-header.menu-open .header-right { display: flex; }
+  .header-right .btn-header { width: 100%; justify-content: flex-start; font-size: 13px; padding: 9px 12px; }
 }
 
 /* ======================================================

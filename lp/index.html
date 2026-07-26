@@ -35,7 +35,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../css/style.css?v=20260725a">
+  <link rel="stylesheet" href="../css/style.css?v=20260726a">
 </head>
 <body>
 
@@ -199,13 +199,17 @@
         html { scroll-behavior: smooth; }
         #preview .v3-nb-btn-primary, #preview .v3-nb-btn-ghost, #preview .v3-nb-cell-run { cursor: pointer; }
         .v3-preview-note { margin-top:10px; color:var(--ink-3); font-size:14.5px; line-height:1.85; max-width:680px; }
-        .v3-preview-launch { text-align:center; margin-top:24px; }
-        .v3-preview-launch .v3-hint { display:block; margin-top:10px; color:var(--ink-4); font-size:13px; }
         @media (max-width: 600px) {
-          #preview .v3-nb-bar { flex-wrap: wrap; gap: 8px; padding: 12px 14px; }
+          /* スマホでは左右マージンを詰めてプレビューを広く見せる（あくまでプレビューなので文字は小さめでOK） */
+          #preview .container { padding: 0 8px; }
+          #preview .v3-nb { border-radius: 14px; }
+          #preview .v3-nb-bar { flex-wrap: wrap; gap: 8px; padding: 10px 12px; }
           #preview .v3-nb-actions { gap: 6px; }
-          #preview .v3-nb-btn { padding: 5px 9px; font-size: 11.5px; }
-          .v3-preview-note { font-size: 14px; }
+          #preview .v3-nb-btn { padding: 5px 9px; font-size: 11px; }
+          #preview .v3-nb-code { font-size: 11.5px; }
+          #preview .v3-nb-cell-body { padding: 8px 10px; }
+          #preview .v3-nb-cell-tb { padding: 6px 8px; }
+          .v3-preview-note { font-size: 13.5px; }
         }
       </style>
       <div class="container">
@@ -231,10 +235,6 @@
             </div>
             <div class="v3-nb-body" id="nb-anim-body"></div>
           </div>
-        </div>
-        <div class="v3-preview-launch">
-          <a class="v3-btn v3-btn-primary" href="#faq">ご利用方法を見る →</a>
-          <span class="v3-hint">上のデモはイメージです。ご利用の流れは「ご利用方法」でご案内します。</span>
         </div>
       </div>
     </section>
@@ -273,7 +273,7 @@
               <div class="v3-step-num">3</div>
               <div class="v3-step-body">
                 <div class="v3-step-title">実際の講義で使用</div>
-                <div class="v3-step-desc">パソコン（PC）でのご利用を推奨しています。スマートフォンやタブレットでは画面が小さくコードの入力がしづらいため、授業でのご利用は推奨していません。</div>
+                <div class="v3-step-desc">パソコン（PC）でのご利用を推奨しています。スマートフォンなどでは画面が小さくコードの入力がしづらいため、授業でのご利用は推奨していません。</div>
               </div>
             </li>
 

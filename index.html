@@ -60,7 +60,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=20260725a">
+  <link rel="stylesheet" href="css/style.css?v=20260726a">
 
   <!-- 実行環境の読み込み失敗・非対応ブラウザ時の案内（同一オリジンで確実に表示できるようインライン化） -->
   <style>
@@ -229,7 +229,7 @@
         <span class="header-subtitle">ぱいひろば</span>
       </div>
     </div>
-    <div class="header-right">
+    <div class="header-right" id="header-actions">
       <button class="btn-header btn-clear" onclick="downloadIpynb()" title=".ipynb形式でダウンロード">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         ダウンロード
@@ -261,7 +261,32 @@
         TOPにもどる
       </a>
     </div>
+    <button class="header-menu-btn" id="header-menu-btn" type="button" onclick="toggleHeaderMenu()" aria-label="メニューを開く" aria-expanded="false" aria-controls="header-actions" title="メニュー">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
   </header>
+
+  <script>
+    /* ヘッダーのハンバーガーメニュー開閉（狭い画面用）。CSP は 'unsafe-inline' 許可済み。 */
+    function toggleHeaderMenu() {
+      var h = document.getElementById('app-header');
+      if (!h) return;
+      var open = h.classList.toggle('menu-open');
+      var b = document.getElementById('header-menu-btn');
+      if (b) b.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+    document.addEventListener('click', function (e) {
+      var h = document.getElementById('app-header');
+      if (!h || !h.classList.contains('menu-open')) return;
+      var b = document.getElementById('header-menu-btn');
+      var t = e.target;
+      /* ハンバーガー自身のクリックは toggle 側で処理するので無視 */
+      if (b && (t === b || (b.contains && b.contains(t)))) return;
+      /* メニュー内の操作、またはメニュー外のどこかをクリックしたら閉じる */
+      h.classList.remove('menu-open');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+  </script>
 
   <!-- ===== ヘルプパネル ===== -->
   <div id="help-panel" class="hidden">
