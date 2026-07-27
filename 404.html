@@ -10,6 +10,25 @@
   <script>
     (function(){try{if(window.self!==window.top){document.documentElement.style.setProperty('display','none','important');window.top.location=window.self.location;}}catch(e){try{document.documentElement.style.setProperty('display','none','important');}catch(_){}}})();
   </script>
+
+  <!-- 旧 /lp/ 配下（サブページ含む）への古いリンクを、現構成のルート直下へ転送する -->
+  <script>
+    (function () {
+      try {
+        var path = location.pathname, base = '/';
+        if (/\.github\.io$/i.test(location.hostname)) {
+          var seg = path.split('/').filter(Boolean)[0];
+          base = seg ? '/' + seg + '/' : '/';
+        }
+        var rel = path.slice(base.length);
+        if (rel === 'lp' || rel === 'lp/') {
+          location.replace(base + location.search + location.hash);
+        } else if (rel.indexOf('lp/') === 0) {
+          location.replace(base + rel.slice(3) + location.search + location.hash);
+        }
+      } catch (e) {}
+    })();
+  </script>
   <meta name="description" content="お探しのページは見つかりませんでした。PyHiroba（ぱいひろば）のトップページからやり直してください。">
 
   <!-- ファビコン（本番は /pyhiroba/ 配下・絶対パスで参照） -->
