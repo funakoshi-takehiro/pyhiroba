@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pyhiroba.weblab.t.u-tokyo.ac.jp/sitemap.xml
