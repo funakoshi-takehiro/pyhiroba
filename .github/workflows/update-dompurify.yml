@@ -2,7 +2,7 @@ name: Update DOMPurify
 
 # DOMPurify（XSS無害化ライブラリ）を毎週、最新の 3.x 系へ自動更新する。
 # 自ホスト（vendor/dompurify/）方式のため、新バージョンのファイルをダウンロードして
-# 差し替え、index.html の参照ファイル名（バージョン入り）を更新し、
+# 差し替え、nb/index.html の参照ファイル名（バージョン入り）を更新し、
 # 変更があれば自動コミット＆プッシュする。
 # メジャー更新（4.x など）はAPI互換性の都合で自動対象外（手動レビュー）。
 
@@ -45,11 +45,16 @@ jobs:
             echo "すでに最新です。更新なし。"; exit 0
           fi
 
-          # 新バージョンをダウンロードして差し替え、index.html の参照ファイル名を更新
+          # 新バージョンをダウンロードして差し替え、nb/index.html（アプリ本体）の参照ファイル名を更新
           curl -sSL "https://cdn.jsdelivr.net/npm/dompurify@${NEW_VER}/dist/purify.min.js" \
             -o "$DIR/purify-${NEW_VER}.min.js"
           git rm -q "$DIR/purify-${CUR_VER}.min.js"
-          sed -i "s#purify-${CUR_VER}.min.js#purify-${NEW_VER}.min.js#" index.html
+          sed -i "s#purify-${CUR_VER}.min.js#purify-${NEW_VER}.min.js#" nb/index.html
+
+          # 参照の書き換えが実際に行われたか検証（空振りのまま旧ファイルを消すと
+          # アプリが壊れるため、置換できていなければジョブを失敗させる）
+          grep -q "purify-${NEW_VER}.min.js" nb/index.html || {
+            echo "ERROR: nb/index.html の参照を更新できませんでした"; exit 1; }
 
           echo "CHANGED=1" >> "$GITHUB_ENV"
           echo "NEW_VER=$NEW_VER" >> "$GITHUB_ENV"
@@ -60,6 +65,6 @@ jobs:
           set -euo pipefail
           git config user.name "Chakeo123"
           git config user.email "funakoshi@freinweb.com"
-          git add -A vendor/dompurify index.html
+          git add -A vendor/dompurify nb/index.html
           git commit -m "DOMPurifyを${NEW_VER}に自動更新（自ホスト・ファイル差し替え）"
           git push

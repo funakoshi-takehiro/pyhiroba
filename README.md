@@ -3,9 +3,9 @@
 ブラウザだけで Python を学べる、日本の高校生・学校現場向けの学習環境です。
 インストール・アカウント登録は不要で、書いたコードは利用者のブラウザ内で実行されます（サーバーに送信されません）。
 
-公開URL: https://funakoshi-takehiro.github.io/pyhiroba/
+公開URL: https://pyhiroba.weblab.t.u-tokyo.ac.jp/
 
-## しくみ
+## 仕組み
 
 - Python の実行は [Pyodide](https://pyodide.org/)（WebAssembly）を使い、Web Worker 上で動かしています。重い処理でも画面が固まりません。
 - すべてクライアント側で完結する静的サイトで、サーバーはありません（GitHub Pages で配信）。
@@ -26,7 +26,15 @@ CodeMirror・marked・DOMPurify・MathJax は `vendor/` に同梱（自ホスト
 ## ファイル構成
 
 ```
-index.html              アプリ本体（ノートブック画面）
+index.html              ランディングページ（トップ。?gdrive= 等の旧共有リンクは /nb/ へ転送）
+errors.html             日本語化対応エラーの一覧
+materials.html          公開教材の一覧
+guide-publish.html      自作教材の公開方法
+setup.html              対応環境（対応ブラウザ・許可ドメインなど情報担当向け）
+security.html           安心・安全への取り組み
+terms.html              利用規約
+404.html                独自404ページ（旧 /lp/ 配下のURLも転送）
+nb/index.html           アプリ本体（ノートブック画面）
 css/style.css           スタイル
 js/
   theme.js              ダークモード切替（全ページ共通・head内で同期読み込み）
@@ -38,17 +46,13 @@ js/
   pyodide-worker.js     Pyodide を Worker で動かす実行エンジン
 sw.js                   Service Worker（初回ロード後のオフライン対応・帯域節約）
 vendor/                 自ホストの外部ライブラリ（CodeMirror / marked / DOMPurify / MathJax）
-lp/                     紹介ページとドキュメント
-  index.html            ランディングページ
-  errors.html           日本語化対応エラーの一覧
-  materials.html        公開教材の一覧
-  guide-publish.html    自作教材の公開方法
-  terms.html            利用規約
+lp/index.html           旧URL（/lp/）からトップへの転送ページ
+sitemap.xml, robots.txt 検索エンジン向け
 .github/workflows/      DOMPurify を毎週最新化する自動更新
 ogp.png, favicon*       OGP画像・アイコン
 ```
 
-JavaScript は役割ごとに分割し、`index.html` で上から順に読み込みます（すべて同じグローバルスコープで動作します）。
+JavaScript は役割ごとに分割し、`nb/index.html` で上から順に読み込みます（すべて同じグローバルスコープで動作します）。
 
 ## ローカルでの動作確認
 

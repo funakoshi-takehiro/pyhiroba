@@ -202,7 +202,9 @@ function referrerIsMaterialsPage() {
   try {
     if (!document.referrer) return false;
     const r = new URL(document.referrer);
-    return r.origin === location.origin && /\/lp\/materials\.html$/.test(r.pathname);
+    // 公開教材ページからの遷移だけを信頼扱いにする。サイト再編で /lp/materials.html →
+    // /materials.html に移動したため、末尾一致で新旧どちらのパスにもマッチさせる。
+    return r.origin === location.origin && /\/materials\.html$/.test(r.pathname);
   } catch (_) {
     return false;
   }
