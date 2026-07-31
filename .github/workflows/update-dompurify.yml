@@ -16,6 +16,8 @@ permissions:
 
 jobs:
   update:
+    # 本番リポジトリ専用: ミラー側での自動コミットによる履歴分岐を防ぐ
+    if: github.repository == 'matsuolab/pyhiroba'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

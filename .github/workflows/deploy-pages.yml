@@ -1,0 +1,53 @@
+name: Deploy to GitHub Pages (dev mirror only)
+
+# 開発ミラー（funakoshi-takehiro/pyhiroba）専用の Pages デプロイ。
+# 本番（matsuolab/pyhiroba）は legacy branch-deploy を維持するため、
+# job レベルの許可リスト条件で対象リポジトリ以外では常に skip される。
+# workflow 方式の Pages はブランチ内の CNAME ファイルを無視する（公式仕様:
+# "any existing CNAME file is ignored"）ため、本番と同一の main（CNAME 入り）を
+# そのまま push してもドメイン競合しない。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # 許可リスト方式: 開発ミラーでのみ実行（本番・fork では skip ＝ 分数消費ゼロ）
+    if: github.repository == 'funakoshi-takehiro/pyhiroba'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        # サプライチェーン対策としてコミットSHAで固定（Dependabotが更新を自動PR）
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Remove CNAME from artifact (defense in depth)
+        # workflow 方式では CNAME はドメイン設定に使われないが、静的ファイルとして
+        # /CNAME が配信されるのを防ぎ、将来の仕様変更にも備えて runner 上でのみ削除
+        #（リポジトリの main は不変）
+        run: rm -f CNAME
+
+      - name: Setup Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
