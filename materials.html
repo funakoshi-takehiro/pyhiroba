@@ -48,6 +48,17 @@
     .mat-notice p { margin: 0; font-size: 14.5px; line-height: 1.8; color: var(--ink-2); }
     .mat-notice a { color: var(--accent-dk); font-weight: 700; }
 
+    /* 公開教材のご利用にあたって（注記） */
+    .mat-caution {
+      margin: 24px 0 0; padding: 18px 20px;
+      background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
+    }
+    .mat-caution h4 { margin: 0 0 10px; font-size: 14.5px; color: var(--ink); }
+    .mat-caution ul { margin: 0; padding-left: 20px; }
+    .mat-caution li { font-size: 13.5px; line-height: 1.85; color: var(--ink-2); margin: 4px 0; }
+    .mat-caution p { margin: 12px 0 0; font-size: 13px; color: var(--ink-3); }
+    .mat-caution a { color: var(--accent-dk); font-weight: 700; }
+
     /* 教材リスト */
     #materials-list { margin: 24px 0 8px; }
     .mat-item {
@@ -92,7 +103,7 @@
     <section class="guide-hero">
       <div class="guide-eyebrow">MATERIALS</div>
       <h1>公開教材の一覧</h1>
-      <p>授業でそのまま使える公開教材です。<br>「開く」を押すと、PyHiroba上でそのまま開けます。</p>
+      <p>授業でそのまま使える教材例です。<br>「開く」を押すと、PyHiroba上でそのまま開けます。</p>
     </section>
 
     <!-- アンケートのお願い -->
@@ -113,6 +124,18 @@
         <div class="mat-spinner"></div>
         教材を読み込んでいます…
       </div>
+    </div>
+
+    <!-- 公開教材のご利用にあたって（免責・注意事項） -->
+    <div class="mat-caution">
+      <h4>公開教材のご利用にあたって</h4>
+      <ul>
+        <li>掲載している教材は、PyHiroba の使い方や授業での活用イメージをお伝えするための参考例です。特定の学習効果や、学習指導要領への準拠を保証するものではありません。</li>
+        <li>内容の正確性・完全性についても保証いたしかねます。授業でご利用の際は、事前に先生ご自身で内容と動作をご確認ください。</li>
+        <li>第三者が作成した教材を含み、著作権は各作成者に帰属します。</li>
+        <li>教材は予告なく追加・修正・削除されることがあります。</li>
+      </ul>
+      <p>詳しくは<a href="terms.html">利用規約</a>（第5条）をご確認ください。</p>
     </div>
 
     <div class="guide-foot">
