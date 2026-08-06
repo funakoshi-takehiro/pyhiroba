@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>アクセシビリティ方針 | PyHiroba（ぱいひろば）</title>
+
+  <!-- ファビコン -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" href="favicon-64.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
+  <script src="js/theme.js?v=20260725a"></script>
+  <meta name="description" content="PyHirobaのアクセシビリティ方針。キーボード操作・読み上げ対応・配色のコントラスト・ダークモードなどの取り組みと、現時点で把握している課題を公開しています。">
+  <link rel="canonical" href="https://pyhiroba.weblab.t.u-tokyo.ac.jp/accessibility.html">
+
+  <!-- SNS共有用のプレビューカード（OGP / Twitter Card） -->
+  <meta property="og:type" content="article">
+  <meta property="og:site_name" content="PyHiroba（ぱいひろば）">
+  <meta property="og:locale" content="ja_JP">
+  <meta property="og:title" content="アクセシビリティ方針 | PyHiroba（ぱいひろば）">
+  <meta property="og:description" content="だれもが使える学習環境を目指すための方針と、現時点での取り組み・課題を公開しています。">
+  <meta property="og:url" content="https://pyhiroba.weblab.t.u-tokyo.ac.jp/accessibility.html">
+  <meta property="og:image" content="https://pyhiroba.weblab.t.u-tokyo.ac.jp/ogp.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="PyHiroba（ぱいひろば）">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="アクセシビリティ方針 | PyHiroba（ぱいひろば）">
+  <meta name="twitter:description" content="だれもが使える学習環境を目指すための方針と、現時点での取り組み・課題を公開しています。">
+  <meta name="twitter:image" content="https://pyhiroba.weblab.t.u-tokyo.ac.jp/ogp.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20260806a">
+  <style>
+    /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
+    .a11y-hero p { font-size: 17px; color: var(--ink-2); max-width: 760px; }
+    .a11y-section { margin-top: 38px; }
+    .a11y-section > h2 {
+      font-size: 19px; font-weight: 800; color: var(--ink); margin: 0 0 10px;
+    }
+    .a11y-section > p { color: var(--ink-2); font-size: 15.5px; line-height: 1.9; margin: 8px 0; }
+    .a11y-section ul { margin: 8px 0; padding-left: 20px; color: var(--ink-2); font-size: 15.5px; line-height: 1.95; }
+    .a11y-section li { margin: 5px 0; }
+    .a11y-card {
+      margin-top: 14px; padding: 18px 20px; border-radius: 14px;
+      background: var(--paper); border: 1px solid var(--line);
+    }
+    .a11y-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); }
+    .a11y-card ul { margin: 0; padding-left: 20px; }
+    .a11y-card li { font-size: 14px; line-height: 1.85; color: var(--ink-2); margin: 4px 0; }
+    .a11y-note { margin-top: 38px; padding: 20px 22px; border-radius: 16px; background: var(--accent-soft); border: 1px solid var(--accent-border); }
+    .a11y-note h4 { margin: 0 0 8px; font-size: 15.5px; color: var(--ink); }
+    .a11y-note p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.85; }
+    .a11y-note a { color: var(--accent-dk); font-weight: 700; text-decoration: underline; }
+    .a11y-updated { font-size: 13px; color: var(--ink-4); margin-top: 34px; }
+  </style>
+</head>
+<body>
+
+  <header class="guide-topbar">
+    <a href="./" class="guide-logo">PyHiroba</a>
+    <a href="./#features" class="guide-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      特徴へもどる
+    </a>
+  </header>
+
+  <main class="guide-page">
+    <section class="guide-hero a11y-hero">
+      <div class="guide-eyebrow">ACCESSIBILITY</div>
+      <h1>アクセシビリティ方針</h1>
+      <p>PyHiroba は、さまざまな特性のある生徒が同じ教室でともに学べるよう、だれもが使いやすい学習環境を目指しています。</p>
+    </section>
+
+    <div class="a11y-section">
+      <h2>基本的な考え方</h2>
+      <p>本サービスは、日本産業規格「JIS X 8341-3:2016（高齢者・障害者等配慮設計指針－情報通信における機器，ソフトウェア及びサービス－第3部：ウェブコンテンツ）」の適合レベル AA に相当する水準を目標として、設計・実装を行っています。</p>
+      <p>なお、現時点では第三者機関による試験や正式な適合表明は行っておりません。目標に照らして継続的に改善を進めている段階です。</p>
+    </div>
+
+    <div class="a11y-section">
+      <h2>対象範囲</h2>
+      <p>本方針は、<code>pyhiroba.weblab.t.u-tokyo.ac.jp</code> で提供するすべてのページ（紹介ページおよびプログラム実行画面）を対象とします。ただし、利用者や第三者が作成した教材の内容については対象外です。</p>
+    </div>
+
+    <div class="a11y-section">
+      <h2>現在の取り組み</h2>
+      <div class="a11y-card">
+        <h3>操作</h3>
+        <ul>
+          <li>マウスを使わず、キーボードだけで主要な操作を行えます。</li>
+          <li>キーボード操作時には、現在どこを操作しているかがはっきり分かるよう枠を表示します。</li>
+          <li>ページ先頭に「本文へスキップ」を用意し、繰り返し部分を読み飛ばせるようにしています。</li>
+        </ul>
+      </div>
+      <div class="a11y-card">
+        <h3>読み上げ・表示</h3>
+        <ul>
+          <li>画面の読み上げソフトに配慮し、ボタンや入力欄に説明（ラベル）を付与しています。</li>
+          <li>画像には代替テキストを設定できます（教材作成時に入力いただけます）。</li>
+          <li>文字と背景の明度差を確保し、読みやすい配色にしています。</li>
+          <li>目に負担の少ないダークモードを用意し、切り替えられるようにしています。</li>
+          <li>画面の幅にあわせて表示が変わるため、拡大表示や小さな画面でも利用できます。</li>
+        </ul>
+      </div>
+      <div class="a11y-card">
+        <h3>わかりやすさ</h3>
+        <ul>
+          <li>エラーは英語のままではなく、やさしい日本語のヒントで表示します。</li>
+          <li>JavaScript が無効な場合や、対応していないブラウザの場合には、その旨を案内します。</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="a11y-section">
+      <h2>現時点で把握している課題</h2>
+      <p>改善の途上にある点も、あわせて公開します。</p>
+      <ul>
+        <li>アニメーションを減らす設定（<code>prefers-reduced-motion</code>）に未対応です。画面の動きが少ない表示を選べるようにする予定です。</li>
+        <li>グラフなど、プログラムの実行結果として表示される画像の代替テキストが十分ではありません。</li>
+        <li>コードを書く部分（エディタ）は、支援技術との組み合わせによっては操作しにくい場合があります。</li>
+        <li>第三者機関によるアクセシビリティ試験は未実施です。</li>
+      </ul>
+    </div>
+
+    <div class="a11y-note">
+      <h4>お気づきの点をお知らせください</h4>
+      <p>「ここが使いにくい」「読み上げでうまく伝わらない」といったお気づきの点がありましたら、<a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせフォーム</a>よりお知らせください。改善の参考にさせていただきます。</p>
+    </div>
+
+    <p class="a11y-updated">最終更新日：2026年8月6日</p>
+
+    <div class="guide-foot">
+      <a class="primary" href="./#features">特徴へもどる →</a>
+    </div>
+  </main>
+
+  <!-- フッター（LPと共通） -->
+  <footer class="v3-footer">
+    <div class="container">
+      <div class="v3-footer-top">
+        <div>
+          <div class="v3-footer-logo">PyHiroba<span class="v3-footer-kana">（ぱいひろば）</span></div>
+          <p class="v3-footer-tagline">すべての日本の生徒が安心してPythonプログラミングを学べる広場。</p>
+          <div style="margin-top:24px">
+            <a class="v3-btn v3-btn-primary" href="./#faq">
+              ご利用はこちら
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="v3-footer-cols">
+          <div>
+            <h5>サービス</h5>
+            <a href="./#features">特徴</a>
+            <a href="./#preview">プレビュー</a>
+            <a href="./#faq">ご利用方法</a>
+            <a href="setup.html">対応環境</a>
+          </div>
+          <div>
+            <h5>リソース</h5>
+            <a href="errors.html">対応エラーの一覧</a>
+            <a href="materials.html">公開教材の一覧</a>
+            <a href="guide-publish.html">自作教材の公開方法</a>
+            <a href="security.html">安心・安全への取り組み</a>
+            <a href="accessibility.html">アクセシビリティ方針</a>
+          </div>
+          <div>
+            <h5>規約・プライバシー</h5>
+            <a href="terms.html">利用規約</a>
+            <a href="terms.html#privacy">プライバシーポリシー</a>
+            <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせ</a>
+          </div>
+        </div>
+      </div>
+      <div class="v3-footer-bottom">
+        <span>© 2026 東京大学 松尾・岩澤研究室</span>
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
+          <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          ダークモード
+        </button>
+      </div>
+    </div>
+  </footer>
+
+</body>
+</html>

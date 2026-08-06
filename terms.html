@@ -34,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260726a">
+  <link rel="stylesheet" href="css/style.css?v=20260806a">
   <style>
     .terms-body h2 { font-size: 18px; font-weight: 700; color: var(--ink); margin: 30px 0 8px; }
     .terms-body p, .terms-body li { font-size: 15px; line-height: 1.9; color: var(--ink-2); }
@@ -61,13 +61,13 @@
     </section>
 
     <div class="guide-steps terms-body">
-      <p class="updated">最終更新日：2026年8月5日</p>
+      <p class="updated">最終更新日：2026年8月6日</p>
 
       <h2>第1条（本サービスの内容）</h2>
       <p>本サービスは、ブラウザ上で Python プログラミングを学習・実行できる無料の学習環境です。Python のコードは利用者自身のブラウザ内（お使いの端末の中）で実行され、コードや入力内容がサーバーへ送信・保存されることはありません。</p>
 
       <h2>第2条（アカウント・料金・情報の取り扱い）</h2>
-      <p>本サービスの利用にあたり、アカウント登録は不要で、料金はかかりません。アプリ本体は利用者の個人情報を収集せず、Cookie による追跡や行動解析も行いません。ただし、任意でご回答いただくアンケートやお問い合わせでは、ご入力いただいた情報（メールアドレス・学校名など）を取得します。詳しくは<a href="https://www.u-tokyo.ac.jp/ja/general/privacy_policy.html" target="_blank" rel="noopener" data-trusted>プライバシーポリシー</a>をご確認ください。</p>
+      <p>本サービスの利用にあたり、アカウント登録は不要で、料金はかかりません。アプリ本体は利用者の個人情報を収集せず、Cookie による追跡や行動解析も行いません。ただし、任意でご回答いただくアンケートやお問い合わせでは、ご入力いただいた情報（メールアドレス・学校名など）を取得します。詳しくは<a href="#privacy">第8条（個人情報の取扱い）</a>をご確認ください。</p>
 
       <h2>第3条（禁止事項）</h2>
       <p>利用者は、本サービスの利用にあたり、次の行為をしてはなりません。</p>
@@ -92,16 +92,45 @@
       <h2>第7条（外部サービスへの依存）</h2>
       <p>本サービスは、Python 実行環境や表示に必要なライブラリ・フォントを外部の配信サービス（CDN 等）から読み込みます。これらの外部サービスの停止・変更により、本サービスの一部または全部が利用できなくなる場合があります。</p>
 
-      <h2>第8条（免責事項）</h2>
+      <h2 id="privacy">第8条（個人情報の取扱い）</h2>
+      <p>本サービスのアプリ本体は、利用者の個人情報を収集しません。入力されたコードや学習内容は利用者の端末内で処理され、運営者のサーバーへ送信・保存されることはありません。また、Cookie 等を用いた行動追跡やアクセス解析も行っていません。</p>
+      <p>ただし、次の場合に限り、ご入力いただいた情報を取得します。いずれも任意でのご回答です。</p>
+      <ul>
+        <li>ご利用開始前のアンケート（Google フォーム）</li>
+        <li>お問い合わせフォーム（Google フォーム）</li>
+      </ul>
+      <p>取得する情報は、メールアドレス、学校名、ご所属、ご意見・ご質問の内容など、フォームでご入力いただいた項目です。これらは次の目的で利用します。</p>
+      <ul>
+        <li>本サービスの運用・改善、およびお問い合わせへの回答</li>
+        <li>利用状況の把握</li>
+        <li>教育工学・情報教育等に関する研究活動における分析および研究成果の発表</li>
+      </ul>
+      <p>研究活動に利用する場合は、統計的に処理するなど、個人または特定の学校が識別されない形で取り扱います。個人が特定される形で公表することはありません。</p>
+      <p>フォームの回答は Google LLC が提供するサービス上に保存され、国外のサーバーで処理される場合があります。運営者は、法令に基づく場合を除き、取得した情報を第三者へ提供しません。ご自身の情報の開示・訂正・削除をご希望の場合は、<a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせフォーム</a>よりご連絡ください。</p>
+      <p>本サービスには、運営者が所属する<a href="https://www.u-tokyo.ac.jp/ja/general/privacy_policy.html" target="_blank" rel="noopener" data-trusted>東京大学のプライバシーポリシー</a>も併せて適用されます。</p>
+
+      <h2 id="transmission">第9条（外部送信について）</h2>
+      <p>本サービスをご利用の際、次の外部事業者へ通信が発生します。これらの通信では、接続に必要な情報（IP アドレス、ブラウザの種類など）が各事業者へ送信されます。利用者が入力したコードや学習内容が送信されることはありません。</p>
+      <ul>
+        <li><strong>fonts.googleapis.com ／ fonts.gstatic.com</strong>（Google LLC）：画面表示に使用するフォントの取得。各ページの表示時。</li>
+        <li><strong>cdn.jsdelivr.net</strong>（jsDelivr）：Python 実行環境（Pyodide）および表示用ライブラリの取得。プログラム実行画面の表示時。</li>
+        <li><strong>script.google.com ／ www.googleapis.com ／ drive.google.com</strong>（Google LLC）：公開教材の一覧および教材ファイルの取得。教材ページの表示時、および教材を開いたとき。</li>
+        <li><strong>pypi.org ／ files.pythonhosted.org</strong>（Python Software Foundation）：追加ライブラリの取得。利用者がライブラリを読み込む操作を行ったとき。</li>
+        <li><strong>raw.githubusercontent.com ／ github.com</strong>（GitHub, Inc.）：GitHub 上に公開された教材の取得。当該教材を指定して開いたとき。</li>
+        <li><strong>docs.google.com ／ forms.gle</strong>（Google LLC）：アンケートおよびお問い合わせフォームの表示。利用者が当該リンクを開いたとき。</li>
+      </ul>
+      <p>ネットワークの許可設定については、<a href="setup.html">対応環境</a>のページもご参照ください。</p>
+
+      <h2>第10条（免責事項）</h2>
       <p>本サービスは現状有姿で提供され、その完全性・正確性・有用性・特定目的への適合性・継続性を保証しません。本サービスの利用または利用できなかったことにより生じたいかなる損害についても、運営者は法令で認められる範囲で責任を負いません。</p>
 
-      <h2>第9条（サービスの変更・中断・終了）</h2>
+      <h2>第11条（サービスの変更・中断・終了）</h2>
       <p>運営者は、利用者への事前通知なく、本サービスの内容の変更・提供の中断・終了を行うことができます。</p>
 
-      <h2>第10条（本規約の変更）</h2>
+      <h2>第12条（本規約の変更）</h2>
       <p>運営者は、必要に応じて本規約を変更することがあります。変更後の規約は、本ページに掲載した時点から効力を生じます。</p>
 
-      <h2>第11条（準拠法）</h2>
+      <h2>第13条（準拠法）</h2>
       <p>本規約は日本法に準拠して解釈されます。</p>
 
       <h2>お問い合わせ・運営者</h2>
@@ -134,17 +163,19 @@
             <a href="errors.html">対応エラーの一覧</a>
             <a href="materials.html">公開教材の一覧</a>
             <a href="guide-publish.html">自作教材の公開方法</a>
+            <a href="security.html">安心・安全への取り組み</a>
+            <a href="accessibility.html">アクセシビリティ方針</a>
           </div>
           <div>
             <h5>規約・プライバシー</h5>
             <a href="terms.html">利用規約</a>
-            <a href="https://www.u-tokyo.ac.jp/ja/general/privacy_policy.html" target="_blank" rel="noopener" data-trusted>プライバシーポリシー</a>
+            <a href="terms.html#privacy">プライバシーポリシー</a>
             <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせ</a>
           </div>
         </div>
       </div>
       <div class="v3-footer-bottom">
-        <span>© 2026 PyHiroba — 日本の学校現場向けPython実行環境</span>
+        <span>© 2026 東京大学 松尾・岩澤研究室</span>
         <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
           <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
