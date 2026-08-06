@@ -375,11 +375,12 @@ body {
   gap: 12px 24px;
   margin-top: 4px;
 }
-/* 特徴カード内のダークモード切替。
-   フッターのピル型ボタン(.theme-toggle)を、カード内リンク(.v3-feat-link)に
-   なじむ「下線調のトグル」に上書きする。状態同期・アイコン出し分けは
-   theme.js / 既存CSS の .theme-toggle の仕組みをそのまま利用する。 */
-.v3-feat .theme-toggle {
+/* 本文中に置くダークモード切替（アクセシビリティ方針ページで使用）。
+   フッターのピル型ボタン(.theme-toggle)を、本文リンクになじむ
+   「下線調のトグル」に上書きする。状態同期・アイコン出し分けは
+   theme.js / 既存CSS の .theme-toggle の仕組みをそのまま利用する。
+   .theme-toggle と同じ詳細度(0,2,0)になるよう2クラスで指定している。 */
+.theme-toggle.theme-toggle-inline {
   margin-top: 8px;
   padding: 0;
   border: none;
@@ -390,16 +391,16 @@ body {
   font-weight: 700;
   gap: 6px;
 }
-.v3-feat .theme-toggle:hover { background: none; color: var(--accent); }
-.v3-feat .theme-toggle .theme-lbl {
+.theme-toggle.theme-toggle-inline:hover { background: none; color: var(--accent); }
+.theme-toggle.theme-toggle-inline .theme-lbl {
   border-bottom: 1px solid color-mix(in oklab, var(--accent) 38%, transparent);
   transition: border-color 0.15s;
 }
-.v3-feat .theme-toggle:hover .theme-lbl { border-bottom-color: currentColor; }
+.theme-toggle.theme-toggle-inline:hover .theme-lbl { border-bottom-color: currentColor; }
 /* ラベルは状態で出し分け（初期＝ライトなので「ダークにする」を表示） */
-.v3-feat .theme-toggle .theme-label-light { display: none; }
-[data-theme="dark"] .v3-feat .theme-toggle .theme-label-dark { display: none; }
-[data-theme="dark"] .v3-feat .theme-toggle .theme-label-light { display: inline; }
+.theme-toggle.theme-toggle-inline .theme-label-light { display: none; }
+[data-theme="dark"] .theme-toggle.theme-toggle-inline .theme-label-dark { display: none; }
+[data-theme="dark"] .theme-toggle.theme-toggle-inline .theme-label-light { display: inline; }
 
 /* ---------- ノートブックプレビュー ---------- */
 .v3-preview-wrap {
@@ -2627,13 +2628,18 @@ body {
 }
 .pmodal-actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
+  /* ボタンが3つ並ぶと横幅が足りなくなることがある。その場合は
+     文字を途中で折り返さず、ボタンごと次の行へ送る。 */
+  flex-wrap: wrap;
 }
 .pmodal-btn {
-  flex: 1;
-  min-width: 0;
-  padding: 11px 16px;
+  /* flex-basis を auto にして、最低でも文字が収まる幅を確保する
+     （「ダウンロード」が「ダウンロー／ド」と割れるのを防ぐ） */
+  flex: 1 1 auto;
+  white-space: nowrap;
+  padding: 11px 10px;
   border-radius: 11px;
   font-size: 14px;
   font-weight: 700;
@@ -2669,6 +2675,35 @@ body {
 /* ============================================================
    アクセシビリティ
    ============================================================ */
+
+/* OS側で「視差効果を減らす／アニメーションを減らす」を選んでいる利用者向け。
+   動きに弱い（前庭障害・光過敏など）方が安心して使えるよう、装飾的な動きを止める。
+   ページ内リンクの移動も、するするとしたスクロールではなく一度で移動する。 */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+  /* 実行中インジケーターだけは例外。止めてしまうと「動いているのか、
+     固まったのか」が分からなくなるため、ゆっくり回し続ける。 */
+  .output-running .spinner,
+  .btn-run .spin,
+  .mat-spinner {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
+  /* 点滅するカーソルは動きが目立つので出さない */
+  .v3-hero-cursor,
+  .v3-nb-cursor,
+  .picker-caret { display: none !important; }
+  /* ホバーで画像を拡大する演出も止める */
+  .cell-text-display.is-media:hover img { transform: none !important; }
+}
 
 /* キーボード操作時の可視フォーカス（マウス操作では出ない）。
    全ての操作可能要素にはっきりした枠を表示する。 */

@@ -34,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260806a">
+  <link rel="stylesheet" href="css/style.css?v=20260806b">
   <style>
     /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
     .a11y-hero p { font-size: 17px; color: var(--ink-2); max-width: 760px; }
@@ -52,6 +52,9 @@
     .a11y-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); }
     .a11y-card ul { margin: 0; padding-left: 20px; }
     .a11y-card li { font-size: 14px; line-height: 1.85; color: var(--ink-2); margin: 4px 0; }
+    .a11y-card p { margin: 0 0 6px; font-size: 14px; line-height: 1.85; color: var(--ink-2); }
+    .a11y-steps { margin: 6px 0 0; padding-left: 20px; }
+    .a11y-steps li { font-size: 13.5px; }
     .a11y-note { margin-top: 38px; padding: 20px 22px; border-radius: 16px; background: var(--accent-soft); border: 1px solid var(--accent-border); }
     .a11y-note h4 { margin: 0 0 8px; font-size: 15.5px; color: var(--ink); }
     .a11y-note p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.85; }
@@ -103,8 +106,16 @@
           <li>画面の読み上げソフトに配慮し、ボタンや入力欄に説明（ラベル）を付与しています。</li>
           <li>画像には代替テキストを設定できます（教材作成時に入力いただけます）。</li>
           <li>文字と背景の明度差を確保し、読みやすい配色にしています。</li>
-          <li>目に負担の少ないダークモードを用意し、切り替えられるようにしています。</li>
+          <li>目に負担の少ないダークモードを用意し、切り替えられるようにしています（下の「表示の設定」をご覧ください）。</li>
           <li>画面の幅にあわせて表示が変わるため、拡大表示や小さな画面でも利用できます。</li>
+        </ul>
+      </div>
+      <div class="a11y-card">
+        <h3>動きへの配慮</h3>
+        <ul>
+          <li>お使いの端末で「アニメーションを減らす」設定をしている場合、それに合わせて画面の動きを止めます。</li>
+          <li>紹介ページの自動再生デモや文字が打ち込まれる演出は、その設定のときは動かさず、完成した状態で表示します。</li>
+          <li>ページ内の移動も、するするとしたスクロールではなく一度で移動します。</li>
         </ul>
       </div>
       <div class="a11y-card">
@@ -117,11 +128,39 @@
     </div>
 
     <div class="a11y-section">
+      <h2>表示の設定</h2>
+      <p>見やすさにあわせて、次の設定をお使いいただけます。</p>
+
+      <div class="a11y-card">
+        <h3>ダークモード</h3>
+        <p>背景を暗い配色に切り替えます。明るい画面がまぶしく感じられる場合や、暗い教室でお使いの場合にお試しください。選んだ設定はこの端末のブラウザに記憶され、次回以降も引き継がれます。</p>
+        <p>初回は、お使いの端末（OS）の設定にあわせて自動で選ばれます。</p>
+        <button class="theme-toggle theme-toggle-inline" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモード／ライトモードを切り替える">
+          <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <span class="theme-lbl theme-label-dark">ダークモードに切り替える</span>
+          <span class="theme-lbl theme-label-light">ライトモードに切り替える</span>
+        </button>
+      </div>
+
+      <div class="a11y-card">
+        <h3>アニメーションを減らす</h3>
+        <p>画面の動きが気になる場合は、お使いの端末側で設定してください。設定すると、本サービスの動きのある表示も自動的に止まります。</p>
+        <ul class="a11y-steps">
+          <li><strong>Windows</strong>：設定 → アクセシビリティ → 視覚効果 →「アニメーション効果」をオフ</li>
+          <li><strong>macOS</strong>：システム設定 → アクセシビリティ → ディスプレイ →「視差効果を減らす」をオン</li>
+          <li><strong>iPad・iPhone</strong>：設定 → アクセシビリティ → 動作 →「視差効果を減らす」をオン</li>
+          <li><strong>Android</strong>：設定 → ユーザー補助 →「アニメーションを削除」をオン</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="a11y-section">
       <h2>現時点で把握している課題</h2>
       <p>改善の途上にある点も、あわせて公開します。</p>
       <ul>
-        <li>アニメーションを減らす設定（<code>prefers-reduced-motion</code>）に未対応です。画面の動きが少ない表示を選べるようにする予定です。</li>
         <li>グラフなど、プログラムの実行結果として表示される画像の代替テキストが十分ではありません。</li>
+        <li>文字サイズや行間を、ページ側で細かく調整する機能はありません（ブラウザの拡大機能をご利用ください）。</li>
         <li>コードを書く部分（エディタ）は、支援技術との組み合わせによっては操作しにくい場合があります。</li>
         <li>第三者機関によるアクセシビリティ試験は未実施です。</li>
       </ul>

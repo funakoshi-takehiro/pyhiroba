@@ -49,7 +49,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=20260806a">
+  <link rel="stylesheet" href="css/style.css?v=20260806b">
 </head>
 <body>
 
@@ -193,13 +193,10 @@
             <div>
               <div class="v3-feat-num">FEATURE / 06</div>
               <h3>だれもが使えるアクセシビリティ</h3>
-              <p>キーボードだけでの操作、スクリーンリーダーでの読み上げ、見やすい色のコントラスト、目にやさしいダークモードに対応。さまざまな特性の生徒が安心して学べる環境を目指しています。</p>
-              <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモード／ライトモードを切り替える">
-                <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                <span class="theme-lbl theme-label-dark">ダークモードに切り替える</span>
-                <span class="theme-lbl theme-label-light">ライトモードに切り替える</span>
-              </button>
+              <p>キーボードだけでの操作、スクリーンリーダーでの読み上げ、見やすい色のコントラスト、目にやさしいダークモード、アニメーションを減らす設定に対応。さまざまな特性の生徒が安心して学べる環境を目指しています。</p>
+              <div class="v3-feat-links">
+                <a class="v3-feat-link" href="accessibility.html">アクセシビリティ方針はこちら →</a>
+              </div>
             </div>
           </div>
 
@@ -231,7 +228,7 @@
           <div>
             <div class="v3-section-eyebrow">PREVIEW</div>
             <h2 class="v3-section-title">プレビュー</h2>
-            <p class="v3-preview-note"><span style="display:inline-block">下の画面は、PyHiroba の動作イメージ（自動再生のデモ）です。</span><span style="display:inline-block">始め方は下の「ご利用方法」をご確認ください。</span></p>
+            <p class="v3-preview-note"><span style="display:inline-block" id="preview-note-lead">下の画面は、PyHiroba の動作イメージ（自動再生のデモ）です。</span><span style="display:inline-block">始め方は下の「ご利用方法」をご確認ください。</span></p>
           </div>
         </div>
         <div class="v3-preview-wrap">
@@ -371,21 +368,30 @@
       return out;
     }
 
+    /* OS側で「アニメーションを減らす」設定がされているか。
+       true のときは、タイプライターや自動再生デモを動かさず、完成した状態を最初から見せる。 */
+    var reduceMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+
     /* ════════════════════════════════════════════════════
        ① ヒーロー タイプライター
        ════════════════════════════════════════════════════ */
     var heroText   = document.getElementById('hero-tw-text');
     var heroCursor = document.getElementById('hero-cursor');
     if (heroText && heroCursor) {
-      var full = 'PyHiroba', hi = 0;
-      var htid = setInterval(function () {
-        hi++;
-        heroText.textContent = full.slice(0, hi);
-        if (hi >= full.length) {
-          clearInterval(htid);
-          heroCursor.classList.add('v3-hero-cursor-blink');
-        }
-      }, 130);
+      var full = 'PyHiroba';
+      if (reduceMotion) {
+        heroText.textContent = full;   /* 打ち込まず、いきなり全部表示する */
+      } else {
+        var hi = 0;
+        var htid = setInterval(function () {
+          hi++;
+          heroText.textContent = full.slice(0, hi);
+          if (hi >= full.length) {
+            clearInterval(htid);
+            heroCursor.classList.add('v3-hero-cursor-blink');
+          }
+        }, 130);
+      }
     }
 
     /* ════════════════════════════════════════════════════
@@ -602,9 +608,29 @@
       }
     }
 
+    /* アニメーションを減らす設定のときは、タイプせず全セルを完成形で並べる。
+       自動で動き続けるものが画面に残らないようにする。 */
+    function renderFinishedState() {
+      for (var i = 0; i < cells.length; i++) {
+        addCell(i);
+        if (cells[i].type !== 'text') {
+          setCode(i, cells[i].code, false);
+          if (cells[i].output) showOutput(i);
+          else makeOutputBox(document.getElementById('anim-cell-' + i));
+        }
+      }
+    }
+
     /* 最初のセルを追加して開始 */
-    addCell(0);
-    tick();
+    if (reduceMotion) {
+      renderFinishedState();
+      /* 自動再生しないので、説明文からも「自動再生のデモ」を外す */
+      var noteLead = document.getElementById('preview-note-lead');
+      if (noteLead) noteLead.textContent = '下の画面は、PyHiroba の動作イメージです。';
+    } else {
+      addCell(0);
+      tick();
+    }
 
   }());
   </script>
