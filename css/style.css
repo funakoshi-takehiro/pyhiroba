@@ -1472,6 +1472,34 @@ body {
 .cell-editor .CodeMirror-selected {
   background: rgba(2,141,174,0.12);
 }
+
+/* ---------- シンタックスハイライト（ライトテーマ） ----------
+   文字列は緑、メソッド・関数名は青と系統を分け、見分けやすくする。
+   色はいずれも白背景でコントラスト比 4.5:1 以上（WCAG AA）を満たす値を選んでいる。 */
+.cell-editor .cm-s-default .cm-keyword    { color: #a626a4; font-weight: 600; }  /* if / for / def など */
+.cell-editor .cm-s-default .cm-builtin    { color: #b45309; }                    /* print / len など */
+.cell-editor .cm-s-default .cm-def        { color: #1d5fd6; font-weight: 600; }  /* 自分で定義した関数名 */
+.cell-editor .cm-s-default .cm-property   { color: #1d5fd6; }                    /* .メソッド名 */
+.cell-editor .cm-s-default .cm-string     { color: #1f7a3d; }                    /* "文字列" */
+.cell-editor .cm-s-default .cm-string-2   { color: #1f7a3d; }
+.cell-editor .cm-s-default .cm-number     { color: #b45309; }
+.cell-editor .cm-s-default .cm-atom       { color: #b45309; }                    /* True / False / None */
+.cell-editor .cm-s-default .cm-operator   { color: #0f766e; }
+.cell-editor .cm-s-default .cm-meta       { color: #0f766e; }                    /* @デコレータ */
+.cell-editor .cm-s-default .cm-comment    { color: #6b727c; font-style: italic; }
+.cell-editor .cm-s-default .cm-variable   { color: var(--ink); }
+.cell-editor .cm-s-default .cm-variable-2 { color: #a626a4; font-style: italic; } /* self / cls */
+.cell-editor .cm-s-default .cm-error      { color: var(--color-red); }
+
+/* 括弧 ( ) [ ] { } を入れ子の深さごとに色分けする（6色で循環）。
+   対応する開き括弧と閉じ括弧が同じ色になるので、対応関係を目で追える。
+   クラスは js/app.notebook.js の python-hiroba モードが付与する。 */
+.cell-editor .cm-bracket-d0 { color: #c2410c; font-weight: 600; }
+.cell-editor .cm-bracket-d1 { color: #7c3aed; font-weight: 600; }
+.cell-editor .cm-bracket-d2 { color: #0e7490; font-weight: 600; }
+.cell-editor .cm-bracket-d3 { color: #be185d; font-weight: 600; }
+.cell-editor .cm-bracket-d4 { color: #4d7c0f; font-weight: 600; }
+.cell-editor .cm-bracket-d5 { color: #57534e; font-weight: 600; }
 /* コードセル編集中、CodeMirror 内部（入力用 textarea 等）にフォーカス枠を出さない。
    セルの強調は外枠（.cell-focused）だけで十分。スマホのタッチ操作で
    textarea:focus-visible のアウトラインが内側に二重表示されるのを防ぐ。 */
@@ -1863,12 +1891,23 @@ body {
 .cell-text-display.is-media:hover { background: #f4fbfc; }
 .cell-text-display.is-media img { margin: 0 auto; transition: transform .15s ease; }
 .cell-text-display.is-media:hover img { transform: scale(1.01); }
-/* 画像だけのテキストセルに重ねる「スライドに変換」チップ（ホバー/フォーカスで出現） */
-.cell-text-display.is-media { position: relative; }
-.media-to-slide-chip {
+/* テキストセルに重ねるチップ（「編集」／画像だけのセルは「スライドに変換」）。
+   ふだんは隠れていて、ホバー・フォーカスで出現する。 */
+.cell-text-display { position: relative; }
+.cell-chip-row {
   position: absolute;
-  top: 20px;
-  right: 28px;
+  top: 12px;
+  right: 14px;
+  z-index: 2;
+  display: flex;
+  gap: 6px;
+}
+.cell-chip-row:empty { display: none; }
+.cell-edit-chip,
+.media-to-slide-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 5px 12px;
   border-radius: 999px;
   border: 1px solid var(--line);
@@ -1877,14 +1916,23 @@ body {
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 600;
+  line-height: 1;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   opacity: 0;
   transition: opacity 0.15s ease, color 0.15s, border-color 0.15s;
 }
+.cell-text-display:hover .cell-edit-chip,
+.cell-text-display:focus-visible .cell-edit-chip,
+.cell-edit-chip:focus-visible,
 .cell-text-display.is-media:hover .media-to-slide-chip,
 .media-to-slide-chip:focus-visible { opacity: 1; }
+.cell-edit-chip:hover,
 .media-to-slide-chip:hover { color: var(--accent); border-color: var(--accent); }
+/* タッチ端末はホバーが無いので常に表示する（編集の入り口が見えなくなるのを防ぐ） */
+@media (hover: none) {
+  .cell-edit-chip, .media-to-slide-chip { opacity: 1; }
+}
 /* ライブラリ読み込み中の表示 */
 .output-loading-pkg {
   display: flex;
@@ -2871,8 +2919,10 @@ select:focus-visible,
 [data-theme="dark"] .cell-editor .cm-s-default .cm-number   { color: #f78c6c; }
 [data-theme="dark"] .cell-editor .cm-s-default .cm-def      { color: #82aaff; }
 [data-theme="dark"] .cell-editor .cm-s-default .cm-variable { color: var(--ink); }
-[data-theme="dark"] .cell-editor .cm-s-default .cm-variable-2 { color: #addb67; }
-[data-theme="dark"] .cell-editor .cm-s-default .cm-property { color: #addb67; }
+/* self / cls はキーワード寄りの紫。文字列の緑と紛れないようにする */
+[data-theme="dark"] .cell-editor .cm-s-default .cm-variable-2 { color: #c792ea; font-style: italic; }
+/* メソッド名は青、文字列は緑。以前はどちらも緑系で見分けにくかった */
+[data-theme="dark"] .cell-editor .cm-s-default .cm-property { color: #82aaff; }
 [data-theme="dark"] .cell-editor .cm-s-default .cm-operator { color: #89ddff; }
 [data-theme="dark"] .cell-editor .cm-s-default .cm-comment  { color: #7d8799; }
 [data-theme="dark"] .cell-editor .cm-s-default .cm-string   { color: #c3e88d; }
@@ -2881,6 +2931,13 @@ select:focus-visible,
 [data-theme="dark"] .cell-editor .cm-s-default .cm-builtin  { color: #ffcb6b; }
 [data-theme="dark"] .cell-editor .cm-s-default .cm-bracket  { color: #a6accd; }
 [data-theme="dark"] .cell-editor .cm-s-default .cm-error    { color: #f0705f; }
+/* 括弧の入れ子（ダークテーマ） */
+[data-theme="dark"] .cell-editor .cm-bracket-d0 { color: #ffb86c; }
+[data-theme="dark"] .cell-editor .cm-bracket-d1 { color: #d6a2ff; }
+[data-theme="dark"] .cell-editor .cm-bracket-d2 { color: #67e8f9; }
+[data-theme="dark"] .cell-editor .cm-bracket-d3 { color: #ff9ec0; }
+[data-theme="dark"] .cell-editor .cm-bracket-d4 { color: #bde86a; }
+[data-theme="dark"] .cell-editor .cm-bracket-d5 { color: #b9c2cf; }
 [data-theme="dark"] .cell-editor .CodeMirror span.CodeMirror-matchingbracket {
   color: #4cc272;
   background: rgba(76,194,114,0.15);
@@ -2925,6 +2982,12 @@ select:focus-visible,
 /* ---------- テキストセル ---------- */
 [data-theme="dark"] .cell-text-display:hover { background: #1c2127; }
 [data-theme="dark"] .cell-text-display.is-media:hover { background: #17222a; }
+[data-theme="dark"] .cell-edit-chip,
+[data-theme="dark"] .media-to-slide-chip {
+  background: rgba(30,36,43,0.94);
+  border-color: var(--line);
+  color: var(--ink-2);
+}
 [data-theme="dark"] .cell-text-editor textarea,
 [data-theme="dark"] .text-editor-hint { background: #10242b; }
 [data-theme="dark"] .media-to-slide-chip { background: rgba(25,30,36,0.92); }

@@ -88,7 +88,7 @@ function loadIpynb(json) {
     const src = Array.isArray(c.source) ? c.source.join('') : (c.source || '');
     // PyHiroba独自メタデータ（折りたたみ状態・セル種別）を読み込む
     const pyMeta = (c.metadata && c.metadata.pyhiroba) || {};
-    const collapsed = !!pyMeta.collapsed;
+    const collapsed = readCollapsedMeta(c.metadata, pyMeta);
     if (c.cell_type === 'code') {
       cells.push({ id: nextId++, type: 'code', content: src, slides: [], collapsed });
     } else if (c.cell_type === 'markdown') {
@@ -115,6 +115,26 @@ function loadIpynb(json) {
  * 元の種別へ復元する。ただし Colab 等で本文が書き足されていた場合は、
  * 内容を失わないようテキストセルのまま読み込む（安全側）。
  */
+/**
+ * セルを「最初から折りたたんだ状態」で開くかどうかをメタデータから判定する。
+ * PyHiroba独自キーに加えて、Colab / JupyterLab / Jupyter拡張が書き出す
+ * 見出し折りたたみのキーも受け付ける（他ツールで作った教材もそのまま使えるように）。
+ */
+function readCollapsedMeta(meta, pyMeta) {
+  if (pyMeta && pyMeta.collapsed) return true;
+  if (!meta) return false;
+  return !!(meta.heading_collapsed                 // Jupyter拡張 Collapsible Headings
+    || meta['jp-MarkdownHeadingCollapsed']         // JupyterLab
+    || (meta.jupyter && meta.jupyter.source_hidden));
+}
+
+/** 折りたたみ状態を、他ツールでも認識できる形も含めて書き出す */
+function writeCollapsedMeta(metadata) {
+  metadata.heading_collapsed = true;
+  metadata['jp-MarkdownHeadingCollapsed'] = true;
+  return metadata;
+}
+
 function markdownToCell(src, cellType, collapsed) {
   if (cellType === 'image' || cellType === 'slide') {
     const mediaOnly = !src.trim() || isMediaOnlyMarkdown(src);
@@ -336,6 +356,7 @@ function buildIpynbJson() {
       if (cell.collapsed) pyMeta.collapsed = true;
       if (cell.type === 'image' || cell.type === 'slide') pyMeta.cellType = cell.type;
       const metadata = Object.keys(pyMeta).length ? { pyhiroba: pyMeta } : {};
+      if (cell.collapsed) writeCollapsedMeta(metadata);
       if (cell.type === 'code') {
         return {
           cell_type: 'code',

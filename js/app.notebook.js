@@ -343,6 +343,63 @@ function focusCell(id) {
 }
 
 // ============================================================
+// シンタックスハイライト（括弧の入れ子を色分けするモード）
+// ============================================================
+/** 括弧の深さを何色で循環させるか（CSSの .cm-bracket-d0〜d5 と対応） */
+const BRACKET_DEPTH_COLORS = 6;
+let codeModeName = 'python';
+let codeModeReady = false;
+
+/**
+ * python モードを包んで、括弧 ( ) [ ] { } に深さごとのクラスを足したモードを登録する。
+ * 例: 一番外side の ( は cm-punctuation cm-bracket-d0、その中の [ は d1 …と循環する。
+ * 対応する開き括弧と閉じ括弧が同じ色になるので、入れ子が目で追えるようになる。
+ * 登録に失敗した場合は素の python モードのままにする（ハイライトが消えるより安全）。
+ */
+function ensureCodeMode() {
+  if (codeModeReady) return codeModeName;
+  codeModeReady = true;
+  if (typeof CodeMirror === 'undefined' || !CodeMirror.defineMode || !CodeMirror.getMode) return codeModeName;
+  try {
+    CodeMirror.defineMode('python-hiroba', (config, parserConfig) => {
+      const inner = CodeMirror.getMode(config, Object.assign({}, parserConfig, { name: 'python' }));
+      if (!inner || inner.name === 'null') return inner;
+      // python モードは括弧に style を付けない（null を返す）ので、深さのクラスだけを足す
+      const withDepth = (style, d) => {
+        const n = ((d % BRACKET_DEPTH_COLORS) + BRACKET_DEPTH_COLORS) % BRACKET_DEPTH_COLORS;
+        return (style ? style + ' ' : '') + 'bracket-d' + n;
+      };
+      return {
+        startState: () => ({ inner: CodeMirror.startState(inner), depth: 0 }),
+        copyState: s => ({ inner: CodeMirror.copyState(inner, s.inner), depth: s.depth }),
+        token: (stream, state) => {
+          const style = inner.token(stream, state.inner);
+          const text = stream.current();
+          // 文字列・コメントの中の括弧は inner が string/comment を返すので色分けしない
+          const plain = style == null || (style.indexOf('string') < 0 && style.indexOf('comment') < 0);
+          if (text.length === 1 && plain) {
+            if (text === '(' || text === '[' || text === '{') return withDepth(style, state.depth++);
+            if (text === ')' || text === ']' || text === '}') {
+              state.depth = Math.max(0, state.depth - 1);
+              return withDepth(style, state.depth);
+            }
+          }
+          return style;
+        },
+        indent: (state, textAfter, line) =>
+          inner.indent ? inner.indent(state.inner, textAfter, line) : CodeMirror.Pass,
+        innerMode: state => ({ state: state.inner, mode: inner }),
+        electricInput: inner.electricInput,
+        lineComment: inner.lineComment || '#',
+        fold: inner.fold
+      };
+    });
+    codeModeName = 'python-hiroba';
+  } catch (_) { /* 失敗時は素の python モードを使う */ }
+  return codeModeName;
+}
+
+// ============================================================
 // レンダリング
 // ============================================================
 function renderAll() {
@@ -373,7 +430,7 @@ function renderAll() {
       const textarea = wrapper.querySelector(`.cell-code-ta[data-id="${cell.id}"]`);
       if (textarea) {
         const editor = CodeMirror.fromTextArea(textarea, {
-          mode: 'python',
+          mode: ensureCodeMode(),
           lineNumbers: true,
           indentUnit: 4,
           tabSize: 4,
@@ -469,9 +526,52 @@ function computeCollapsedHidden() {
 function toggleCollapse(id) {
   const cell = cells.find(c => c.id === id);
   if (!cell) return;
+
+  // 折りたたみ前の「見出しセルが画面のどの高さにあるか」を覚えておく。
+  // renderAll() は全セルを作り直すため、そのままだと上のセルの高さが変わって
+  // 表示位置が飛んでしまう。描画後に同じ高さへ戻すことでズレを防ぐ。
+  const before = getCellViewportTop(id);
+
   cell.collapsed = !cell.collapsed;
   markDirty();
   renderAll();
+
+  if (before !== null) {
+    // 直前に自分で合わせたスクロール位置。ここから動いていたら
+    // 「利用者が自分でスクロールした」と判断して、それ以上は補正しない。
+    let expected = null;
+    const restore = () => {
+      if (expected !== null && Math.abs(window.scrollY - expected) > 2) return;
+      const after = getCellViewportTop(id);
+      if (after === null) return;
+      const diff = after - before;
+      if (Math.abs(diff) > 1) scrollByInstant(diff);
+      expected = window.scrollY;
+    };
+    restore();
+    // 数式（MathJax）や出力の画像は描画が遅れて高さが変わるため、少しあとにも補正する
+    requestAnimationFrame(restore);
+    setTimeout(restore, 250);
+  }
+}
+
+/** セルの上端が画面上端から何pxの位置にあるかを返す（見つからなければ null） */
+function getCellViewportTop(id) {
+  const el = document.querySelector(`#notebook-container .cell[data-cell-id="${id}"]`);
+  return el ? el.getBoundingClientRect().top : null;
+}
+
+/**
+ * 画面を dy px だけ即座にスクロールする。
+ * このサイトは scroll-behavior: smooth を使っているため、位置の補正で
+ * アニメーションが走らないよう instant を明示する。
+ */
+function scrollByInstant(dy) {
+  try {
+    window.scrollBy({ top: dy, left: 0, behavior: 'instant' });
+  } catch (_) {
+    window.scrollBy(0, dy);   // instant 未対応のブラウザ向け
+  }
 }
 
 function buildCellHTML(cell, idx) {
@@ -507,7 +607,7 @@ function buildCellHTML(cell, idx) {
   return `
     <div class="cell ${toolbarClass}${collapsible ? ' is-collapse-header' : ''}" data-cell-id="${cell.id}">
       ${collapsible ? `
-      <button class="cell-collapse-btn${isCollapsed ? ' is-collapsed' : ''}" onclick="event.stopPropagation(); toggleCollapse(${cell.id})" title="${isCollapsed ? '展開する' : '折りたたむ'}" aria-label="${isCollapsed ? 'このセクションを展開' : 'このセクションを折りたたむ'}" aria-expanded="${isCollapsed ? 'false' : 'true'}">
+      <button class="cell-collapse-btn${isCollapsed ? ' is-collapsed' : ''}" onclick="event.stopPropagation(); toggleCollapse(${cell.id})" title="${isCollapsed ? '展開する' : '折りたたむ（保存すると、次に開いたときも閉じた状態になります）'}" aria-label="${isCollapsed ? 'このセクションを展開' : 'このセクションを折りたたむ'}" aria-expanded="${isCollapsed ? 'false' : 'true'}">
         <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>
       </button>` : ''}
       <div class="cell-toolbar" onmousedown="event.preventDefault()">
@@ -698,24 +798,30 @@ function buildTextContent(cell) {
   const media = hasContent && isMediaOnlyMarkdown(cell.content);
   const rendered = hasContent
     ? renderMarkdown(cell.content)
-    : '<p class="placeholder">ここをクリック、または Enter キーで編集できます（Markdown対応）</p>';
-  // 画像だけのセルはクリックで拡大表示、それ以外はクリックで編集
+    : '<p class="placeholder">「編集」ボタンかダブルクリック、または Enter キーで編集できます（Markdown対応）</p>';
+  // 画像だけのセルはクリックで拡大表示、それ以外はダブルクリックで編集。
+  // 誤って一度クリックしただけで編集モードに入るのを防ぐため、単クリックでは編集しない。
   const dispClass = media ? 'cell-text-display is-media' : 'cell-text-display';
-  const onClick   = media ? `openTextImage(${cell.id})` : `startTextEdit(${cell.id})`;
-  const kbHint    = media ? 'Enterキーで画像を拡大' : 'Enterキーで編集';
-  // 画像だけのセルには「スライドに変換」チップを重ねて表示する（ホバー/フォーカスで出現）。
-  // テキストセルのツールバーは非編集時は隠れており、画像だけのセルはクリックで拡大＝
-  // 編集モードに入れないため、スライド変換の入り口はこのチップに置く。
+  const kbHint    = media ? 'Enterキーで画像を拡大' : 'ダブルクリックまたはEnterキーで編集';
+  const onEnter   = media ? `openTextImage(${cell.id})` : `startTextEdit(${cell.id})`;
+  // 表示部に重ねるチップ（ホバー/フォーカスで出現）。
+  // テキストセルのツールバーは非編集時は隠れているため、編集の入り口はこのチップに置く。
+  // 画像だけのセルは中身が巨大なデータURIになりがちで、テキスト編集には向かないため付けない
+  const editChip = media ? '' : `
+      <button class="cell-edit-chip" title="このセルを編集" aria-label="このテキストセルを編集"
+        onclick="event.stopPropagation();startTextEdit(${cell.id})"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>編集</button>`;
+  // 画像だけのセルは編集モードに入れないため、スライド変換の入り口もチップに置く。
   const toSlideChip = media ? `
       <button class="media-to-slide-chip" title="画像をスライドセルに変換"
         onclick="event.stopPropagation();changeCellType(${cell.id},'slide')">🎞 スライドに変換</button>` : '';
+  const chips = `<div class="cell-chip-row">${editChip}${toSlideChip}</div>`;
   // tabindex/onkeydown でキーボードからも編集開始できるようにする。
   // 中のリンク等にフォーカスがある場合は誤発火しないよう currentTarget を確認。
   return `
     <div class="${dispClass}" id="text-disp-${cell.id}" tabindex="0" title="${kbHint}"
-      onclick="${onClick}"
-      onkeydown="if(event.key==='Enter'&&event.target===event.currentTarget){event.preventDefault();${onClick};}">
-      ${rendered}${toSlideChip}
+      ${media ? `onclick="openTextImage(${cell.id})"` : `ondblclick="startTextEdit(${cell.id})"`}
+      onkeydown="if(event.key==='Enter'&&event.target===event.currentTarget){event.preventDefault();${onEnter};}">
+      ${rendered}${chips}
     </div>
     <div class="cell-text-editor hidden" id="text-edit-${cell.id}">
       <textarea
