@@ -457,9 +457,17 @@
     var previewRoot = document.getElementById('preview');
     if (previewRoot) {
       previewRoot.addEventListener('click', function (e) {
-        if (e.target.closest && e.target.closest('.v3-nb-btn-primary, .v3-nb-btn-ghost, .v3-nb-cell-run')) {
-          // 「ご利用方法」へ確実に移動する（アンカー方式）。スムーズさは CSS の scroll-behavior で付与。
-          window.location.hash = 'faq';
+        if (!(e.target.closest && e.target.closest('.v3-nb-btn-primary, .v3-nb-btn-ghost, .v3-nb-cell-run'))) return;
+        var faq = document.getElementById('faq');
+        if (!faq) { window.location.hash = 'faq'; return; }
+        /* location.hash の代入だけだと、すでに #faq のときブラウザが何もしないため
+           2回目以降のクリックが効かない。要素へ直接スクロールしてから URL を合わせる。 */
+        /* behavior は指定せず、CSS の scroll-behavior に任せる（将来 prefers-reduced-motion
+           に対応したときに、この処理を直さなくても追従できる） */
+        faq.scrollIntoView({ block: 'start' });
+        if (window.location.hash !== '#faq') {
+          if (window.history && window.history.pushState) window.history.pushState(null, '', '#faq');
+          else window.location.hash = 'faq';
         }
       });
     }
