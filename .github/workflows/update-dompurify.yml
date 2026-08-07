@@ -1,72 +1,240 @@
 name: Update DOMPurify
 
 # DOMPurify（XSS無害化ライブラリ）を毎週、最新の 3.x 系へ自動更新する。
-# 自ホスト（vendor/dompurify/）方式のため、新バージョンのファイルをダウンロードして
-# 差し替え、nb/index.html の参照ファイル名（バージョン入り）を更新し、
-# 変更があれば自動コミット＆プッシュする。
-# メジャー更新（4.x など）はAPI互換性の都合で自動対象外（手動レビュー）。
+# 自ホスト（vendor/dompurify/）方式のため、新バージョンのファイルを取得して差し替え、
+# nb/index.html の参照ファイル名（バージョン入り）を更新し、自動コミット＆プッシュする。
+#
+# この自動反映は「デプロイ方針（開発→確認→許可→本番）」の唯一の例外である
+# （CLAUDE.md 参照・2026-08-07 運営者決定）。無害化ライブラリは更新の鮮度そのものが
+# 防御であるため、人の承認は挟まず、代わりに次の機械検証（検問）を全て通過した
+# 場合のみ反映する:
+#   1. 冷却期間  : npm 公開から 72 時間以上経過した版のみ採用する。乗っ取り版は
+#                  通常この間に発覚し deprecated / unpublish されるため、「出たての版」を
+#                  掴まないだけで危険版を踏む確率を大きく下げられる
+#   2. 二重照合  : npm 本家 tarball（レジストリ記載の sha512 で検証）と jsDelivr の
+#                  配信ファイルの SHA-256 が完全一致することを確認（配信網の改ざん検知）
+#   3. 自己テスト: 新ファイルを実際に動かし、代表的な XSS サンプルを除去できることを
+#                  確認してから反映（壊れた版・無害化しない版を排除）
+#   4. 事後通知  : 反映したら Issue とジョブサマリに記録を残す（無音で変えない）
+# 検問に失敗するとワークフロー自体が失敗し、GitHub から失敗通知が届く。
+# メジャー更新（4.x など）は API 互換性の都合で自動対象外（手動レビュー）。
+# ダウングレード（現行より古い版への差し替え）は行わない。
 
 on:
   schedule:
-    - cron: '0 0 * * 1'   # 毎週月曜 00:00 UTC
-  workflow_dispatch: {}    # 手動実行も可能
+    - cron: '0 0 * * 1'   # 毎週月曜 00:00 UTC（本番のみ）
+  workflow_dispatch:       # 手動実行。既定は「検証のみ」（dry_run=true）
+    inputs:
+      dry_run:
+        description: '検証のみ行い、コミット・push・通知はしない'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
+  issues: write   # 事後通知（Issue の自動起票）用
 
 jobs:
   update:
-    # 本番リポジトリ専用: ミラー側での自動コミットによる履歴分岐を防ぐ
-    if: github.repository == 'matsuolab/pyhiroba'
+    # 定期実行は本番リポジトリ専用（ミラー側での自動コミットによる履歴分岐を防ぐ）。
+    # 開発ミラーでは手動実行（workflow_dispatch）のみ許可し、検問ロジックのテストに使う。
+    if: >-
+      github.repository == 'matsuolab/pyhiroba' ||
+      (github.repository == 'funakoshi-takehiro/pyhiroba' && github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
+    env:
+      MIN_AGE_HOURS: 72        # 冷却期間。これより新しい公開版は今回は採用しない
+      JSDOM_VERSION: 24.1.1    # 自己テスト用 DOM 実装（CI 内のみで使用・配布物には含めない）
     steps:
       - name: Checkout
         # サプライチェーン対策としてコミットSHAで固定（Dependabotが更新を自動PR）
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
-      - name: Bump DOMPurify (latest 3.x, self-hosted)
+      - name: 更新対象バージョンの解決（3.x・冷却期間経過・非deprecated）
+        id: resolve
         run: |
           set -euo pipefail
           DIR=vendor/dompurify
 
-          # 現在のバージョンをファイル名から取得（例: purify-3.4.12.min.js）
           CUR_FILE=$(ls "$DIR"/purify-*.min.js | head -1)
           CUR_VER=$(echo "$CUR_FILE" | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
-          echo "current version: $CUR_VER"
+          echo "現在のバージョン: $CUR_VER"
 
-          # 最新の 3.x 系バージョンを npm レジストリから取得
-          NEW_VER=$(curl -s https://registry.npmjs.org/dompurify \
-            | grep -oE '"version":"3\.[0-9]+\.[0-9]+"' \
-            | grep -oE '3\.[0-9]+\.[0-9]+' | sort -V | tail -1)
-          echo "latest 3.x:      $NEW_VER"
+          META=$(curl -fsSL https://registry.npmjs.org/dompurify)
+          CUTOFF=$(date -u -d "$MIN_AGE_HOURS hours ago" +%Y-%m-%dT%H:%M:%S.000Z)
+          echo "冷却期間の基準時刻: $CUTOFF（これより前に公開された版のみ採用）"
+
+          # 3.x系・冷却期間経過・.versions に実在（unpublish されていない）・
+          # deprecated でない、を全て満たす最大バージョンを選ぶ
+          NEW_VER=$(echo "$META" | jq -r --arg cutoff "$CUTOFF" '
+            .time as $t
+            | .versions as $v
+            | [ $t | to_entries[]
+                | select(.key | test("^3\\.[0-9]+\\.[0-9]+$"))
+                | select(.value < $cutoff)
+                | select($v[.key] != null)
+                | select(($v[.key].deprecated // null) == null)
+              ]
+            | sort_by(.key | split(".") | map(tonumber))
+            | (last.key // empty)')
+          echo "採用候補: ${NEW_VER:-（該当なし）}"
 
           if [ -z "$NEW_VER" ]; then
-            echo "最新バージョンを解決できませんでした"; exit 1
+            echo "冷却期間を満たす採用可能な 3.x 版がありません。今回は更新なし。"; exit 0
           fi
           if [ "$NEW_VER" = "$CUR_VER" ]; then
             echo "すでに最新です。更新なし。"; exit 0
           fi
+          # ダウングレード防止（版の取り下げ等で「最新」が現行より古くなった場合は反映しない）
+          if [ "$(printf '%s\n%s\n' "$CUR_VER" "$NEW_VER" | sort -V | tail -1)" != "$NEW_VER" ]; then
+            echo "::error::採用候補 $NEW_VER が現行 $CUR_VER より古いため中止します（ダウングレード防止）"
+            exit 1
+          fi
 
-          # 新バージョンをダウンロードして差し替え、nb/index.html（アプリ本体）の参照ファイル名を更新
-          curl -sSL "https://cdn.jsdelivr.net/npm/dompurify@${NEW_VER}/dist/purify.min.js" \
-            -o "$DIR/purify-${NEW_VER}.min.js"
-          git rm -q "$DIR/purify-${CUR_VER}.min.js"
+          PUBLISHED=$(echo "$META" | jq -r --arg v "$NEW_VER" '.time[$v]')
+          INTEGRITY=$(echo "$META" | jq -r --arg v "$NEW_VER" '.versions[$v].dist.integrity // empty')
+          if [ -z "$INTEGRITY" ]; then
+            echo "::error::レジストリに tarball の integrity 情報がありません（異常のため中止）"
+            exit 1
+          fi
+          {
+            echo "cur_ver=$CUR_VER"
+            echo "new_ver=$NEW_VER"
+            echo "published=$PUBLISHED"
+            echo "tarball_integrity=$INTEGRITY"
+            echo "proceed=1"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: 二重取得と照合（npm本家とjsDelivrの一致確認）
+        if: steps.resolve.outputs.proceed == '1'
+        id: fetch
+        env:
+          NEW_VER: ${{ steps.resolve.outputs.new_ver }}
+          WANT_INTEGRITY: ${{ steps.resolve.outputs.tarball_integrity }}
+        run: |
+          set -euo pipefail
+          WORK=$(mktemp -d)
+
+          # 取得元1: npm 本家の tarball（レジストリ記載の sha512 で tarball 自体を検証）
+          curl -fsSL "https://registry.npmjs.org/dompurify/-/dompurify-${NEW_VER}.tgz" -o "$WORK/pkg.tgz"
+          GOT="sha512-$(openssl dgst -sha512 -binary "$WORK/pkg.tgz" | base64 -w0)"
+          if [ "$WANT_INTEGRITY" != "$GOT" ]; then
+            echo "::error::npm tarball の integrity が一致しません（改ざんの疑いのため中止）"
+            exit 1
+          fi
+          tar -xzf "$WORK/pkg.tgz" -C "$WORK" package/dist/purify.min.js
+
+          # 取得元2: jsDelivr（利用者へ実際に配信されるのと同じ配布網）
+          curl -fsSL "https://cdn.jsdelivr.net/npm/dompurify@${NEW_VER}/dist/purify.min.js" -o "$WORK/jsdelivr.min.js"
+
+          NPM_SHA=$(sha256sum "$WORK/package/dist/purify.min.js" | cut -d' ' -f1)
+          CDN_SHA=$(sha256sum "$WORK/jsdelivr.min.js" | cut -d' ' -f1)
+          echo "npm      sha256: $NPM_SHA"
+          echo "jsDelivr sha256: $CDN_SHA"
+          if [ "$NPM_SHA" != "$CDN_SHA" ]; then
+            echo "::error::npm と jsDelivr のファイルが一致しません（配信網改ざんの疑いのため中止）"
+            exit 1
+          fi
+
+          cp "$WORK/package/dist/purify.min.js" "vendor/dompurify/purify-${NEW_VER}.min.js"
+          echo "sha256=$NPM_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: 自己テスト（新しい版が実際に無害化することを確認）
+        if: steps.resolve.outputs.proceed == '1'
+        env:
+          NEW_VER: ${{ steps.resolve.outputs.new_ver }}
+        run: |
+          set -euo pipefail
+          npm install --no-save --ignore-scripts --no-audit --no-fund "jsdom@${JSDOM_VERSION}" > /dev/null
+          node -e '
+            const { JSDOM } = require("jsdom");
+            const createDOMPurify = require("./vendor/dompurify/purify-" + process.env.NEW_VER + ".min.js");
+            const DOMPurify = createDOMPurify(new JSDOM("").window);
+            if (DOMPurify.version !== process.env.NEW_VER) {
+              console.error("バージョン不一致: " + DOMPurify.version); process.exit(1);
+            }
+            const dirty = "<p>ok</p><img src=x onerror=alert(1)><script>alert(2)</script><a href=\"javascript:alert(3)\">x</a>";
+            const clean = DOMPurify.sanitize(dirty);
+            console.log("無害化結果: " + clean);
+            if (!/<p>ok<\/p>/.test(clean)) { console.error("正常な要素まで消えています"); process.exit(1); }
+            if (/onerror|<script|javascript:/i.test(clean)) { console.error("攻撃サンプルが残っています"); process.exit(1); }
+            console.log("自己テスト OK (DOMPurify " + DOMPurify.version + ")");
+          '
+          rm -rf node_modules package.json package-lock.json
+
+      - name: 参照の差し替え（vendorファイルと nb/index.html）
+        if: steps.resolve.outputs.proceed == '1'
+        env:
+          CUR_VER: ${{ steps.resolve.outputs.cur_ver }}
+          NEW_VER: ${{ steps.resolve.outputs.new_ver }}
+        run: |
+          set -euo pipefail
+          git rm -q "vendor/dompurify/purify-${CUR_VER}.min.js"
           sed -i "s#purify-${CUR_VER}.min.js#purify-${NEW_VER}.min.js#" nb/index.html
 
           # 参照の書き換えが実際に行われたか検証（空振りのまま旧ファイルを消すと
           # アプリが壊れるため、置換できていなければジョブを失敗させる）
           grep -q "purify-${NEW_VER}.min.js" nb/index.html || {
-            echo "ERROR: nb/index.html の参照を更新できませんでした"; exit 1; }
+            echo "::error::nb/index.html の参照を更新できませんでした"; exit 1; }
 
-          echo "CHANGED=1" >> "$GITHUB_ENV"
-          echo "NEW_VER=$NEW_VER" >> "$GITHUB_ENV"
+      - name: dry-run 結果の出力（反映なしで終了）
+        if: >-
+          steps.resolve.outputs.proceed == '1' &&
+          github.event_name == 'workflow_dispatch' && inputs.dry_run == true
+        env:
+          CUR_VER: ${{ steps.resolve.outputs.cur_ver }}
+          NEW_VER: ${{ steps.resolve.outputs.new_ver }}
+          PUBLISHED: ${{ steps.resolve.outputs.published }}
+          SHA256: ${{ steps.fetch.outputs.sha256 }}
+        run: |
+          {
+            echo "## DOMPurify 更新 dry-run（検証のみ・反映していません）"
+            echo "- ${CUR_VER} → ${NEW_VER}（npm 公開: ${PUBLISHED}）"
+            echo "- SHA-256: \`${SHA256}\`"
+            echo "- 冷却期間・二重照合・自己テスト・参照差し替え検証: すべて通過"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "dry-run のためここで終了します（コミット・push・通知なし）"
 
-      - name: Commit & push
-        if: env.CHANGED == '1'
+      - name: コミットとpush
+        if: >-
+          steps.resolve.outputs.proceed == '1' &&
+          (github.event_name == 'schedule' || inputs.dry_run != true)
+        env:
+          CUR_VER: ${{ steps.resolve.outputs.cur_ver }}
+          NEW_VER: ${{ steps.resolve.outputs.new_ver }}
+          PUBLISHED: ${{ steps.resolve.outputs.published }}
+          SHA256: ${{ steps.fetch.outputs.sha256 }}
         run: |
           set -euo pipefail
           git config user.name "Chakeo123"
           git config user.email "funakoshi@freinweb.com"
           git add -A vendor/dompurify nb/index.html
-          git commit -m "DOMPurifyを${NEW_VER}に自動更新（自ホスト・ファイル差し替え）"
+          git commit \
+            -m "DOMPurifyを${NEW_VER}に自動更新（機械検証を通過・自ホスト差し替え）" \
+            -m "旧: ${CUR_VER} → 新: ${NEW_VER}（npm公開: ${PUBLISHED}）" \
+            -m "SHA-256: ${SHA256}" \
+            -m "検証: 冷却期間(${MIN_AGE_HOURS}時間)・npm/jsDelivr二重照合・無害化自己テストを全て通過"
           git push
+
+      - name: 事後通知（Issueとジョブサマリ）
+        if: >-
+          steps.resolve.outputs.proceed == '1' &&
+          (github.event_name == 'schedule' || inputs.dry_run != true)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CUR_VER: ${{ steps.resolve.outputs.cur_ver }}
+          NEW_VER: ${{ steps.resolve.outputs.new_ver }}
+          PUBLISHED: ${{ steps.resolve.outputs.published }}
+          SHA256: ${{ steps.fetch.outputs.sha256 }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "## DOMPurify を自動更新しました"
+            echo "- ${CUR_VER} → ${NEW_VER}（npm 公開: ${PUBLISHED}）"
+            echo "- SHA-256: \`${SHA256}\`"
+            echo "- 検証: 冷却期間・二重照合・自己テストを全て通過"
+          } >> "$GITHUB_STEP_SUMMARY"
+          BODY=$(printf 'DOMPurify（XSS無害化ライブラリ）を自動更新しました。\n\n- 旧: %s → 新: %s\n- npm 公開日時: %s\n- SHA-256: %s\n- 機械検証（冷却期間・npm/jsDelivr二重照合・無害化自己テスト）: すべて通過\n- 実行ログ: %s\n\nこの自動反映はデプロイ方針の唯一の例外です（CLAUDE.md 参照）。内容に問題がある場合は該当コミットを revert してください。' \
+            "$CUR_VER" "$NEW_VER" "$PUBLISHED" "$SHA256" "$RUN_URL")
+          gh issue create --title "DOMPurifyを${NEW_VER}に自動更新しました" --body "$BODY" \
+            || echo "::warning::Issue を作成できませんでした（Issues が無効の可能性）。ジョブサマリには記録済みです。"
