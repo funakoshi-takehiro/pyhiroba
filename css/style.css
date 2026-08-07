@@ -1282,46 +1282,60 @@ body {
   pointer-events: none;
   transform: translateY(-8px);
 }
+.help-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.help-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+}
 .help-close {
-  float: right;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex-shrink: 0;
   background: none;
   border: 1px solid var(--line);
-  border-radius: var(--radius-md);
-  padding: 4px 8px;
+  border-radius: 999px;
+  padding: 5px 12px;
   font-family: var(--font-ui);
   font-size: 12px;
   cursor: pointer;
   color: var(--ink-3);
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.help-close:hover { background: var(--bg-2); }
+.help-close:hover { background: var(--bg-2); color: var(--ink); border-color: var(--ink-4); }
+.help-close svg { display: block; }
+/* セクション見出し（小さめの英字ラベル調。LPの FEATURE 表記と同じ雰囲気に揃える） */
 .help-content h3 {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.2px;
-  text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: 8px;
-  padding-left: 2px;
+  margin-bottom: 10px;
 }
-.help-table {
-  width: 100%;
-  border-collapse: collapse;
+.help-sec + .help-sec { margin-top: 22px; }
+/* 操作の一覧。枠線で囲まず、行の区切り線だけで軽く見せる */
+.help-list {
   font-size: 13px;
-  margin-bottom: 8px;
+  color: var(--ink-2);
 }
-.help-table th, .help-table td {
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  text-align: left;
+.help-list > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 7px 2px;
+  border-top: 1px solid var(--line-2);
 }
-.help-table th {
-  background: var(--color-code-bg);
-  font-weight: 600;
-  color: var(--ink-3);
-  font-size: 11px;
-  letter-spacing: 0.5px;
-}
+.help-list > div:first-child { border-top: none; padding-top: 0; }
+.help-list dt { flex: 0 0 auto; min-width: 96px; font-weight: 600; }
+.help-list dd { flex: 1 1 150px; margin: 0; color: var(--ink-3); line-height: 1.7; }
 .help-content kbd {
   display: inline-block;
   padding: 1px 5px;
@@ -1331,24 +1345,30 @@ body {
   font-size: 11px;
   font-family: var(--font-code);
 }
+.help-content p {
+  font-size: 13px;
+  color: var(--ink-3);
+  line-height: 1.75;
+  margin-bottom: 8px;
+}
 .help-content code {
   display: block;
   background: var(--color-code-bg);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  padding: 9px 12px;
   font-family: var(--font-code);
   font-size: 12px;
-  margin: 6px 0;
   line-height: 1.8;
   color: var(--accent-dk);
 }
 .help-content ul {
-  padding-left: 20px;
+  padding-left: 18px;
   font-size: 13px;
   color: var(--ink-2);
 }
-.help-content ul li { margin-bottom: 4px; line-height: 1.65; }
+.help-content ul li { margin-bottom: 6px; line-height: 1.75; }
+.help-content ul li:last-child { margin-bottom: 0; }
 
 /* ---------- メインコンテンツ ---------- */
 #main-content {

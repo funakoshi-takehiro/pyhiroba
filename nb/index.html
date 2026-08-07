@@ -60,7 +60,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../css/style.css?v=20260806b">
+  <link rel="stylesheet" href="../css/style.css?v=20260807b">
 
   <!-- 実行環境の読み込み失敗・非対応ブラウザ時の案内（同一オリジンで確実に表示できるようインライン化） -->
   <style>
@@ -315,27 +315,40 @@
   <!-- ===== ヘルプパネル ===== -->
   <div id="help-panel" class="hidden">
     <div class="help-content">
-      <button class="help-close" onclick="toggleHelp()">✕ 閉じる</button>
-      <h3>📖 使い方ガイド</h3>
-      <table class="help-table">
-        <tr><th>操作</th><th>方法</th></tr>
-        <tr><td>コードを実行</td><td>▶ 実行 ボタン　または　<kbd>Shift</kbd>+<kbd>Enter</kbd></td></tr>
-        <tr><td>新しいセルを追加</td><td>セル下の ＋ ボタン、または画面下のボタン</td></tr>
-        <tr><td>セルを削除</td><td>セル右上の ✕ ボタン</td></tr>
-        <tr><td>セルの順番を変える</td><td>↑ ↓ ボタン</td></tr>
-        <tr><td>テキストを確定</td><td><kbd>Shift</kbd>+<kbd>Enter</kbd>　または　<kbd>Esc</kbd></td></tr>
-        <tr><td>インデント（字下げ）</td><td><kbd>Tab</kbd> キー（スペース4つ分）</td></tr>
-        <tr><td>かっこを自動で閉じる</td><td>画面下の「入力補助」をオンにする（<code>(</code> を打つと <code>)</code> が入ります）</td></tr>
-      </table>
-      <h3 style="margin-top:16px;">📚 使えるライブラリ</h3>
-      <p>import 文を書くと自動で読み込みます：</p>
-      <code>numpy, pandas, matplotlib, scikit-learn, Pillow, random, math, ...</code>
-      <h3 style="margin-top:16px;">💡 ポイント</h3>
-      <ul>
-        <li>上のセルで作った変数は、下のセルでも使えます</li>
-        <li>グラフはセルの下に自動で表示されます</li>
-        <li>エラーが出たら日本語の説明を参考に直しましょう</li>
-      </ul>
+      <div class="help-head">
+        <h2 class="help-title">使い方</h2>
+        <button class="help-close" type="button" onclick="toggleHelp()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          閉じる
+        </button>
+      </div>
+
+      <section class="help-sec">
+        <h3>基本の操作</h3>
+        <dl class="help-list">
+          <div><dt>コードを実行</dt><dd><kbd>Shift</kbd>+<kbd>Enter</kbd>、または ▶ 実行</dd></div>
+          <div><dt>テキストを確定</dt><dd><kbd>Shift</kbd>+<kbd>Enter</kbd>、または <kbd>Esc</kbd></dd></div>
+          <div><dt>セルを追加</dt><dd>セルの下の ＋ ボタン</dd></div>
+          <div><dt>セルを削除</dt><dd>セル右上の ✕ ボタン</dd></div>
+          <div><dt>字下げ</dt><dd><kbd>Tab</kbd>（スペース4つ分）</dd></div>
+        </dl>
+      </section>
+
+      <section class="help-sec">
+        <h3>知っておくと安心</h3>
+        <ul>
+          <li>上のセルで作った変数は、下のセルでも使えます</li>
+          <li>エラーは、やさしい日本語のヒントで出ます</li>
+          <li>ノートは上の「ダウンロード」で保存できます</li>
+          <li>画面下の「入力補助」で、かっこを自動で閉じられます</li>
+        </ul>
+      </section>
+
+      <section class="help-sec">
+        <h3>使えるライブラリ</h3>
+        <p>import と書くだけで、自動的に読み込まれます。</p>
+        <code>numpy, pandas, matplotlib, scikit-learn, Pillow, random, math ...</code>
+      </section>
     </div>
   </div>
 
