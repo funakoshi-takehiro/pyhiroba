@@ -87,6 +87,9 @@ async function initApp() {
   // 外部リンククリック時の確認ガードを有効化
   initExternalLinkGuard();
 
+  // フッターの「入力補助」ボタンに、保存済みの設定（既定はオフ）を反映する
+  syncInputAssistButtons();
+
   // タブを閉じる/リロード/戻る時、未保存ならブラウザ標準の離脱警告を出す
   // （タブ閉じ等ではブラウザ仕様上カスタムUIは出せないため、標準ダイアログで代替）
   window.addEventListener('beforeunload', (e) => {

@@ -1,6 +1,40 @@
 'use strict';
 
 // ============================================================
+// 入力補助（かっこ・引用符の自動補完）
+// ============================================================
+// CodeMirror 公式アドオン closebrackets による入力支援。
+// 「(」を打つと「)」が自動で入る、閉じかっこを重ねて打つと重複せず通り抜ける、
+// ペアの間で Backspace すると両方消える、など。
+// 初期状態はオフ（従来どおりの挙動）。フッターの「入力補助」ボタンで切り替え、
+// 選択は localStorage に記憶する（theme.js と同じ方式）。
+const INPUT_ASSIST_KEY = 'pyhiroba-input-assist';
+
+/** 入力補助が有効か（明示的に 'on' が保存されているときだけ有効＝既定はオフ） */
+function isInputAssistOn() {
+  try { return localStorage.getItem(INPUT_ASSIST_KEY) === 'on'; } catch (_) { return false; }
+}
+
+/** フッターの「入力補助」ボタンの押下状態を、現在の設定に同期する */
+function syncInputAssistButtons() {
+  const on = isInputAssistOn();
+  document.querySelectorAll('.assist-toggle').forEach((btn) => {
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+/** フッターのボタンから呼ばれる：入力補助のオン/オフを切り替えて記憶する */
+function toggleInputAssist() {
+  const next = isInputAssistOn() ? 'off' : 'on';
+  try { localStorage.setItem(INPUT_ASSIST_KEY, next); } catch (_) { /* 記憶できなくても切替は行う */ }
+  // 開いている全セルのエディタへ即座に反映（再描画は不要）
+  Object.keys(editors).forEach((id) => {
+    try { editors[id].setOption('autoCloseBrackets', next === 'on'); } catch (_) { /* 破棄済みは無視 */ }
+  });
+  syncInputAssistButtons();
+}
+
+// ============================================================
 // セル管理
 // ============================================================
 
@@ -436,7 +470,9 @@ function renderAll() {
           tabSize: 4,
           lineWrapping: true,
           autofocus: false,
-          // コード補完は無効（要件より）
+          // 入力補助（かっこ・引用符の自動補完）。既定はオフで、フッターの
+          // 「入力補助」ボタンから切り替える。候補一覧を出すコード補完は無効のまま。
+          autoCloseBrackets: isInputAssistOn(),
           extraKeys: {
             'Shift-Enter': () => runCell(cell.id),
             // Esc でエディタからフォーカスを外す（Tabが字下げに使われ抜けられない

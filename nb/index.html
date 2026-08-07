@@ -72,6 +72,20 @@
     .loading-allowlist code { display: block; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.9; color: #eafaff; }
     .loading-retry { background: #fff; color: #01617a; border: none; border-radius: 999px; padding: 11px 26px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
     .loading-retry:hover { background: #eafaff; }
+
+    /* 入力補助トグル（この画面だけの機能なので、共通CSSではなくここに置く）。
+       見た目は隣のダークモード切替（.theme-toggle）を流用し、状態だけ上書きする。 */
+    .footer-toggles { display: inline-flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .assist-toggle .assist-state {
+      padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      background: var(--bg-2); color: var(--ink-3);
+    }
+    /* オンのときだけ枠と文字をアクセント色にして、ひと目で分かるようにする */
+    .assist-toggle[aria-pressed="true"] { border-color: var(--accent-border); color: var(--accent-dk); }
+    .assist-toggle[aria-pressed="true"] .assist-state { background: var(--accent-soft); color: var(--accent-dk); }
+    .assist-toggle .assist-on { display: none; }
+    .assist-toggle[aria-pressed="true"] .assist-on { display: inline; }
+    .assist-toggle[aria-pressed="true"] .assist-off { display: none; }
   </style>
 </head>
 <body>
@@ -193,11 +207,18 @@
         </div>
         <div class="v3-footer-bottom">
           <span>© 2026 東京大学 松尾・岩澤研究室</span>
+          <div class="footer-toggles">
+          <button class="theme-toggle assist-toggle" type="button" onclick="toggleInputAssist()" aria-pressed="false" title="かっこや引用符を自動で閉じる入力補助を切り替える">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4C6.5 7.5 6.5 16.5 9 20"/><path d="M15 4c2.5 3.5 2.5 12.5 0 16"/></svg>
+            入力補助
+            <span class="assist-state"><span class="assist-off">オフ</span><span class="assist-on">オン</span></span>
+          </button>
           <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
             <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
             <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             ダークモード
           </button>
+          </div>
         </div>
       </div>
     </footer>
@@ -304,6 +325,7 @@
         <tr><td>セルの順番を変える</td><td>↑ ↓ ボタン</td></tr>
         <tr><td>テキストを確定</td><td><kbd>Shift</kbd>+<kbd>Enter</kbd>　または　<kbd>Esc</kbd></td></tr>
         <tr><td>インデント（字下げ）</td><td><kbd>Tab</kbd> キー（スペース4つ分）</td></tr>
+        <tr><td>かっこを自動で閉じる</td><td>画面下の「入力補助」をオンにする（<code>(</code> を打つと <code>)</code> が入ります）</td></tr>
       </table>
       <h3 style="margin-top:16px;">📚 使えるライブラリ</h3>
       <p>import 文を書くと自動で読み込みます：</p>
@@ -367,11 +389,18 @@
       </div>
       <div class="v3-footer-bottom">
         <span>© 2026 東京大学 松尾・岩澤研究室</span>
+        <div class="footer-toggles">
+        <button class="theme-toggle assist-toggle" type="button" onclick="toggleInputAssist()" aria-pressed="false" title="かっこや引用符を自動で閉じる入力補助を切り替える">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4C6.5 7.5 6.5 16.5 9 20"/><path d="M15 4c2.5 3.5 2.5 12.5 0 16"/></svg>
+          入力補助
+          <span class="assist-state"><span class="assist-off">オフ</span><span class="assist-on">オン</span></span>
+        </button>
         <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
           <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           ダークモード
         </button>
+        </div>
       </div>
     </div>
   </footer>
@@ -390,6 +419,8 @@
        Pyodide のみ jsDelivr から読み込み、Service Worker がキャッシュする。 -->
   <script src="../vendor/codemirror/codemirror.min.js?v=20260725a"></script>
   <script src="../vendor/codemirror/python.min.js?v=20260725a"></script>
+  <!-- 入力補助（かっこ・引用符の自動補完）。CodeMirror 公式アドオン・本体と同じ 5.65.16 -->
+  <script src="../vendor/codemirror/closebrackets.js?v=20260807a"></script>
   <script src="../vendor/marked/marked.min.js?v=20260725a"></script>
   <!-- DOMPurify（Markdown / HTML出力のXSS無害化）。自ホスト。
        .github/workflows/update-dompurify.yml が毎週最新3.x系へ自動更新（ファイル差し替え）する。
@@ -429,10 +460,10 @@
   <script src="../vendor/mathjax/tex-svg.js?v=20260725a" id="MathJax-script" async></script>
 
   <!-- アプリ本体（役割ごとに分割・この順序で読み込む） -->
-  <script src="../js/app.core.js?v=20260726a"></script>
+  <script src="../js/app.core.js?v=20260807a"></script>
   <script src="../js/app.lessons.js?v=20260722a"></script>
   <script src="../js/app.io.js?v=20260806a"></script>
-  <script src="../js/app.notebook.js?v=20260806a"></script>
+  <script src="../js/app.notebook.js?v=20260807a"></script>
   <script src="../js/app.exec.js?v=20260725a"></script>
 
 </body>
