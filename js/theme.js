@@ -121,7 +121,11 @@
     }
   }
 
-  /** フッターに「文字 小中大 / 行間 狭標準広」の操作を差し込む */
+  /**
+   * 「文字 小中大 / 行間 狭標準広」の操作を差し込む。
+   * 差し込み先はフッター（.v3-footer-bottom）と、明示指定された要素
+   * （[data-display-controls]。アクセシビリティ方針ページの説明の中など）。
+   */
   function buildControls(footer) {
     if (footer.querySelector('.disp-group')) return;   // 二重挿入の防止
     const frag = document.createDocumentFragment();
@@ -160,7 +164,7 @@
   SETTINGS.forEach((s) => applyOne(s, saved(s)));
 
   document.addEventListener('DOMContentLoaded', () => {
-    document.querySelectorAll('.v3-footer-bottom').forEach(buildControls);
+    document.querySelectorAll('.v3-footer-bottom, [data-display-controls]').forEach(buildControls);
     SETTINGS.forEach((s) => syncButtons(s, saved(s)));
   });
 })();

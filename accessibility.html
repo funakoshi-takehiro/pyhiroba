@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
-  <script src="js/theme.js?v=20260807c"></script>
+  <script src="js/theme.js?v=20260807d"></script>
   <meta name="description" content="PyHirobaのアクセシビリティ方針。キーボード操作・読み上げ対応・配色のコントラスト・ダークモードなどの取り組みと、現時点で把握している課題を公開しています。">
   <link rel="canonical" href="https://pyhiroba.weblab.t.u-tokyo.ac.jp/accessibility.html">
 
@@ -60,6 +60,8 @@
     .a11y-note p { margin: 0; color: var(--ink-2); font-size: 0.90625rem; line-height: calc(1.85 * var(--line-scale, 1)); }
     .a11y-note a { color: var(--accent-dk); font-weight: 700; text-decoration: underline; }
     .a11y-updated { font-size: 0.8125rem; color: var(--ink-4); margin-top: 34px; }
+    /* 説明の中に置く「文字」「行間」の操作（js/theme.js が差し込む） */
+    .a11y-controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
   </style>
 </head>
 <body>
@@ -98,6 +100,7 @@
           <li>マウスを使わず、キーボードだけで主要な操作を行えます。</li>
           <li>キーボード操作時には、現在どこを操作しているかがはっきり分かるよう枠を表示します。</li>
           <li>ページ先頭に「本文へスキップ」を用意し、繰り返し部分を読み飛ばせるようにしています。</li>
+          <li>プログラムを書く画面では、かっこを自動で閉じる「入力補助」を選べます。キーを打つ回数を減らせます。</li>
         </ul>
       </div>
       <div class="a11y-card">
@@ -148,6 +151,8 @@
         <h3>文字サイズ・行間</h3>
         <p>各ページの一番下にある「文字」「行間」で、表示を切り替えられます。文字は3段階（小・中・大）、行間も3段階（狭・標準・広）から選べます。教材の文章もプログラムも実行結果も、まとめて大きくなります。</p>
         <p>選んだ設定はこの端末のブラウザに記憶され、次回以降も引き継がれます。さらに大きくしたい場合は、ブラウザの拡大機能（<kbd>Ctrl</kbd>／<kbd>⌘</kbd>と<kbd>＋</kbd>）と組み合わせてお使いください。</p>
+        <!-- ここでもその場で試せるよう、フッターと同じ操作を js/theme.js が差し込む -->
+        <div class="a11y-controls" data-display-controls></div>
       </div>
 
       <div class="a11y-card">
