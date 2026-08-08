@@ -254,11 +254,18 @@
     .v3-footer-cols h5 { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); margin: 0 0 14px; font-family: var(--font-code); }
     .v3-footer-cols a { display: block; font-size: 0.875rem; color: var(--ink-2); font-weight: 500; text-decoration: none; padding: 6px 0; transition: color 0.15s; }
     .v3-footer-cols a:hover { color: var(--accent); }
+    /* リンクが「安心・安全への取り組／み」のように1文字だけ次行へ落ちるのを防ぐ
+       （2列になる760px以下では、下のメディアクエリで折り返しを許可する） */
+    .v3-footer-cols a, .v3-footer-cols h5 { white-space: nowrap; }
+    @media (max-width: 1000px) {
+      .v3-footer-top { grid-template-columns: 1fr; gap: 32px; }
+    }
     .v3-footer-bottom { margin-top: 26px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; color: var(--ink-4); font-size: 0.78125rem; }
 
     @media (max-width: 760px) {
       .v3-footer-top { grid-template-columns: 1fr; gap: 32px; }
       .v3-footer-cols { grid-template-columns: 1fr 1fr; }
+      .v3-footer-cols a, .v3-footer-cols h5 { white-space: normal; }
     }
     @media (max-width: 440px) {
       .v3-footer-cols { grid-template-columns: 1fr; }

@@ -819,6 +819,18 @@ body {
   font-size: 0.78125rem;
 }
 
+/* フッターのリンクは「安心・安全への取り組／み」のように1文字だけ次行へ
+   落ちると読みにくいので、3列表示のあいだは折り返さない。
+   2列になる狭い画面（760px以下）では、折り返しを許可して横あふれを防ぐ。 */
+.v3-footer-cols a,
+.v3-footer-cols h5 { white-space: nowrap; }
+
+/* ブランド紹介とリンク3列を横に並べると1列あたりが狭くなり、見出しやリンクが
+   収まらなくなる。縦に積んでリンク欄を全幅にし、3列のまま余裕を持たせる。 */
+@media (max-width: 1000px) {
+  .v3-footer-top { grid-template-columns: 1fr; gap: 32px; }
+}
+
 /* レスポンシブ (LP V3) */
 @media (max-width: 760px) {
   .container { padding: 0 20px; }
@@ -830,6 +842,8 @@ body {
   .v3-hero-name { font-size: min(4rem, 17.1vw); }
   .v3-hero-h1 { font-size: 1.25rem; white-space: normal; }
   .v3-section-title { font-size: 1.75rem; }
+  /* 著作権表示と設定のまとまりを、左から詰めて並べる（両端揃えだと間延びするため） */
+  .v3-footer-bottom { justify-content: flex-start; column-gap: 20px; }
   .v3-feat-grid { grid-template-columns: minmax(0, 1fr); }
   .v3-feat { padding: 24px; min-height: unset; min-width: 0; }
   .v3-feat > div { min-width: 0; }
@@ -847,6 +861,8 @@ body {
   .v3-use-step .v3-btn { white-space: normal; height: auto; min-height: 44px; padding: 10px 18px; }
   .v3-footer-top { grid-template-columns: 1fr; gap: 32px; }
   .v3-footer-cols { grid-template-columns: 1fr 1fr; }
+  /* 2列では幅が足りないため、リンクの折り返しを許可する */
+  .v3-footer-cols a, .v3-footer-cols h5 { white-space: normal; }
 }
 
 /* ======================================================
@@ -1187,6 +1203,8 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  /* 長いノート名でも操作ボタンを押し出さないよう、縮小を許可する */
+  min-width: 0;
 }
 .header-logo {
   font-size: 1.75rem;
@@ -1198,7 +1216,12 @@ body {
   color: var(--accent);
   letter-spacing: -0.01em;
   line-height: 1.2;
+  /* 読み込んだノート名が長くても、途中で折り返さず「…」で省略する */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.header-title-group { min-width: 0; }
 .header-subtitle {
   font-size: 0.6875rem;
   color: var(--ink-4);
@@ -1223,6 +1246,9 @@ body {
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
+  /* 「ダウンロー／ド」のようにラベルが語中で折り返すのを防ぐ */
+  white-space: nowrap;
+  flex-shrink: 0;
   transition: background 0.15s ease, transform 0.15s, box-shadow 0.15s;
 }
 .btn-header:active { transform: scale(0.97); }
@@ -2148,6 +2174,7 @@ body {
 /* ---------- セル追加ボタン（下部） ---------- */
 #bottom-add-bar {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   justify-content: center;
   padding: 20px 0 10px;
@@ -2162,6 +2189,8 @@ body {
   font-weight: 500;
   color: var(--ink-3);
   cursor: pointer;
+  /* ラベルが「＋ コードセルを／追加」のように途中で折り返さないようにする */
+  white-space: nowrap;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 .btn-add-bottom:hover {
@@ -2490,15 +2519,16 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: rgba(2,141,174,0.45); }
 
 /* ---------- レスポンシブ（ノートブック） ---------- */
-@media (max-width: 600px) {
-  #main-content { padding: 12px 10px 40px; }
-  .header-subtitle { display: none; }
-  .btn-header { padding: 6px 10px; font-size: 0.75rem; }
-  #bottom-add-bar { flex-direction: column; align-items: center; }
-  /* ヘッダーが収まらない小画面では、操作ボタンをハンバーガーのドロップダウンにまとめる。
-     #app-header は position:sticky なので、そのまま absolute の基準になる。 */
+/* タブレット幅。6つの操作ボタンが一列に収まらなくなるため、授業で最も使う
+   「すべて実行」（実行中は「停止」）だけをヘッダーに残し、残りはハンバーガーの
+   ドロップダウンにまとめる。#app-header は position:sticky なので、
+   そのまま absolute の基準になる。 */
+@media (max-width: 820px) {
   .header-menu-btn { display: inline-flex; }
-  .header-right {
+  /* 通常時は「すべて実行」「停止」以外を隠す */
+  .header-right > .btn-header:not(.btn-run-all):not(.btn-stop-run) { display: none; }
+  /* メニューを開いたら、全項目をドロップダウンとして表示する */
+  #app-header.menu-open .header-right {
     position: absolute;
     top: calc(100% + 6px);
     right: 10px;
@@ -2511,11 +2541,23 @@ body {
     border: 1px solid var(--line);
     border-radius: 12px;
     box-shadow: 0 8px 30px rgba(16,20,24,0.16);
-    display: none;
     z-index: 300;
   }
-  #app-header.menu-open .header-right { display: flex; }
-  .header-right .btn-header { width: 100%; justify-content: flex-start; font-size: 0.8125rem; padding: 9px 12px; }
+  #app-header.menu-open .header-right > .btn-header {
+    display: inline-flex;
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 0.8125rem;
+    padding: 9px 12px;
+  }
+  /* 実行中に出る「停止」の表示切替は .hidden（!important）が担うため、ここでは触らない */
+}
+
+@media (max-width: 600px) {
+  #main-content { padding: 12px 10px 40px; }
+  .header-subtitle { display: none; }
+  .btn-header { padding: 6px 10px; font-size: 0.75rem; }
+  #bottom-add-bar { flex-direction: column; align-items: center; }
 }
 
 /* ======================================================
@@ -2552,6 +2594,9 @@ body {
   max-width: 640px; margin: 0 auto;
 }
 .guide-steps { margin-top: 40px; display: flex; flex-direction: column; gap: 18px; }
+/* ドメイン名やURLなど、途中で改行できない長い英数字が画面からはみ出すのを防ぐ
+   （利用規約の外部送信先一覧など）。日本語の折り返しには影響しない。 */
+.guide-page { overflow-wrap: break-word; }
 .guide-step {
   display: flex; gap: 18px;
   background: var(--paper); border: 1px solid var(--line);
@@ -2806,7 +2851,9 @@ select:focus-visible,
   border-radius: 999px;
   color: var(--ink-3);
 }
-.disp-label { font-size: 0.75rem; font-weight: 600; margin-right: 3px; }
+.disp-label { font-size: 0.75rem; font-weight: 600; margin-right: 3px; white-space: nowrap; }
+/* 著作権表示と並ぶ「設定のまとまり」。狭い画面では折り返して左から詰めて並ぶ */
+.footer-settings { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
 .disp-btn {
   min-width: 26px;
   padding: 3px 7px;

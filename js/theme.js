@@ -153,11 +153,23 @@
       });
       frag.appendChild(group);
     });
-    // ダークモード切替の手前に置く（無ければ末尾）
+    // フッターでは、著作権表示と「設定のまとまり」の2要素構成にする。
+    // 直接ぶら下げると要素が5つ並び、狭い画面で折り返したときに散らばるため、
+    // 既存のダークモード切替なども含めて1つのラッパーに集める。
     const themeBtn = footer.querySelector('.theme-toggle');
-    const anchor = (themeBtn && themeBtn.closest('.footer-toggles')) || themeBtn;
-    if (anchor && anchor.parentNode === footer) footer.insertBefore(frag, anchor);
-    else footer.appendChild(frag);
+    const existing = (themeBtn && themeBtn.closest('.footer-toggles')) || themeBtn;
+    if (existing && existing.parentNode === footer) {
+      let box = footer.querySelector('.footer-settings');
+      if (!box) {
+        box = document.createElement('div');
+        box.className = 'footer-settings';
+        footer.insertBefore(box, existing);
+        box.appendChild(existing);
+      }
+      box.insertBefore(frag, box.firstChild);   // 文字・行間はダークモードより前に置く
+    } else {
+      footer.appendChild(frag);                 // 説明文の中など、単独で置く場合
+    }
   }
 
   // 描画前に保存済みの設定を適用（このスクリプトは <head> 内で同期実行される前提）
