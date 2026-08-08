@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
-  <script src="js/theme.js?v=20260725a"></script>
+  <script src="js/theme.js?v=20260807c"></script>
   <meta name="description" content="授業でそのまま使える公開教材の一覧。ワンクリックで PyHiroba 上に開けます。">
   <link rel="canonical" href="https://pyhiroba.weblab.t.u-tokyo.ac.jp/materials.html">
 
@@ -34,9 +34,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260807b">
+  <link rel="stylesheet" href="css/style.css?v=20260807c">
   <style>
-    .guide-hero p { font-size: 17px; color: var(--ink-2); }
+    .guide-hero p { font-size: 1.0625rem; color: var(--ink-2); }
 
     /* お知らせ（アンケートのお願い） */
     .mat-notice {
@@ -45,7 +45,7 @@
       border-radius: 14px; padding: 16px 18px; margin: 0 0 16px;
     }
     .mat-notice .ic { flex: 0 0 auto; color: var(--accent); margin-top: 1px; }
-    .mat-notice p { margin: 0; font-size: 14.5px; line-height: 1.8; color: var(--ink-2); }
+    .mat-notice p { margin: 0; font-size: 0.90625rem; line-height: calc(1.8 * var(--line-scale, 1)); color: var(--ink-2); }
     .mat-notice a { color: var(--accent-dk); font-weight: 700; }
 
     /* 公開教材のご利用にあたって（注記） */
@@ -53,10 +53,10 @@
       margin: 24px 0 0; padding: 18px 20px;
       background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
     }
-    .mat-caution h4 { margin: 0 0 10px; font-size: 14.5px; color: var(--ink); }
+    .mat-caution h4 { margin: 0 0 10px; font-size: 0.90625rem; color: var(--ink); }
     .mat-caution ul { margin: 0; padding-left: 20px; }
-    .mat-caution li { font-size: 13.5px; line-height: 1.85; color: var(--ink-2); margin: 4px 0; }
-    .mat-caution p { margin: 12px 0 0; font-size: 13px; color: var(--ink-3); }
+    .mat-caution li { font-size: 0.84375rem; line-height: calc(1.85 * var(--line-scale, 1)); color: var(--ink-2); margin: 4px 0; }
+    .mat-caution p { margin: 12px 0 0; font-size: 0.8125rem; color: var(--ink-3); }
     .mat-caution a { color: var(--accent-dk); font-weight: 700; }
 
     /* 教材リスト */
@@ -67,15 +67,15 @@
       background: #fff; margin-bottom: 10px; transition: border-color .15s, box-shadow .15s;
     }
     .mat-item:hover { border-color: var(--accent-border); box-shadow: 0 2px 10px rgba(2,141,174,0.06); }
-    .mat-name { font-size: 15px; font-weight: 600; color: var(--ink); word-break: break-word; }
+    .mat-name { font-size: 0.9375rem; font-weight: 600; color: var(--ink); word-break: break-word; }
     .mat-open {
       flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px;
       padding: 8px 16px; border-radius: 999px; background: var(--accent); color: #fff;
-      text-decoration: none; font-weight: 700; font-size: 13.5px; white-space: nowrap;
+      text-decoration: none; font-weight: 700; font-size: 0.84375rem; white-space: nowrap;
       transition: background .15s;
     }
     .mat-open:hover { background: var(--accent-dk); }
-    .mat-state { text-align: center; padding: 48px 24px; color: var(--ink-3); font-size: 14.5px; }
+    .mat-state { text-align: center; padding: 48px 24px; color: var(--ink-3); font-size: 0.90625rem; }
     .mat-state a { color: var(--accent-dk); font-weight: 700; }
     .mat-spinner {
       width: 22px; height: 22px; border: 3px solid var(--accent-border);

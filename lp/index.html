@@ -16,9 +16,18 @@
   </script>
   <meta http-equiv="refresh" content="0; url=../">
   <link rel="canonical" href="../">
+  <!-- 他ページで選んだ表示の設定（文字サイズ・行間）に合わせる -->
+  <style>
+    :root { --text-scale: 1; --line-scale: 1; }
+    :root[data-text="s"] { --text-scale: 0.9; }
+    :root[data-text="l"] { --text-scale: 1.2; }
+    :root[data-line="s"] { --line-scale: 0.9; }
+    :root[data-line="l"] { --line-scale: 1.15; }
+    html { font-size: calc(16px * var(--text-scale, 1)); }
+  </style>
 </head>
 <body style="font-family:'Zen Kaku Gothic New',system-ui,sans-serif;padding:48px 24px;text-align:center;color:#2b3138;">
-  <p style="font-size:16px;line-height:1.9;">
+  <p style="font-size:1rem;line-height:calc(1.9 * var(--line-scale, 1));">
     このページは移動しました。<br>
     自動で移動しない場合は <a href="../" style="color:#01617a;font-weight:700;">PyHiroba トップページ</a> を開いてください。
   </p>

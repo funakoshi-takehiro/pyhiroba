@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
-  <script src="js/theme.js?v=20260725a"></script>
+  <script src="js/theme.js?v=20260807c"></script>
   <meta name="description" content="PyHirobaを学校で使うための対応環境・ネットワーク設定（許可ドメイン）の案内。情報担当の先生・導入検討中の先生向け。登録・インストール不要でブラウザだけで動作します。">
   <link rel="canonical" href="https://pyhiroba.weblab.t.u-tokyo.ac.jp/setup.html">
 
@@ -34,19 +34,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260807b">
+  <link rel="stylesheet" href="css/style.css?v=20260807c">
   <style>
     /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
-    .setup-hero p { font-size: 17px; color: var(--ink-2); max-width: 760px; }
+    .setup-hero p { font-size: 1.0625rem; color: var(--ink-2); max-width: 760px; }
     .setup-lead-tag {
       display: inline-flex; align-items: center; gap: 8px;
       margin-top: 18px; padding: 8px 14px; border-radius: 999px;
       background: var(--accent-soft); border: 1px solid var(--accent-border);
-      color: var(--accent-dk); font-size: 13.5px; font-weight: 700;
+      color: var(--accent-dk); font-size: 0.84375rem; font-weight: 700;
     }
     .setup-section { margin-top: 40px; }
     .setup-section > h2 {
-      font-size: 20px; font-weight: 800; color: var(--ink); margin: 0 0 6px;
+      font-size: 1.25rem; font-weight: 800; color: var(--ink); margin: 0 0 6px;
       display: flex; align-items: center; gap: 9px;
     }
     .setup-section > h2 .setup-ic {
@@ -54,11 +54,11 @@
       background: var(--accent-soft); color: var(--accent-dk);
       display: inline-flex; align-items: center; justify-content: center;
     }
-    .setup-section > p { color: var(--ink-2); font-size: 15.5px; line-height: 1.9; margin: 8px 0; }
-    .setup-section ul { margin: 8px 0; padding-left: 20px; color: var(--ink-2); font-size: 15.5px; line-height: 1.95; }
+    .setup-section > p { color: var(--ink-2); font-size: 0.96875rem; line-height: calc(1.9 * var(--line-scale, 1)); margin: 8px 0; }
+    .setup-section ul { margin: 8px 0; padding-left: 20px; color: var(--ink-2); font-size: 0.96875rem; line-height: calc(1.95 * var(--line-scale, 1)); }
     .setup-section li { margin: 4px 0; }
     .setup-section code {
-      font-family: var(--font-code); font-size: 13px;
+      font-family: var(--font-code); font-size: 0.8125rem;
       background: var(--color-code-bg); padding: 1.5px 7px; border-radius: 5px; color: var(--accent-dk);
     }
 
@@ -68,33 +68,33 @@
       background: var(--accent-soft); border: 1px solid var(--accent-border);
     }
     .setup-callout strong { color: var(--accent-dk); }
-    .setup-callout p { margin: 0; color: var(--ink); font-size: 15px; line-height: 1.85; }
+    .setup-callout p { margin: 0; color: var(--ink); font-size: 0.9375rem; line-height: calc(1.85 * var(--line-scale, 1)); }
 
     /* 許可ドメインの表（横に長いのでスマホでは横スクロール可） */
     .setup-table-wrap { overflow-x: auto; margin: 14px 0 6px; border: 1px solid var(--line); border-radius: 14px; }
-    .setup-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 520px; }
+    .setup-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; min-width: 520px; }
     .setup-table th {
-      text-align: left; font-size: 12px; font-weight: 700; color: var(--ink-3);
+      text-align: left; font-size: 0.75rem; font-weight: 700; color: var(--ink-3);
       padding: 10px 14px; background: var(--paper); border-bottom: 1px solid var(--line); white-space: nowrap;
     }
-    .setup-table td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); line-height: 1.7; }
+    .setup-table td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--ink-2); line-height: calc(1.7 * var(--line-scale, 1)); }
     .setup-table tr:last-child td { border-bottom: none; }
-    .setup-table td.dom { font-family: var(--font-code); font-size: 12.5px; color: var(--ink); white-space: nowrap; }
+    .setup-table td.dom { font-family: var(--font-code); font-size: 0.78125rem; color: var(--ink); white-space: nowrap; }
     .setup-tag {
-      display: inline-block; font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
+      display: inline-block; font-size: 0.71875rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; white-space: nowrap;
     }
     .setup-tag.req { background: rgba(2,141,174,0.12); color: var(--accent-dk); }
     .setup-tag.opt { background: rgba(107,114,124,0.12); color: var(--ink-3); }
     [data-theme="dark"] .setup-tag.req { background: rgba(53,174,203,0.18); }
 
     .setup-note { margin-top: 40px; padding: 20px 22px; border-radius: 16px; background: var(--paper); border: 1px solid var(--line); }
-    .setup-note h4 { margin: 0 0 8px; font-size: 15.5px; color: var(--ink); }
-    .setup-note p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.85; }
+    .setup-note h4 { margin: 0 0 8px; font-size: 0.96875rem; color: var(--ink); }
+    .setup-note p { margin: 0; color: var(--ink-2); font-size: 0.90625rem; line-height: calc(1.85 * var(--line-scale, 1)); }
     .setup-note a { color: var(--accent-dk); font-weight: 700; text-decoration: underline; }
 
     @media (max-width: 600px) {
-      .setup-section > h2 { font-size: 18px; }
-      .setup-section > p, .setup-section ul { font-size: 15px; }
+      .setup-section > h2 { font-size: 1.125rem; }
+      .setup-section > p, .setup-section ul { font-size: 0.9375rem; }
     }
   </style>
 </head>

@@ -64,10 +64,27 @@
   /* フォント */
   --font-ui:   'Zen Kaku Gothic New', system-ui, sans-serif;
   --font-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* 表示の設定（フッターの「文字」「行間」で切り替える）。
+     文字サイズはすべて rem 指定にしてあり、html の font-size に追従する。
+     行間は本文系のみ calc(値 * --line-scale) にしてある（ボタン等の詰まった行間は対象外）。
+     既定は 1 で、そのとき html は 16px ＝ 従来の px 指定と完全に同じ表示になる。
+     値は js/theme.js が <html> の data-text / data-line 属性に応じて上書きする。 */
+  --text-scale: 1;
+  --line-scale: 1;
 }
+
+/* 文字サイズ（フッターの「文字」） */
+:root[data-text="s"] { --text-scale: 0.9; }
+:root[data-text="l"] { --text-scale: 1.2; }
+/* 行間（フッターの「行間」） */
+:root[data-line="s"] { --line-scale: 0.9; }
+:root[data-line="l"] { --line-scale: 1.15; }
 
 html {
   scroll-behavior: smooth;
+  /* すべての rem の基準。倍率1のとき 16px＝ブラウザ既定と同じ */
+  font-size: calc(16px * var(--text-scale, 1));
 }
 
 body {
@@ -81,8 +98,8 @@ body {
   background-size: 28px 28px;
   color: var(--ink);
   min-height: 100vh;
-  font-size: 16px;
-  line-height: 1.6;
+  font-size: 1rem;
+  line-height: calc(1.6 * var(--line-scale, 1));
 }
 
 /* ======================================================
@@ -113,7 +130,7 @@ body {
   padding: 22px 0;
 }
 .v3-logo {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 900;
   letter-spacing: -0.01em;
   color: var(--accent);
@@ -122,7 +139,7 @@ body {
 .v3-nav-links {
   display: flex;
   gap: 28px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
 }
 .v3-nav-links a {
@@ -174,12 +191,12 @@ body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 44px;
+  min-height: 44px;
   padding: 0 20px;
   border-radius: 999px;
   font-family: var(--font-ui);
   font-feature-settings: "palt";
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.01em;
   border: 1px solid transparent;
@@ -208,9 +225,9 @@ body {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent-dk);
-  height: 56px;
+  min-height: 56px;
   padding: 0 32px;
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 800;
 }
 .v3-btn-accent:hover {
@@ -228,7 +245,7 @@ body {
   text-align: center;
 }
 .v3-hero-kana {
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 700;
   color: var(--ink-2);
   letter-spacing: 0.22em;
@@ -236,7 +253,7 @@ body {
   font-family: var(--font-ui);
 }
 .v3-hero-name {
-  font-size: 108px;
+  font-size: 6.75rem;
   font-weight: 900;
   letter-spacing: -0.03em;
   line-height: 1.02;
@@ -244,8 +261,8 @@ body {
   font-family: var(--font-ui);
 }
 .v3-hero-h1 {
-  font-size: 30px;
-  line-height: 1.5;
+  font-size: 1.875rem;
+  line-height: calc(1.5 * var(--line-scale, 1));
   letter-spacing: 0.005em;
   font-weight: 600;
   margin: 0 auto;
@@ -263,9 +280,9 @@ body {
 }
 .v3-micro {
   color: var(--ink-2);
-  font-size: 14px;
+  font-size: 0.875rem;
   margin-top: 18px;
-  line-height: 1.6;
+  line-height: calc(1.6 * var(--line-scale, 1));
   text-align: center;
 }
 
@@ -281,7 +298,7 @@ body {
   margin: 0 0 36px;
 }
 .v3-section-eyebrow {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -289,7 +306,7 @@ body {
   font-family: var(--font-code);
 }
 .v3-section-title {
-  font-size: 42px;
+  font-size: 2.625rem;
   line-height: 1.15;
   font-weight: 900;
   letter-spacing: -0.02em;
@@ -338,7 +355,7 @@ body {
 .v3-feat-ic svg { width: 22px; height: 22px; }
 .v3-feat-num {
   font-family: var(--font-code);
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--accent);
   letter-spacing: 0.12em;
   font-weight: 600;
@@ -346,15 +363,15 @@ body {
 }
 .v3-feat h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 .v3-feat p {
   margin: 0;
   color: var(--ink-2);
-  font-size: 17px;
-  line-height: 1.8;
+  font-size: 1.0625rem;
+  line-height: calc(1.8 * var(--line-scale, 1));
   font-weight: 500;
 }
 /* 特徴カード内のリンク */
@@ -363,12 +380,12 @@ body {
   align-items: center;
   color: var(--accent);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 0.9375rem;
   text-decoration: none;
   white-space: nowrap;
 }
 .v3-feat-link:hover { text-decoration: underline; }
-.v3-feat p .v3-feat-link { margin-left: 6px; font-size: 16px; }
+.v3-feat p .v3-feat-link { margin-left: 6px; font-size: 1rem; }
 .v3-feat-links {
   display: flex;
   flex-wrap: wrap;
@@ -387,7 +404,7 @@ body {
   border-radius: 0;
   background: none;
   color: var(--accent);
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
   gap: 6px;
 }
@@ -451,17 +468,17 @@ body {
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 16px;
+  font-size: 1rem;
   flex-shrink: 0;
 }
 .v3-nb-title {
   font-weight: 700;
-  font-size: 16px;
+  font-size: 1rem;
   color: var(--ink);
   letter-spacing: -0.005em;
 }
 .v3-nb-sub {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-4);
   font-weight: 400;
   letter-spacing: 0.3px;
@@ -479,7 +496,7 @@ body {
   gap: 5px;
   padding: 6px 12px;
   border-radius: 14px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
   line-height: 1;
   border: 1px solid transparent;
@@ -496,7 +513,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
   box-shadow: 0 4px 12px rgba(2,141,174,.3);
   cursor: default;
@@ -524,7 +541,7 @@ body {
 }
 .v3-nb-cell-num {
   font-family: var(--font-code);
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-3);
   font-weight: 600;
   min-width: 20px;
@@ -544,7 +561,7 @@ body {
   gap: 4px;
   padding: 3px 8px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
   color: var(--ink-4);
 }
@@ -561,7 +578,7 @@ body {
   border: none;
   border-radius: 999px;
   padding: 4px 12px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
@@ -578,15 +595,15 @@ body {
   align-items: center;
   justify-content: center;
   color: var(--ink-4);
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1;
   border-radius: 6px;
 }
 .v3-nb-cell-body { padding: 10px 14px; }
 .v3-nb-code {
   font-family: var(--font-code);
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 0.8125rem;
+  line-height: calc(1.7 * var(--line-scale, 1));
   color: #1a1f25;
   white-space: pre-wrap;
   margin: 0;
@@ -606,7 +623,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 700;
   color: #2f9e44;
   background: #ebfbee;
@@ -618,8 +635,8 @@ body {
 .v3-nb-out {
   margin-top: 8px;
   font-family: var(--font-code);
-  font-size: 12.5px;
-  line-height: 1.7;
+  font-size: 0.78125rem;
+  line-height: calc(1.7 * var(--line-scale, 1));
   color: var(--ink-2);
   white-space: pre;
 }
@@ -653,21 +670,21 @@ body {
   align-items: center;
   gap: 8px;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 1rem;
   letter-spacing: -0.005em;
   color: var(--ink);
 }
 .v3-q {
   color: var(--accent);
   font-family: var(--font-code);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
   flex-shrink: 0;
 }
 .v3-faq-a {
   color: var(--ink-2);
-  font-size: 15px;
-  line-height: 1.8;
+  font-size: 0.9375rem;
+  line-height: calc(1.8 * var(--line-scale, 1));
   margin-top: 10px;
 }
 
@@ -692,7 +709,7 @@ body {
   background: #028DAE;
   color: #fff;
   font-weight: 800;
-  font-size: 18px;
+  font-size: 1.125rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -702,24 +719,24 @@ body {
   padding-top: 6px;
 }
 .v3-step-title {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 6px;
   color: var(--ink);
 }
 .v3-step-desc {
-  font-size: 15px;
+  font-size: 0.9375rem;
   color: var(--ink-2);
-  line-height: 1.7;
+  line-height: calc(1.7 * var(--line-scale, 1));
   margin-bottom: 14px;
 }
 .v3-btn-sm {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  height: 44px;
+  min-height: 44px;
   padding: 0 22px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
   border-radius: var(--radius-sm);
   text-decoration: none;
@@ -751,7 +768,7 @@ body {
   padding-bottom: 48px;
 }
 .v3-footer-logo {
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 900;
   letter-spacing: -0.02em;
   color: #028DAE;
@@ -766,8 +783,8 @@ body {
 .v3-footer-tagline {
   margin: 14px 0 0;
   color: var(--ink-3);
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 0.875rem;
+  line-height: calc(1.7 * var(--line-scale, 1));
   max-width: 38ch;
 }
 .v3-footer-cols {
@@ -776,7 +793,7 @@ body {
   gap: 32px;
 }
 .v3-footer-cols h5 {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -786,7 +803,7 @@ body {
 }
 .v3-footer-cols a {
   display: block;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--ink-2);
   font-weight: 500;
   text-decoration: none;
@@ -799,7 +816,7 @@ body {
   display: flex;
   justify-content: space-between;
   color: var(--ink-4);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
 }
 
 /* レスポンシブ (LP V3) */
@@ -807,18 +824,21 @@ body {
   .container { padding: 0 20px; }
   .v3-nav-links { display: none; }
   .v3-hero { padding: 32px 0 40px; }
-  .v3-hero-name { font-size: 64px; }
-  .v3-hero-h1 { font-size: 20px; white-space: normal; }
-  .v3-section-title { font-size: 28px; }
+  /* 「PyHiroba」の大きな見出し。文字サイズを「大」にした狭い画面や、375pxより
+     狭い端末で画面幅からはみ出さないよう、幅に応じた上限を設ける。
+     17.1vw は 375px 幅でちょうど 4rem を上回るため、通常の表示は変わらない。 */
+  .v3-hero-name { font-size: min(4rem, 17.1vw); }
+  .v3-hero-h1 { font-size: 1.25rem; white-space: normal; }
+  .v3-section-title { font-size: 1.75rem; }
   .v3-feat-grid { grid-template-columns: minmax(0, 1fr); }
   .v3-feat { padding: 24px; min-height: unset; min-width: 0; }
   .v3-feat > div { min-width: 0; }
   /* 長いカード内リンク（例：安心・安全への取り組みはこちら →）を折り返し、横あふれを防ぐ */
   .v3-feat-link { white-space: normal; }
   /* スマホでは機能の文字を小さめにして読みやすく */
-  .v3-feat p { overflow-wrap: anywhere; font-size: 15px; line-height: 1.75; }
-  .v3-feat h3 { font-size: 18px; }
-  .v3-feat-num { font-size: 10px; }
+  .v3-feat p { overflow-wrap: anywhere; font-size: 0.9375rem; line-height: calc(1.75 * var(--line-scale, 1)); }
+  .v3-feat h3 { font-size: 1.125rem; }
+  .v3-feat-num { font-size: 0.625rem; }
   .v3-faq { grid-template-columns: 1fr; padding: 24px 18px; }
   /* ご利用方法ステップ：本文やボタンがはみ出さないよう縮小を許可 */
   .v3-use-step { min-width: 0; }
@@ -860,7 +880,7 @@ body {
 }
 .picker-logo {
   font-family: var(--font-ui);
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 900;
   letter-spacing: -0.01em;
   color: var(--accent);
@@ -875,9 +895,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
+  min-height: 38px;
   padding: 0 16px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   border-radius: 999px;
   font-weight: 600;
   text-decoration: none;
@@ -902,7 +922,7 @@ body {
 /* ヒーロー */
 .picker-hero { text-align: center; margin-bottom: 48px; }
 .picker-kana {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 600;
   color: var(--ink-3);
   letter-spacing: 0.32em;
@@ -910,7 +930,7 @@ body {
   padding-left: 0.32em;
 }
 .picker-name {
-  font-size: 108px;
+  font-size: 6.75rem;
   font-weight: 900;
   color: #028DAE;
   letter-spacing: -0.03em;
@@ -929,7 +949,7 @@ body {
   animation: pyh-blink 1s step-end infinite;
 }
 .picker-question {
-  font-size: 18px;
+  font-size: 1.125rem;
   color: var(--ink-2);
   margin-top: 32px;
   font-weight: 500;
@@ -984,16 +1004,16 @@ body {
 }
 .picker-card h3 {
   margin: 0;
-  font-size: 20px;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: var(--ink);
 }
 .picker-card p {
   margin: 0;
-  font-size: 14px;
+  font-size: 0.875rem;
   color: var(--ink-3);
-  line-height: 1.6;
+  line-height: calc(1.6 * var(--line-scale, 1));
 }
 .picker-deco {
   position: absolute;
@@ -1036,7 +1056,7 @@ body {
   border: 1px solid rgba(0,0,0,0.1);
   border-radius: 10px;
   font-family: var(--font-code);
-  font-size: 13px;
+  font-size: 0.8125rem;
   background: #fff;
   color: var(--ink-2);
   outline: none;
@@ -1050,7 +1070,7 @@ body {
   padding: 10px 18px;
   border-radius: 10px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 0.875rem;
   cursor: pointer;
   font-family: var(--font-ui);
   transition: background 0.15s;
@@ -1063,7 +1083,7 @@ body {
 .picker-footer {
   text-align: center;
   padding: 24px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-3);
 }
 /* ピッカー画面内に置いたLP共通フッターは、カードとの間に少し余白を空ける */
@@ -1073,7 +1093,7 @@ body {
   /* 列を minmax(0,1fr) にして、カード内の URL 入力欄の最小幅で列が広がり
      画面外にはみ出す（＝スマホで左上だけ拡大表示される）のを防ぐ */
   .picker-grid { grid-template-columns: minmax(0, 1fr); }
-  .picker-name { font-size: 54px; }
+  .picker-name { font-size: 3.375rem; }
   .picker-card { min-width: 0; }
   .picker-url-row { min-width: 0; }
   .picker-url-row input { min-width: 0; width: 100%; }
@@ -1081,7 +1101,7 @@ body {
 @media (max-width: 480px) {
   .picker-card { padding: 24px 20px; }
   .picker-hero { margin-bottom: 32px; }
-  .picker-name { font-size: 44px; }
+  .picker-name { font-size: 2.75rem; }
   .picker-main { padding: 28px 14px; }
 }
 
@@ -1111,7 +1131,7 @@ body {
   width: 90%;
 }
 .loading-box h2 {
-  font-size: 26px;
+  font-size: 1.625rem;
   font-weight: 700;
   margin-bottom: 32px;
   letter-spacing: 0.02em;
@@ -1131,12 +1151,12 @@ body {
   transition: width 0.6s ease;
 }
 #loading-status {
-  font-size: 16px;
+  font-size: 1rem;
   opacity: 0.9;
   margin-bottom: 10px;
 }
 .loading-note {
-  font-size: 14px;
+  font-size: 0.875rem;
   opacity: 0.65;
 }
 
@@ -1169,18 +1189,18 @@ body {
   gap: 12px;
 }
 .header-logo {
-  font-size: 28px;
+  font-size: 1.75rem;
   line-height: 1;
 }
 .header-title-group h1 {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 900;
   color: var(--accent);
   letter-spacing: -0.01em;
   line-height: 1.2;
 }
 .header-subtitle {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-4);
   font-weight: 400;
   letter-spacing: 0.3px;
@@ -1199,7 +1219,7 @@ body {
   border-radius: 999px;
   font-family: var(--font-ui);
   font-feature-settings: "palt";
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
@@ -1249,7 +1269,7 @@ body {
   border-color: var(--line);
   margin-left: 6px;
   padding: 7px 12px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
   border-radius: 9px;
 }
@@ -1290,7 +1310,7 @@ body {
   margin-bottom: 20px;
 }
 .help-title {
-  font-size: 16px;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--ink);
 }
@@ -1304,7 +1324,7 @@ body {
   border-radius: 999px;
   padding: 5px 12px;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 0.75rem;
   cursor: pointer;
   color: var(--ink-3);
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
@@ -1313,7 +1333,7 @@ body {
 .help-close svg { display: block; }
 /* セクション見出し（小さめの英字ラベル調。LPの FEATURE 表記と同じ雰囲気に揃える） */
 .help-content h3 {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 1.2px;
   color: var(--accent);
@@ -1322,7 +1342,7 @@ body {
 .help-sec + .help-sec { margin-top: 22px; }
 /* 操作の一覧。枠線で囲まず、行の区切り線だけで軽く見せる */
 .help-list {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-2);
 }
 .help-list > div {
@@ -1335,20 +1355,20 @@ body {
 }
 .help-list > div:first-child { border-top: none; padding-top: 0; }
 .help-list dt { flex: 0 0 auto; min-width: 96px; font-weight: 600; }
-.help-list dd { flex: 1 1 150px; margin: 0; color: var(--ink-3); line-height: 1.7; }
+.help-list dd { flex: 1 1 150px; margin: 0; color: var(--ink-3); line-height: calc(1.7 * var(--line-scale, 1)); }
 .help-content kbd {
   display: inline-block;
   padding: 1px 5px;
   background: var(--line-2);
   border: 1px solid var(--line);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-family: var(--font-code);
 }
 .help-content p {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-3);
-  line-height: 1.75;
+  line-height: calc(1.75 * var(--line-scale, 1));
   margin-bottom: 8px;
 }
 .help-content code {
@@ -1358,16 +1378,16 @@ body {
   border-radius: var(--radius-sm);
   padding: 9px 12px;
   font-family: var(--font-code);
-  font-size: 12px;
-  line-height: 1.8;
+  font-size: 0.75rem;
+  line-height: calc(1.8 * var(--line-scale, 1));
   color: var(--accent-dk);
 }
 .help-content ul {
   padding-left: 18px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: var(--ink-2);
 }
-.help-content ul li { margin-bottom: 6px; line-height: 1.75; }
+.help-content ul li { margin-bottom: 6px; line-height: calc(1.75 * var(--line-scale, 1)); }
 .help-content ul li:last-child { margin-bottom: 0; }
 
 /* ---------- メインコンテンツ ---------- */
@@ -1423,7 +1443,7 @@ body {
 }
 .cell-number {
   font-family: var(--font-code);
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-3);
   font-weight: 600;
   min-width: 20px;
@@ -1445,7 +1465,7 @@ body {
   background: transparent;
   border: none;
   border-radius: 6px;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 600;
   color: var(--ink-4);
   cursor: pointer;
@@ -1467,8 +1487,8 @@ body {
 }
 .cell-editor .CodeMirror {
   font-family: var(--font-code);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 0.875rem;
+  line-height: calc(1.6 * var(--line-scale, 1));
   height: auto;
   min-height: 60px;
   border: none;
@@ -1485,7 +1505,7 @@ body {
 }
 .cell-editor .CodeMirror-linenumber {
   color: var(--ink-4);
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .cell-editor .CodeMirror-cursor {
   border-left-color: var(--accent);
@@ -1544,12 +1564,12 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   border-radius: 999px;
   padding: 2px 10px;
   margin: 10px 16px 0;
-  line-height: 1.6;
+  line-height: calc(1.6 * var(--line-scale, 1));
   letter-spacing: 0.02em;
 }
 .output-done-badge .done-check {
@@ -1568,7 +1588,7 @@ body {
 .output-running {
   padding: 12px 16px;
   color: var(--accent);
-  font-size: 14px;
+  font-size: 0.875rem;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1586,10 +1606,10 @@ body {
 }
 .output-text pre {
   font-family: var(--font-code);
-  font-size: 13px;
+  font-size: 0.8125rem;
   white-space: pre-wrap;
   word-break: break-all;
-  line-height: 1.6;
+  line-height: calc(1.6 * var(--line-scale, 1));
   color: var(--ink);
 }
 .output-warning {
@@ -1602,7 +1622,7 @@ body {
 }
 .output-warning pre {
   font-family: var(--font-code);
-  font-size: 12px;
+  font-size: 0.75rem;
   white-space: pre-wrap;
   color: #92400e;
   margin: 0;
@@ -1620,7 +1640,7 @@ body {
   background: #fef3c7;
   color: #92400e;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 2px 10px;
   border-radius: 999px;
   font-family: var(--font-code);
@@ -1631,14 +1651,14 @@ body {
   background: #fefce8;
   color: #a16207;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 2px 10px;
   border-radius: 999px;
 }
 /* 警告メッセージ原文 */
 .warning-message {
   font-family: var(--font-code);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: #92400e;
   background: #fffaf0;
   border-radius: var(--radius-sm);
@@ -1648,12 +1668,12 @@ body {
 }
 /* 日本語ヒント */
 .warning-japanese {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: #7c4a03;
   background: #fef9c3;
   border-radius: var(--radius-sm);
   padding: 8px 12px;
-  line-height: 1.75;
+  line-height: calc(1.75 * var(--line-scale, 1));
 }
 .warning-japanese::before { content: "💡 "; }
 .output-error {
@@ -1677,7 +1697,7 @@ body {
   background: #e2e8f0;
   color: #334155;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 2px 10px;
   border-radius: 999px;
   font-family: var(--font-code);
@@ -1689,14 +1709,14 @@ body {
   background: #eef2f7;
   color: #475569;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 0.75rem;
   padding: 2px 10px;
   border-radius: 999px;
 }
 /* 英語エラーメッセージ原文 */
 .error-message {
   font-family: var(--font-code);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: #475569;
   white-space: pre-wrap;
   background: #f1f5f9;
@@ -1711,14 +1731,14 @@ body {
   border-radius: 6px;
   padding: 5px 10px;
   font-family: var(--font-code);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: #334155;
   display: flex;
   align-items: flex-start;
   gap: 8px;
 }
 .error-code-label {
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: #64748b;
   white-space: nowrap;
   font-weight: 600;
@@ -1727,19 +1747,19 @@ body {
 }
 /* 日本語ヒント */
 .error-japanese {
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: #1e3a5f;
   background: #eff6ff;
   border-radius: var(--radius-sm);
   padding: 8px 12px;
-  line-height: 1.75;
+  line-height: calc(1.75 * var(--line-scale, 1));
 }
 .error-japanese::before { content: "💡 "; }
 .error-details {
   margin-top: 2px;
 }
 .error-details summary {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-3);
   cursor: pointer;
   padding: 4px 0;
@@ -1747,7 +1767,7 @@ body {
 }
 .error-details pre {
   font-family: var(--font-code);
-  font-size: 11px;
+  font-size: 0.6875rem;
   white-space: pre-wrap;
   color: var(--ink-3);
   margin-top: 6px;
@@ -1775,8 +1795,8 @@ body {
 .output-html table {
   border-collapse: collapse;
   font-family: var(--font-code);
-  font-size: 12.5px;
-  line-height: 1.5;
+  font-size: 0.78125rem;
+  line-height: calc(1.5 * var(--line-scale, 1));
 }
 .output-html table th,
 .output-html table td {
@@ -1834,7 +1854,7 @@ body {
 /* 折りたたみ中のセル数表示（灰色・小さめ） */
 .cell-collapsed-note {
   padding: 4px 20px 12px 42px;
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-4);
   cursor: pointer;
   user-select: none;
@@ -1844,20 +1864,20 @@ body {
   padding: 16px 20px;
   min-height: 48px;
   cursor: text;
-  line-height: 1.8;
+  line-height: calc(1.8 * var(--line-scale, 1));
 }
 .cell-text-display:hover { background: #f9faf7; }
 .cell-text-display .placeholder {
   color: var(--ink-4);
   font-style: italic;
-  font-size: 14px;
+  font-size: 0.875rem;
 }
-.cell-text-display h1 { font-size: 22px; font-weight: 900; margin: 8px 0; color: var(--ink); }
-.cell-text-display h2 { font-size: 18px; font-weight: 700; margin: 12px 0 6px; color: var(--accent); }
-.cell-text-display h3 { font-size: 16px; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }
-.cell-text-display h4 { font-size: 15px; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }
-.cell-text-display h5 { font-size: 14px; font-weight: 700; margin: 8px 0 3px; color: var(--ink-3); }
-.cell-text-display h6 { font-size: 13px; font-weight: 700; margin: 8px 0 3px; color: var(--ink-3); }
+.cell-text-display h1 { font-size: 1.375rem; font-weight: 900; margin: 8px 0; color: var(--ink); }
+.cell-text-display h2 { font-size: 1.125rem; font-weight: 700; margin: 12px 0 6px; color: var(--accent); }
+.cell-text-display h3 { font-size: 1rem; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }
+.cell-text-display h4 { font-size: 0.9375rem; font-weight: 700; margin: 10px 0 4px; color: var(--ink-2); }
+.cell-text-display h5 { font-size: 0.875rem; font-weight: 700; margin: 8px 0 3px; color: var(--ink-3); }
+.cell-text-display h6 { font-size: 0.8125rem; font-weight: 700; margin: 8px 0 3px; color: var(--ink-3); }
 .cell-text-display p  { margin: 6px 0; color: var(--ink-2); }
 .cell-text-display ul, .cell-text-display ol { padding-left: 24px; margin: 6px 0; }
 .cell-text-display li { margin: 3px 0; color: var(--ink-2); }
@@ -1866,14 +1886,14 @@ body {
   background: var(--color-code-bg);
   padding: 1px 5px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   border: 1px solid var(--line);
   color: var(--accent-dk);
 }
 .cell-text-display pre code {
   display: block;
   padding: 10px;
-  font-size: 13px;
+  font-size: 0.8125rem;
   overflow-x: auto;
 }
 .cell-text-display strong { font-weight: 700; }
@@ -1935,7 +1955,7 @@ body {
   background: rgba(255,255,255,0.92);
   color: var(--ink-2);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   line-height: 1;
   cursor: pointer;
@@ -1963,14 +1983,14 @@ body {
 }
 .output-loading-pkg small {
   color: var(--ink-3);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 400;
 }
 
 /* !pip install の結果表示 */
 .output-pip {
-  font-size: 13px;
-  line-height: 1.7;
+  font-size: 0.8125rem;
+  line-height: calc(1.7 * var(--line-scale, 1));
   padding: 9px 13px;
   border-radius: 9px;
   margin-bottom: 8px;
@@ -1998,8 +2018,8 @@ body {
   border-top: 2px dashed rgba(2,141,174,0.3);
   padding: 14px 20px;
   font-family: var(--font-ui);
-  font-size: 14px;
-  line-height: 1.8;
+  font-size: 0.875rem;
+  line-height: calc(1.8 * var(--line-scale, 1));
   resize: vertical;
   outline: none;
   background: #f0fafb;
@@ -2007,7 +2027,7 @@ body {
 }
 .text-editor-hint {
   padding: 6px 20px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   color: var(--ink-3);
   background: #f0fafb;
   border-top: 1px solid rgba(2,141,174,0.15);
@@ -2021,7 +2041,7 @@ body {
   border-radius: 999px;
   padding: 6px 14px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 400;
   cursor: pointer;
   display: inline-flex;
@@ -2062,7 +2082,7 @@ body {
   color: #9b1c1c;
   background: #fff5f5;
   border-left: 3px solid #e11d48;
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 
 /* 停止ボタン */
@@ -2073,7 +2093,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 5px 12px;
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
   cursor: pointer;
   display: inline-flex;
@@ -2093,7 +2113,7 @@ body {
   border-radius: var(--radius-sm);
   padding: 4px 10px;
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
   cursor: pointer;
   transition: background 0.15s ease;
@@ -2109,7 +2129,7 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 0.8125rem;
   cursor: pointer;
   color: var(--ink-4);
   transition: background 0.15s ease, border-color 0.15s, color 0.15s;
@@ -2138,7 +2158,7 @@ body {
   border-radius: var(--radius-md);
   padding: 10px 24px;
   font-family: var(--font-ui);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--ink-3);
   cursor: pointer;
@@ -2212,7 +2232,7 @@ body {
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 13px;
+  font-size: 0.8125rem;
 }
 .image-alt-input:focus { outline: none; border-color: var(--accent); }
 .image-alt-input::placeholder { color: var(--ink-4); }
@@ -2239,9 +2259,9 @@ body {
   background: var(--brand-light);
   color: var(--accent);
 }
-.slide-drop-zone .drop-icon { font-size: 36px; margin-bottom: 8px; }
-.slide-drop-zone p  { font-size: 14px; margin: 0 0 4px; }
-.slide-drop-zone small { font-size: 11px; }
+.slide-drop-zone .drop-icon { font-size: 2.25rem; margin-bottom: 8px; }
+.slide-drop-zone p  { font-size: 0.875rem; margin: 0 0 4px; }
+.slide-drop-zone small { font-size: 0.6875rem; }
 .slide-area { padding: 16px 16px 12px; }
 .slide-strip {
   display: flex;
@@ -2280,7 +2300,7 @@ body {
   background: rgba(0,0,0,0.55);
   color: #fff;
   border: none;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -2293,7 +2313,7 @@ body {
 .slide-num {
   position: absolute;
   bottom: 4px; left: 6px;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0,0,0,0.6);
@@ -2305,7 +2325,7 @@ body {
   border: 2px dashed var(--line);
   background: var(--color-code-bg);
   color: var(--ink-3);
-  font-size: 24px;
+  font-size: 1.5rem;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -2314,7 +2334,7 @@ body {
   gap: 4px;
   transition: border-color 0.15s, background 0.15s, color 0.15s;
 }
-.slide-add-chip span { font-size: 11px; font-weight: 500; }
+.slide-add-chip span { font-size: 0.6875rem; font-weight: 500; }
 .slide-add-chip:hover {
   border-color: var(--accent);
   background: var(--brand-light);
@@ -2348,7 +2368,7 @@ body {
   background: rgba(255,255,255,0.15);
   color: #fff;
   border: none;
-  font-size: 18px;
+  font-size: 1.125rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -2366,7 +2386,7 @@ body {
   background: rgba(255,255,255,0.15);
   color: #fff;
   border: none;
-  font-size: 32px;
+  font-size: 2rem;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -2387,7 +2407,7 @@ body {
   left: 50%;
   transform: translateX(-50%);
   color: rgba(255,255,255,0.7);
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 500;
   background: rgba(0,0,0,0.4);
   padding: 4px 14px;
@@ -2419,18 +2439,18 @@ body {
   gap: 10px;
 }
 .nb-footer .footer-logo {
-  font-size: 18px;
+  font-size: 1.125rem;
   font-weight: 900;
   letter-spacing: -0.01em;
   color: var(--accent);
 }
 .nb-footer .footer-logo-sub {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 400;
   color: var(--ink-3);
 }
 .nb-footer .footer-copy {
-  font-size: 12px;
+  font-size: 0.75rem;
   color: var(--ink-4);
 }
 .nb-footer .footer-links {
@@ -2442,7 +2462,7 @@ body {
   align-items: center;
   gap: 6px;
   padding: 7px 14px;
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   color: var(--ink-2);
   font-weight: 600;
   border: 1px solid var(--line);
@@ -2473,7 +2493,7 @@ body {
 @media (max-width: 600px) {
   #main-content { padding: 12px 10px 40px; }
   .header-subtitle { display: none; }
-  .btn-header { padding: 6px 10px; font-size: 12px; }
+  .btn-header { padding: 6px 10px; font-size: 0.75rem; }
   #bottom-add-bar { flex-direction: column; align-items: center; }
   /* ヘッダーが収まらない小画面では、操作ボタンをハンバーガーのドロップダウンにまとめる。
      #app-header は position:sticky なので、そのまま absolute の基準になる。 */
@@ -2495,7 +2515,7 @@ body {
     z-index: 300;
   }
   #app-header.menu-open .header-right { display: flex; }
-  .header-right .btn-header { width: 100%; justify-content: flex-start; font-size: 13px; padding: 9px 12px; }
+  .header-right .btn-header { width: 100%; justify-content: flex-start; font-size: 0.8125rem; padding: 9px 12px; }
 }
 
 /* ======================================================
@@ -2506,12 +2526,12 @@ body {
   max-width: 880px; margin: 0 auto; padding: 22px 24px;
 }
 .guide-topbar .guide-logo {
-  font-weight: 900; font-size: 18px; color: var(--accent);
+  font-weight: 900; font-size: 1.125rem; color: var(--accent);
   text-decoration: none; letter-spacing: -0.01em;
 }
 .guide-topbar a.guide-back {
   display: inline-flex; align-items: center; gap: 6px;
-  height: 38px; padding: 0 16px; font-size: 13px; font-weight: 600;
+  min-height: 38px; padding: 0 16px; font-size: 0.8125rem; font-weight: 600;
   border-radius: 999px; border: 1px solid var(--ink);
   color: var(--ink); text-decoration: none; background: transparent;
   transition: background .15s;
@@ -2520,15 +2540,15 @@ body {
 .guide-page { max-width: 880px; margin: 0 auto; padding: 0 24px 80px; }
 .guide-hero { text-align: center; padding: 36px 0 8px; }
 .guide-hero .guide-eyebrow {
-  font-family: var(--font-code); font-size: 13px; font-weight: 600;
+  font-family: var(--font-code); font-size: 0.8125rem; font-weight: 600;
   letter-spacing: 0.18em; color: var(--accent); margin-bottom: 14px;
 }
 .guide-hero h1 {
-  font-size: 34px; font-weight: 900; letter-spacing: -0.02em;
+  font-size: 2.125rem; font-weight: 900; letter-spacing: -0.02em;
   color: var(--ink); margin: 0 0 16px; line-height: 1.3;
 }
 .guide-hero p {
-  font-size: 15px; color: var(--ink-3); line-height: 1.85;
+  font-size: 0.9375rem; color: var(--ink-3); line-height: calc(1.85 * var(--line-scale, 1));
   max-width: 640px; margin: 0 auto;
 }
 .guide-steps { margin-top: 40px; display: flex; flex-direction: column; gap: 18px; }
@@ -2541,30 +2561,30 @@ body {
 .guide-step-num {
   flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
   background: var(--accent); color: #fff; font-weight: 800;
-  display: flex; align-items: center; justify-content: center; font-size: 16px;
+  display: flex; align-items: center; justify-content: center; font-size: 1rem;
 }
 .guide-step-body { flex: 1; min-width: 0; }
-.guide-step-body h3 { margin: 4px 0 8px; font-size: 18px; font-weight: 700; color: var(--ink); }
-.guide-step-body p { margin: 0 0 8px; color: var(--ink-2); font-size: 14.5px; line-height: 1.85; }
+.guide-step-body h3 { margin: 4px 0 8px; font-size: 1.125rem; font-weight: 700; color: var(--ink); }
+.guide-step-body p { margin: 0 0 8px; color: var(--ink-2); font-size: 0.90625rem; line-height: calc(1.85 * var(--line-scale, 1)); }
 .guide-step-body ul { margin: 6px 0; padding-left: 20px; }
-.guide-step-body li { margin: 5px 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.8; }
+.guide-step-body li { margin: 5px 0; color: var(--ink-2); font-size: 0.90625rem; line-height: calc(1.8 * var(--line-scale, 1)); }
 .guide-step-body code {
-  font-family: var(--font-code); font-size: 13px;
+  font-family: var(--font-code); font-size: 0.8125rem;
   background: var(--color-code-bg); padding: 2px 6px; border-radius: 4px;
   color: var(--accent-dk); word-break: break-all;
 }
 .guide-url-box {
   background: #f8fafc; border: 1px solid var(--line); border-radius: 8px;
   padding: 10px 12px; margin: 10px 0;
-  font-family: var(--font-code); font-size: 12.5px; color: var(--ink-2);
-  word-break: break-all; line-height: 1.8;
+  font-family: var(--font-code); font-size: 0.78125rem; color: var(--ink-2);
+  word-break: break-all; line-height: calc(1.8 * var(--line-scale, 1));
 }
 .guide-note {
   margin-top: 32px; padding: 18px 20px;
   background: var(--accent-soft); border: 1px solid var(--accent-border);
-  border-radius: 14px; color: var(--ink-2); font-size: 14px; line-height: 1.9;
+  border-radius: 14px; color: var(--ink-2); font-size: 0.875rem; line-height: calc(1.9 * var(--line-scale, 1));
 }
-.guide-note h4 { margin: 0 0 6px; color: var(--accent-dk); font-size: 14px; }
+.guide-note h4 { margin: 0 0 6px; color: var(--accent-dk); font-size: 0.875rem; }
 .guide-foot {
   margin-top: 40px; display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
 }
@@ -2572,13 +2592,13 @@ body {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 10px 18px; border-radius: 999px;
   border: 1px solid var(--accent); color: var(--accent);
-  text-decoration: none; font-weight: 700; font-size: 14px;
+  text-decoration: none; font-weight: 700; font-size: 0.875rem;
   transition: opacity .15s;
 }
 .guide-foot a.primary { background: var(--accent); color: #fff; }
 .guide-foot a:hover { opacity: .88; }
 @media (max-width: 640px) {
-  .guide-hero h1 { font-size: 26px; }
+  .guide-hero h1 { font-size: 1.625rem; }
   .guide-step { flex-direction: column; gap: 10px; }
 }
 
@@ -2631,14 +2651,14 @@ body {
 .pmodal-icon svg { width: 26px; height: 26px; }
 
 .pmodal-title {
-  font-size: 17px;
+  font-size: 1.0625rem;
   font-weight: 700;
   color: var(--ink);
   margin-bottom: 8px;
 }
 .pmodal-msg {
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 0.875rem;
+  line-height: calc(1.7 * var(--line-scale, 1));
   color: var(--ink-3);
   white-space: pre-line;
   /* 長いURLなどがモーダルからはみ出さないよう、必要なら途中で改行する */
@@ -2661,7 +2681,7 @@ body {
   white-space: nowrap;
   padding: 11px 10px;
   border-radius: 11px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
   font-family: inherit;
   cursor: pointer;
@@ -2775,6 +2795,35 @@ select:focus-visible,
   gap: 12px;
   flex-wrap: wrap;
 }
+/* 表示の設定（文字サイズ・行間）。js/theme.js がフッターへ差し込む。
+   見た目はダークモード切替（.theme-toggle）に揃え、選択中だけアクセント色にする。 */
+.disp-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 4px 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--ink-3);
+}
+.disp-label { font-size: 0.75rem; font-weight: 600; margin-right: 3px; }
+.disp-btn {
+  min-width: 26px;
+  padding: 3px 7px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.disp-btn:hover { background: rgba(16,20,24,0.05); color: var(--ink); }
+.disp-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent-dk); }
+[data-theme="dark"] .disp-btn:hover { background: rgba(255,255,255,0.08); }
+
 .theme-toggle {
   display: inline-flex;
   align-items: center;
@@ -2785,7 +2834,7 @@ select:focus-visible,
   background: transparent;
   color: var(--ink-3);
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: 0.78125rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s, color 0.15s, border-color 0.15s;

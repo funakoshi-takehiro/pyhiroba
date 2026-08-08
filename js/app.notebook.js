@@ -23,6 +23,17 @@ function syncInputAssistButtons() {
   });
 }
 
+/**
+ * 表示の設定（文字サイズ・行間）が変わったとき theme.js から呼ばれる。
+ * CodeMirror は文字幅をピクセルで記憶しているため、明示的に再計測させないと
+ * 行番号やカーソルの位置がずれる。
+ */
+window.onDisplaySettingsChange = function () {
+  Object.keys(editors).forEach((id) => {
+    try { editors[id].refresh(); } catch (_) { /* 破棄済みは無視 */ }
+  });
+};
+
 /** フッターのボタンから呼ばれる：入力補助のオン/オフを切り替えて記憶する */
 function toggleInputAssist() {
   const next = isInputAssistOn() ? 'off' : 'on';

@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <!-- ダークモード切替＋クリックジャッキング対策（描画前に適用するため head 内で同期読み込み） -->
-  <script src="js/theme.js?v=20260725a"></script>
+  <script src="js/theme.js?v=20260807c"></script>
   <meta name="description" content="PyHirobaが生徒を守るために取り入れている安全対策を、学校の先生にもわかるようやさしく紹介します。外部リンクの確認、教材の自動チェック、学校ネットワークの保護（DoS対策）など。">
   <link rel="canonical" href="https://pyhiroba.weblab.t.u-tokyo.ac.jp/security.html">
 
@@ -34,15 +34,15 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260807b">
+  <link rel="stylesheet" href="css/style.css?v=20260807c">
   <style>
     /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
-    .sec-hero p { font-size: 17px; color: var(--ink-2); max-width: 760px; }
+    .sec-hero p { font-size: 1.0625rem; color: var(--ink-2); max-width: 760px; }
     .sec-lead-tag {
       display: inline-flex; align-items: center; gap: 8px;
       margin-top: 18px; padding: 8px 14px; border-radius: 999px;
       background: var(--accent-soft); border: 1px solid var(--accent-border);
-      color: var(--accent-dk); font-size: 13.5px; font-weight: 700;
+      color: var(--accent-dk); font-size: 0.84375rem; font-weight: 700;
     }
     .sec-grid {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(288px, 1fr));
@@ -57,11 +57,11 @@
       background: var(--accent-soft); color: var(--accent-dk);
       display: flex; align-items: center; justify-content: center; margin-bottom: 15px;
     }
-    .sec-card h3 { font-size: 16.5px; margin: 0 0 9px; color: var(--ink); line-height: 1.5; }
-    .sec-card p { font-size: 14.5px; line-height: 1.78; color: var(--ink-2); margin: 0; }
+    .sec-card h3 { font-size: 1.03125rem; margin: 0 0 9px; color: var(--ink); line-height: calc(1.5 * var(--line-scale, 1)); }
+    .sec-card p { font-size: 0.90625rem; line-height: calc(1.78 * var(--line-scale, 1)); color: var(--ink-2); margin: 0; }
     .sec-note { margin-top: 34px; }
-    .sec-note h4 { margin: 0 0 10px; font-size: 16px; color: var(--ink); }
-    .sec-note p { color: var(--ink-2); font-size: 15px; line-height: 1.8; margin: 0 0 10px; }
+    .sec-note h4 { margin: 0 0 10px; font-size: 1rem; color: var(--ink); }
+    .sec-note p { color: var(--ink-2); font-size: 0.9375rem; line-height: calc(1.8 * var(--line-scale, 1)); margin: 0 0 10px; }
     .sec-note a { color: var(--accent-dk); font-weight: 700; text-decoration: underline; }
   </style>
 </head>

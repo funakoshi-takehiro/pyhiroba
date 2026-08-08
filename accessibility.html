@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
-  <script src="js/theme.js?v=20260725a"></script>
+  <script src="js/theme.js?v=20260807c"></script>
   <meta name="description" content="PyHirobaのアクセシビリティ方針。キーボード操作・読み上げ対応・配色のコントラスト・ダークモードなどの取り組みと、現時点で把握している課題を公開しています。">
   <link rel="canonical" href="https://pyhiroba.weblab.t.u-tokyo.ac.jp/accessibility.html">
 
@@ -34,32 +34,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260807b">
+  <link rel="stylesheet" href="css/style.css?v=20260807c">
   <style>
     /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
-    .a11y-hero p { font-size: 17px; color: var(--ink-2); max-width: 760px; }
+    .a11y-hero p { font-size: 1.0625rem; color: var(--ink-2); max-width: 760px; }
     .a11y-section { margin-top: 38px; }
     .a11y-section > h2 {
-      font-size: 19px; font-weight: 800; color: var(--ink); margin: 0 0 10px;
+      font-size: 1.1875rem; font-weight: 800; color: var(--ink); margin: 0 0 10px;
     }
-    .a11y-section > p { color: var(--ink-2); font-size: 15.5px; line-height: 1.9; margin: 8px 0; }
-    .a11y-section ul { margin: 8px 0; padding-left: 20px; color: var(--ink-2); font-size: 15.5px; line-height: 1.95; }
+    .a11y-section > p { color: var(--ink-2); font-size: 0.96875rem; line-height: calc(1.9 * var(--line-scale, 1)); margin: 8px 0; }
+    .a11y-section ul { margin: 8px 0; padding-left: 20px; color: var(--ink-2); font-size: 0.96875rem; line-height: calc(1.95 * var(--line-scale, 1)); }
     .a11y-section li { margin: 5px 0; }
     .a11y-card {
       margin-top: 14px; padding: 18px 20px; border-radius: 14px;
       background: var(--paper); border: 1px solid var(--line);
     }
-    .a11y-card h3 { margin: 0 0 8px; font-size: 15px; color: var(--ink); }
+    .a11y-card h3 { margin: 0 0 8px; font-size: 0.9375rem; color: var(--ink); }
     .a11y-card ul { margin: 0; padding-left: 20px; }
-    .a11y-card li { font-size: 14px; line-height: 1.85; color: var(--ink-2); margin: 4px 0; }
-    .a11y-card p { margin: 0 0 6px; font-size: 14px; line-height: 1.85; color: var(--ink-2); }
+    .a11y-card li { font-size: 0.875rem; line-height: calc(1.85 * var(--line-scale, 1)); color: var(--ink-2); margin: 4px 0; }
+    .a11y-card p { margin: 0 0 6px; font-size: 0.875rem; line-height: calc(1.85 * var(--line-scale, 1)); color: var(--ink-2); }
     .a11y-steps { margin: 6px 0 0; padding-left: 20px; }
-    .a11y-steps li { font-size: 13.5px; }
+    .a11y-steps li { font-size: 0.84375rem; }
     .a11y-note { margin-top: 38px; padding: 20px 22px; border-radius: 16px; background: var(--accent-soft); border: 1px solid var(--accent-border); }
-    .a11y-note h4 { margin: 0 0 8px; font-size: 15.5px; color: var(--ink); }
-    .a11y-note p { margin: 0; color: var(--ink-2); font-size: 14.5px; line-height: 1.85; }
+    .a11y-note h4 { margin: 0 0 8px; font-size: 0.96875rem; color: var(--ink); }
+    .a11y-note p { margin: 0; color: var(--ink-2); font-size: 0.90625rem; line-height: calc(1.85 * var(--line-scale, 1)); }
     .a11y-note a { color: var(--accent-dk); font-weight: 700; text-decoration: underline; }
-    .a11y-updated { font-size: 13px; color: var(--ink-4); margin-top: 34px; }
+    .a11y-updated { font-size: 0.8125rem; color: var(--ink-4); margin-top: 34px; }
   </style>
 </head>
 <body>
@@ -107,6 +107,7 @@
           <li>画像には代替テキストを設定できます（教材作成時に入力いただけます）。</li>
           <li>文字と背景の明度差を確保し、読みやすい配色にしています。</li>
           <li>目に負担の少ないダークモードを用意し、切り替えられるようにしています（下の「表示の設定」をご覧ください）。</li>
+          <li>文字の大きさと行間を、画面上で切り替えられます（下の「表示の設定」をご覧ください）。</li>
           <li>画面の幅にあわせて表示が変わるため、拡大表示や小さな画面でも利用できます。</li>
         </ul>
       </div>
@@ -144,6 +145,12 @@
       </div>
 
       <div class="a11y-card">
+        <h3>文字サイズ・行間</h3>
+        <p>各ページの一番下にある「文字」「行間」で、表示を切り替えられます。文字は3段階（小・中・大）、行間も3段階（狭・標準・広）から選べます。教材の文章もプログラムも実行結果も、まとめて大きくなります。</p>
+        <p>選んだ設定はこの端末のブラウザに記憶され、次回以降も引き継がれます。さらに大きくしたい場合は、ブラウザの拡大機能（<kbd>Ctrl</kbd>／<kbd>⌘</kbd>と<kbd>＋</kbd>）と組み合わせてお使いください。</p>
+      </div>
+
+      <div class="a11y-card">
         <h3>アニメーションを減らす</h3>
         <p>画面の動きが気になる場合は、お使いの端末側で設定してください。設定すると、本サービスの動きのある表示も自動的に止まります。</p>
         <ul class="a11y-steps">
@@ -160,7 +167,6 @@
       <p>改善の途上にある点も、あわせて公開します。</p>
       <ul>
         <li>グラフなど、プログラムの実行結果として表示される画像の代替テキストが十分ではありません。</li>
-        <li>文字サイズや行間を、ページ側で細かく調整する機能はありません（ブラウザの拡大機能をご利用ください）。</li>
         <li>コードを書く部分（エディタ）は、支援技術との組み合わせによっては操作しにくい場合があります。</li>
         <li>第三者機関によるアクセシビリティ試験は未実施です。</li>
       </ul>
@@ -171,7 +177,7 @@
       <p>「ここが使いにくい」「読み上げでうまく伝わらない」といったお気づきの点がありましたら、<a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせフォーム</a>よりお知らせください。改善の参考にさせていただきます。</p>
     </div>
 
-    <p class="a11y-updated">最終更新日：2026年8月6日</p>
+    <p class="a11y-updated">最終更新日：2026年8月7日</p>
 
     <div class="guide-foot">
       <a class="primary" href="./#features">特徴へもどる →</a>

@@ -70,6 +70,17 @@
         apply(document.documentElement.getAttribute('data-theme'));
       });
     })();
+
+    // 文字サイズ・行間の設定を反映する（このページは theme.js を読み込まないため）。
+    // 404 は経由地なので切替UIは置かず、他ページで選んだ設定に合わせるだけにする。
+    (function () {
+      var SETS = [['pyhiroba-text-scale', 'data-text'], ['pyhiroba-line-scale', 'data-line']];
+      for (var i = 0; i < SETS.length; i++) {
+        var v = null;
+        try { v = localStorage.getItem(SETS[i][0]); } catch (e) {}
+        if (v === 's' || v === 'l') document.documentElement.setAttribute(SETS[i][1], v);
+      }
+    })();
   </script>
 
   <style>
@@ -89,7 +100,14 @@
       --font-ui: 'Zen Kaku Gothic New', system-ui, sans-serif;
       --font-code: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
       color-scheme: light;
+      /* 表示の設定（本体の style.css と同じ値。このページは自己完結のため再掲する） */
+      --text-scale: 1;
+      --line-scale: 1;
     }
+    :root[data-text="s"] { --text-scale: 0.9; }
+    :root[data-text="l"] { --text-scale: 1.2; }
+    :root[data-line="s"] { --line-scale: 0.9; }
+    :root[data-line="l"] { --line-scale: 1.15; }
     :root[data-theme="dark"] {
       --accent: #35aecb;
       --accent-dk: #7fd0e2;
@@ -104,7 +122,7 @@
       color-scheme: dark;
     }
 
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; font-size: calc(16px * var(--text-scale, 1)); }
     body {
       font-family: var(--font-ui);
       font-feature-settings: "palt";
@@ -118,7 +136,7 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      line-height: 1.6;
+      line-height: calc(1.6 * var(--line-scale, 1));
     }
 
     /* トップバー */
@@ -128,12 +146,12 @@
     }
     .nf-logo {
       font-family: var(--font-ui);
-      font-weight: 900; font-size: 18px; color: var(--accent);
+      font-weight: 900; font-size: 1.125rem; color: var(--accent);
       text-decoration: none; letter-spacing: -0.01em;
     }
     .nf-back {
       display: inline-flex; align-items: center; gap: 6px;
-      height: 38px; padding: 0 16px; font-size: 13px; font-weight: 600;
+      min-height: 38px; padding: 0 16px; font-size: 0.8125rem; font-weight: 600;
       border-radius: 999px; border: 1px solid var(--ink);
       color: var(--ink); text-decoration: none; background: transparent;
       transition: background .15s, color .15s;
@@ -149,20 +167,20 @@
     .nf-hero { text-align: center; max-width: 640px; }
     .nf-code {
       font-family: var(--font-ui);
-      font-size: 132px; font-weight: 900; line-height: 1;
+      font-size: 8.25rem; font-weight: 900; line-height: 1;
       letter-spacing: -0.04em; color: var(--accent);
     }
     .nf-eyebrow {
       font-family: var(--font-code);
-      font-size: 13px; font-weight: 600; letter-spacing: 0.18em;
+      font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.18em;
       color: var(--accent); margin-bottom: 18px; text-transform: uppercase;
     }
     .nf-hero h1 {
-      font-size: 30px; font-weight: 900; letter-spacing: -0.02em;
+      font-size: 1.875rem; font-weight: 900; letter-spacing: -0.02em;
       color: var(--ink); margin: 16px 0 14px; line-height: 1.3;
     }
     .nf-hero p {
-      font-size: 16px; color: var(--ink-3); line-height: 1.9;
+      font-size: 1rem; color: var(--ink-3); line-height: calc(1.9 * var(--line-scale, 1));
       max-width: 460px; margin: 0 auto;
     }
 
@@ -172,9 +190,9 @@
     }
     .nf-btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      height: 48px; padding: 0 24px;
+      min-height: 48px; padding: 0 24px;
       border-radius: 999px; border: 1px solid transparent;
-      font-family: var(--font-ui); font-size: 15px; font-weight: 700;
+      font-family: var(--font-ui); font-size: 0.9375rem; font-weight: 700;
       text-decoration: none; cursor: pointer; white-space: nowrap;
       transition: transform .15s ease, box-shadow .15s ease, background .15s, color .15s;
     }
@@ -197,18 +215,18 @@
     }
     .nf-footer-links { display: flex; gap: 18px; flex-wrap: wrap; }
     .nf-footer-links a {
-      font-size: 13px; color: var(--ink-2); font-weight: 500; text-decoration: none;
+      font-size: 0.8125rem; color: var(--ink-2); font-weight: 500; text-decoration: none;
       transition: color .15s;
     }
     .nf-footer-links a:hover { color: var(--accent); }
-    .nf-copy { font-size: 12.5px; color: var(--ink-4); }
+    .nf-copy { font-size: 0.78125rem; color: var(--ink-4); }
 
     /* テーマ切替ボタン（本体フッターと同じ見た目） */
     .theme-toggle {
       display: inline-flex; align-items: center; gap: 7px;
       padding: 6px 14px; border-radius: 999px;
       border: 1px solid var(--line); background: transparent; color: var(--ink-3);
-      font-family: var(--font-ui); font-size: 12.5px; font-weight: 600; cursor: pointer;
+      font-family: var(--font-ui); font-size: 0.78125rem; font-weight: 600; cursor: pointer;
       transition: background .15s, color .15s, border-color .15s;
     }
     .theme-toggle:hover { color: var(--ink); border-color: var(--ink-4); background: rgba(16,20,24,0.04); }
@@ -228,15 +246,15 @@
     .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
     .v3-footer { margin-top: 56px; padding: 52px 0 28px; border-top: 1px solid var(--ink); background: var(--paper); }
     .v3-footer-top { display: grid; grid-template-columns: 1.1fr 1.4fr; gap: 56px; padding-bottom: 40px; }
-    .v3-footer-logo { font-size: 30px; font-weight: 900; letter-spacing: -0.02em; color: #028DAE; font-family: var(--font-ui); }
+    .v3-footer-logo { font-size: 1.875rem; font-weight: 900; letter-spacing: -0.02em; color: #028DAE; font-family: var(--font-ui); }
     [data-theme="dark"] .v3-footer-logo { color: var(--accent); }
     .v3-footer-kana { font-size: 0.5em; font-weight: 700; color: var(--ink-3); margin-left: 10px; }
-    .v3-footer-tagline { margin: 14px 0 0; color: var(--ink-3); font-size: 14px; line-height: 1.7; max-width: 38ch; }
+    .v3-footer-tagline { margin: 14px 0 0; color: var(--ink-3); font-size: 0.875rem; line-height: calc(1.7 * var(--line-scale, 1)); max-width: 38ch; }
     .v3-footer-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
-    .v3-footer-cols h5 { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); margin: 0 0 14px; font-family: var(--font-code); }
-    .v3-footer-cols a { display: block; font-size: 14px; color: var(--ink-2); font-weight: 500; text-decoration: none; padding: 6px 0; transition: color 0.15s; }
+    .v3-footer-cols h5 { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-4); margin: 0 0 14px; font-family: var(--font-code); }
+    .v3-footer-cols a { display: block; font-size: 0.875rem; color: var(--ink-2); font-weight: 500; text-decoration: none; padding: 6px 0; transition: color 0.15s; }
     .v3-footer-cols a:hover { color: var(--accent); }
-    .v3-footer-bottom { margin-top: 26px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; color: var(--ink-4); font-size: 12.5px; }
+    .v3-footer-bottom { margin-top: 26px; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; color: var(--ink-4); font-size: 0.78125rem; }
 
     @media (max-width: 760px) {
       .v3-footer-top { grid-template-columns: 1fr; gap: 32px; }
@@ -247,8 +265,8 @@
     }
 
     @media (max-width: 560px) {
-      .nf-code { font-size: 92px; }
-      .nf-hero h1 { font-size: 24px; }
+      .nf-code { font-size: 5.75rem; }
+      .nf-hero h1 { font-size: 1.5rem; }
     }
   </style>
 </head>

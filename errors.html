@@ -11,7 +11,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
 
   <!-- ダークモード切替（描画前にテーマを適用してちらつきを防ぐため、head内で同期読み込み） -->
-  <script src="js/theme.js?v=20260725a"></script>
+  <script src="js/theme.js?v=20260807c"></script>
   <meta name="description" content="PyHirobaが日本語で解説するPythonエラーの一覧。SyntaxError・NameError・TypeErrorなど、初学者がつまずきやすいエラーをわかりやすく説明します。">
   <link rel="canonical" href="https://pyhiroba.weblab.t.u-tokyo.ac.jp/errors.html">
 
@@ -36,7 +36,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=20260807b">
+  <link rel="stylesheet" href="css/style.css?v=20260807c">
 
   <style>
     .err-page {
@@ -50,12 +50,12 @@
       max-width: 980px; margin: 0 auto; padding: 22px 24px;
     }
     .err-topbar .err-logo {
-      font-weight: 900; font-size: 18px; color: var(--accent);
+      font-weight: 900; font-size: 1.125rem; color: var(--accent);
       text-decoration: none; letter-spacing: -0.01em;
     }
     .err-topbar a.err-back {
       display: inline-flex; align-items: center; gap: 6px;
-      height: 38px; padding: 0 16px; font-size: 13px; font-weight: 600;
+      height: 38px; padding: 0 16px; font-size: 0.8125rem; font-weight: 600;
       border-radius: 999px; border: 1px solid var(--ink);
       color: var(--ink); text-decoration: none; background: transparent;
       transition: background .15s;
@@ -65,15 +65,15 @@
     /* ヒーロー */
     .err-hero { text-align: center; padding: 40px 0 8px; }
     .err-hero .err-eyebrow {
-      font-family: var(--font-code); font-size: 13px; font-weight: 600;
+      font-family: var(--font-code); font-size: 0.8125rem; font-weight: 600;
       letter-spacing: 0.18em; color: var(--accent); margin-bottom: 14px;
     }
     .err-hero h1 {
-      font-size: 38px; font-weight: 900; letter-spacing: -0.02em;
+      font-size: 2.375rem; font-weight: 900; letter-spacing: -0.02em;
       color: var(--ink); margin: 0 0 16px; line-height: 1.25;
     }
     .err-hero p {
-      font-size: 17px; color: var(--ink-2); line-height: 1.85;
+      font-size: 1.0625rem; color: var(--ink-2); line-height: calc(1.85 * var(--line-scale, 1));
       max-width: 660px; margin: 0 auto;
     }
     /* 対応エラー数（モダンなスタッツ表示） */
@@ -89,17 +89,17 @@
       gap: 6px; padding: 4px 38px;
     }
     .err-stat-num {
-      font-size: 44px; font-weight: 900; line-height: 1; letter-spacing: -0.03em;
+      font-size: 2.75rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em;
       background: linear-gradient(135deg, #028DAE, #03b4dc);
       -webkit-background-clip: text; background-clip: text;
       -webkit-text-fill-color: transparent; color: var(--accent);
     }
     .err-stat-plus {
-      font-size: 26px; vertical-align: top; margin-left: 1px;
+      font-size: 1.625rem; vertical-align: top; margin-left: 1px;
       -webkit-text-fill-color: transparent;
     }
     .err-stat-label {
-      font-size: 12px; font-weight: 700; color: var(--ink-3);
+      font-size: 0.75rem; font-weight: 700; color: var(--ink-3);
       letter-spacing: 0.1em;
     }
     .err-stat-divider {
@@ -114,27 +114,27 @@
       border-bottom: 2px solid var(--line);
     }
     .err-cat-head h2 {
-      font-size: 20px; font-weight: 800; color: var(--ink); margin: 0;
+      font-size: 1.25rem; font-weight: 800; color: var(--ink); margin: 0;
     }
     .err-cat-head .err-cat-en {
-      font-family: var(--font-code); font-size: 13px; color: var(--ink-3);
+      font-family: var(--font-code); font-size: 0.8125rem; color: var(--ink-3);
     }
 
     /* テーブル */
-    .err-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .err-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
     .err-table th {
-      text-align: left; font-size: 12px; font-weight: 700; color: var(--ink-3);
+      text-align: left; font-size: 0.75rem; font-weight: 700; color: var(--ink-3);
       padding: 8px 12px; border-bottom: 1px solid var(--line);
       background: #f8fafc; white-space: nowrap;
     }
     .err-table td {
       padding: 12px; border-bottom: 1px solid var(--line);
-      vertical-align: top; line-height: 1.7;
+      vertical-align: top; line-height: calc(1.7 * var(--line-scale, 1));
     }
     .err-table tr:last-child td { border-bottom: none; }
     .err-table tr:hover td { background: #fafbfc; }
     .err-type {
-      font-family: var(--font-code); font-size: 12.5px; font-weight: 600;
+      font-family: var(--font-code); font-size: 0.78125rem; font-weight: 600;
       color: #334155; background: #e2e8f0;
       padding: 2px 9px; border-radius: 999px; white-space: nowrap;
       display: inline-block;
@@ -142,7 +142,7 @@
     .err-cause { color: var(--ink-2); width: 38%; }
     .err-jp { color: var(--ink); }
     .err-jp code, .err-cause code {
-      font-family: var(--font-code); font-size: 12px;
+      font-family: var(--font-code); font-size: 0.75rem;
       background: var(--color-code-bg); padding: 1px 6px; border-radius: 4px;
       color: var(--accent-dk);
     }
@@ -151,16 +151,16 @@
     .err-foot-note {
       margin-top: 56px; padding: 24px; text-align: center;
       background: #f8fafc; border-radius: 14px; color: var(--ink-3);
-      font-size: 14px; line-height: 1.8;
+      font-size: 0.875rem; line-height: calc(1.8 * var(--line-scale, 1));
     }
     .err-foot-note a { color: var(--accent); font-weight: 700; text-decoration: none; }
     .err-foot-note a:hover { text-decoration: underline; }
 
     @media (max-width: 640px) {
-      .err-hero h1 { font-size: 24px; }
+      .err-hero h1 { font-size: 1.5rem; }
       .err-stat-item { padding: 4px 24px; }
-      .err-stat-num { font-size: 36px; }
-      .err-table { font-size: 13px; table-layout: fixed; }
+      .err-stat-num { font-size: 2.25rem; }
+      .err-table { font-size: 0.8125rem; table-layout: fixed; }
       .err-cause { width: auto; }
       .err-table th:nth-child(2), .err-table td:nth-child(2) { display: none; }
       /* 長い英語のエラー名（例：ModuleNotFoundError）を折り返し、テーブルを画面内に収める */
