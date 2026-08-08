@@ -13,7 +13,7 @@
    ================================================== */
 'use strict';
 
-const VERSION = 'pyhiroba-v3-20260807f';
+const VERSION = 'pyhiroba-v3-20260808c';
 const CACHE = VERSION;
 
 // 同一オリジンで先読みしておく最小限のシェル。スコープは '/'（sw.js はルート）だが、
@@ -66,7 +66,12 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+    // 消すのは「自分が作った古い版のキャッシュ」だけに限る。
+    // ライブラリが独自に持つキャッシュ（例: transformers-cache に入る AI のモデル。
+    // 数百MBある）まで消すと、版数を上げるたびに再ダウンロードが発生してしまう。
+    await Promise.all(
+      keys.filter((k) => k.startsWith('pyhiroba-') && k !== CACHE).map((k) => caches.delete(k)),
+    );
     await self.clients.claim();  // 既存ページも即制御下に置く（初回ロード後のキャッシュを可能に）
   })());
 });

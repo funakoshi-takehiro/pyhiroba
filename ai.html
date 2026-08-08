@@ -20,17 +20,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css?v=20260807e">
 
-  <!-- transformers.js は計算部品（onnxruntime）を名前で参照するため、その実体の場所を
-       ここで固定する。配布元は Pyodide と同じ jsDelivr で、許可ドメインの追加は不要。
-       版まで固定しているので、あとから中身が入れ替わることはない。 -->
-  <script type="importmap">
-  {
-    "imports": {
-      "onnxruntime-web/webgpu": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0-dev.20260416-b7804b056c/dist/ort.webgpu.bundle.min.mjs",
-      "onnxruntime-common": "https://cdn.jsdelivr.net/npm/onnxruntime-common@1.24.0-dev.20251116-b39e144322/dist/esm/index.js"
-    }
-  }
-  </script>
   <style>
     /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
     .ai-badge {
@@ -63,6 +52,8 @@
     }
     .ai-btn:hover { background: var(--accent-dk); }
     .ai-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+    /* display を指定しているため、hidden 属性を効かせるには明示が要る */
+    .ai-btn[hidden] { display: none; }
     .ai-btn-sub { background: transparent; color: var(--ink-2); border-color: var(--line); }
     .ai-btn-sub:hover { background: var(--bg-2); color: var(--ink); }
     .ai-bar-outer { height: 8px; border-radius: 999px; background: var(--bg-2); overflow: hidden; margin-top: 12px; }
@@ -73,6 +64,16 @@
       background: var(--color-code-bg); border: 1px solid var(--line);
       font-size: 0.875rem; line-height: calc(1.85 * var(--line-scale, 1)); color: var(--ink);
       white-space: pre-wrap; word-break: break-word; min-height: 3em;
+    }
+    /* 生成中であることを示す点滅カーソル（動きを減らす設定では止める） */
+    .ai-output.is-running::after {
+      content: ''; display: inline-block; width: 0.5em; height: 1em;
+      vertical-align: text-bottom; background: var(--accent); margin-left: 2px;
+      animation: ai-caret 1s step-end infinite;
+    }
+    @keyframes ai-caret { 50% { opacity: 0; } }
+    @media (prefers-reduced-motion: reduce) {
+      .ai-output.is-running::after { animation: none; }
     }
     .ai-warn {
       margin-top: 18px; padding: 16px 18px; border-radius: 14px;
@@ -107,7 +108,9 @@
         <li>最初の1回だけ、モデルの部品をダウンロードします（下の選択肢に目安の通信量を書いています）。2回目以降は端末に保存されたものを使うため、通信は発生しません。</li>
         <li>学校のネットワークでは、通信量が大きいため<strong>クラス全員での一斉ダウンロードは避けて</strong>ください。</li>
         <li>ここで使うのはごく小さなモデルです。答えの内容が事実と異なることがよくあります。<strong>調べものには使わず</strong>、「AIがどう動くか」を体験する目的でお使いください。</li>
+        <li>読み込みにも生成にも時間がかかります。とくに古い端末では、返事が出そろうまで数十秒かかることがあります（生成中もページの操作はできます）。</li>
         <li>読み込めるモデルは、運営者があらかじめ指定したものだけに限定しています。</li>
+        <li>この機能は、PyHiroba の他のページより少し新しいブラウザが必要です（Firefox は 114 以降）。動かないときは、ブラウザを最新版に更新してからお試しください。</li>
       </ul>
     </div>
 
@@ -135,9 +138,13 @@
       </div>
       <div class="ai-row">
         <button class="ai-btn" id="ai-run" type="button" disabled>生成する</button>
-        <span class="ai-note">生成には時間がかかります（端末によっては1分以上）。</span>
+        <button class="ai-btn ai-btn-sub" id="ai-stop" type="button" hidden>停止</button>
+        <span class="ai-note">文字は、書けたところから少しずつ表示されます。生成中もページの操作はできます。</span>
       </div>
-      <div class="ai-output" id="ai-output" aria-live="polite"></div>
+      <!-- 読み上げは、この状態表示（role="status"）だけが行う。下の出力欄を読み上げ対象に
+           すると、文字が増えるたびに読み上げが始まり、かえって使えなくなるため。 -->
+      <p class="ai-status" id="ai-gen-status" role="status"></p>
+      <div class="ai-output" id="ai-output"></div>
     </div>
 
     <div class="guide-foot">
@@ -194,14 +201,18 @@
     </div>
   </footer>
 
-  <!-- AI 本体（許可リストと通信ガードを含む）。ESM のため type="module" で読み込む -->
+  <!-- AI 本体（許可リストと通信ガードを含む）。ESM のため type="module" で読み込む。
+       実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
-    const { AI_MODELS, aiLoadModel, aiGenerate, aiUnload, aiCheckModels, aiExplainError } =
-      await import('./js/ai.js?v=20260808b');
+    const { AI_MODELS, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiExplainError } =
+      await import('./js/ai.js?v=20260808c');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
     const btnLoad = $('ai-load'), btnUnload = $('ai-unload'), btnRun = $('ai-run'), out = $('ai-output');
+    const btnStop = $('ai-stop'), genStatus = $('ai-gen-status');
+    const DEVICE_LABEL = { webgpu: 'WebGPU（画像処理装置）', wasm: 'CPU' };
+    let device = '';
 
     // 選択肢は許可リストからのみ作る（画面側で任意のモデル名を指定できないようにする）
     AI_MODELS.forEach((m) => {
@@ -214,28 +225,44 @@
     const setStatus = (t) => { status.textContent = t; };
     const setProgress = (pct) => { barOuter.hidden = false; bar.style.width = Math.max(0, Math.min(100, pct)) + '%'; };
 
+    let loading = false;    // ダウンロードの最中か
+    let cancelled = false;  // 利用者が自分で中止したか
+
     btnLoad.addEventListener('click', async () => {
       const spec = AI_MODELS.find((m) => m.id === sel.value);
       if (!spec) return;
       if (!window.confirm(`「${spec.label}」を読み込みます。\n最初の1回だけ、約${spec.approxMB}MB のダウンロードが発生します。\nよろしいですか？`)) return;
+      loading = true; cancelled = false;
       btnLoad.disabled = true; sel.disabled = true; btnRun.disabled = true;
+      // ダウンロードは大きいので、途中でやめられるようにしておく
+      btnUnload.disabled = false; btnUnload.textContent = '中止する';
       try {
-        await aiLoadModel(spec.id, (pct, text) => { setProgress(pct); setStatus(`${text}（${pct}%）`); });
-        setStatus('準備ができました。文章を入力して「生成する」を押してください。');
-        btnRun.disabled = false; btnUnload.disabled = false;
+        const res = await aiLoadModel(spec.id, (pct, text) => { setProgress(pct); setStatus(`${text}（${pct}%）`); });
+        device = res.device || '';
+        const dev = DEVICE_LABEL[device] || device;
+        setStatus(`準備ができました${dev ? `（${dev}で動きます）` : ''}。文章を入力して「生成する」を押してください。`);
+        btnRun.disabled = false;
       } catch (e) {
-        setStatus('読み込めませんでした。' + aiExplainError(e));
+        if (!cancelled) setStatus('読み込めませんでした。' + aiExplainError(e));
         barOuter.hidden = true; sel.disabled = false;
+        // 前に読み込んだモデルが残っていれば、そのまま使い続けられる
+        const still = aiIsLoaded();
+        btnRun.disabled = !still; btnUnload.disabled = !still;
       } finally {
-        btnLoad.disabled = false;
+        loading = false;
+        btnLoad.disabled = false; btnUnload.textContent = '解放する';
       }
     });
 
     btnUnload.addEventListener('click', async () => {
+      const wasLoading = loading;
+      cancelled = true;
       await aiUnload();
       btnRun.disabled = true; btnUnload.disabled = true; sel.disabled = false;
-      barOuter.hidden = true; out.textContent = '';
-      setStatus('モデルを解放しました。');
+      btnStop.hidden = true; out.classList.remove('is-running');
+      barOuter.hidden = true; out.textContent = ''; genStatus.textContent = '';
+      device = '';
+      setStatus(wasLoading ? '読み込みを中止しました。' : 'モデルを解放しました。');
     });
 
     $('ai-check').addEventListener('click', async () => {
@@ -256,20 +283,45 @@
       }
     });
 
+    btnStop.addEventListener('click', () => {
+      aiStop();
+      btnStop.disabled = true;
+      genStatus.textContent = '停止しています…';
+    });
+
     btnRun.addEventListener('click', async () => {
       const prompt = $('ai-prompt').value.trim();
       if (!prompt) { setStatus('文章を入力してください。'); return; }
-      btnRun.disabled = true;
+      btnRun.disabled = true; btnUnload.disabled = true;   // 生成中は「停止」で止める
+      btnStop.hidden = false; btnStop.disabled = false;
       out.textContent = '';
-      setStatus('生成しています…（時間がかかります）');
+      out.classList.add('is-running');
+
+      // 待っている間の経過時間を出す（何も起きていないように見えないように）
+      const t0 = performance.now();
+      const tick = setInterval(() => {
+        const s = Math.round((performance.now() - t0) / 1000);
+        genStatus.textContent = `生成しています…（${s}秒）`;
+      }, 500);
+      genStatus.textContent = '生成しています…（0秒）';
+
       try {
         // 生成結果は必ず textContent で入れる（HTMLとして解釈させない）
-        out.textContent = await aiGenerate(prompt, { maxNewTokens: 128 });
-        setStatus('生成が終わりました。');
+        const res = await aiGenerate(prompt, {
+          maxNewTokens: 64,
+          onToken: (t) => { out.textContent += t; },
+        });
+        if (res.text) out.textContent = res.text;   // 最終結果で整える
+        const sec = (res.ms / 1000).toFixed(1);
+        const dev = DEVICE_LABEL[res.device || device] || '';
+        genStatus.textContent = `${res.interrupted ? '途中で停止しました' : '生成が終わりました'}（${sec}秒${dev ? '／' + dev : ''}）`;
       } catch (e) {
-        setStatus('生成に失敗しました。' + aiExplainError(e));
+        genStatus.textContent = '生成に失敗しました。' + aiExplainError(e);
       } finally {
-        btnRun.disabled = false;
+        clearInterval(tick);
+        out.classList.remove('is-running');
+        btnStop.hidden = true;
+        btnRun.disabled = false; btnUnload.disabled = false;
       }
     });
   </script>
