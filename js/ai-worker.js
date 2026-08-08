@@ -131,8 +131,14 @@ async function handleGenerate(msg) {
 
   stopper = new t.InterruptableStoppingCriteria();
   const started = Date.now();
+  // 会話形式（chat template）を持つモデルはその形式で、持たないモデルは素の文章で渡す。
+  // 持たないモデルに会話形式で渡すと、そこで失敗してしまうため。
+  const hasChatTemplate = !!(pipe.tokenizer && pipe.tokenizer.chat_template);
+  const input = hasChatTemplate
+    ? [{ role: 'user', content: String(msg.prompt) }]
+    : String(msg.prompt);
   try {
-    const out = await pipe([{ role: 'user', content: String(msg.prompt) }], {
+    const out = await pipe(input, {
       max_new_tokens: msg.maxNewTokens || 64,
       temperature: msg.temperature != null ? msg.temperature : 0.7,
       do_sample: true,

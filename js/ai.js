@@ -24,40 +24,86 @@
 /* --------------------------------------------------------------
    1. 取得を許可するモデルの一覧（ここに無いモデルは読み込めない）
 
+   方針: 日本で作られたモデル（国産）に限る。
+   ・LLM-jp-3 … 国立情報学研究所（NII）大規模言語モデル研究開発センター。Apache-2.0
+   ・Sarashina2.2 … SB Intuitions。MIT
+   どちらも配布元の公式リポジトリは PyTorch 形式のみで、ブラウザでは動かせない。
+   そのため、ONNX 形式へ変換したものを読み込む（onnx-community は Hugging Face 公式系
+   の変換元で、Pyodide と同じく「版を固定して使う」方針に合う）。
+
+   ready の意味
+   ------------
+   ・true  … 実在を確認済み。画面の選択肢に出す（授業で使える）
+   ・false … 実在が未確認の候補。選択肢には出さず、「使えるモデルを調べる」でのみ確認する
+   推測でモデルを載せると「読み込めません」に行き当たるため、確認できたものだけを出す。
+
    revision には、その時点のコミットIDを書くのが望ましい。
    'main' のままだと、配布元でモデルが更新されたとき内容が変わりうる。
-   コミットIDは Hugging Face のモデルページ「Files and versions」で確認できる。
+   コミットIDは「使えるモデルを調べる」の結果に表示される。
    -------------------------------------------------------------- */
 export const AI_MODELS = [
   {
-    id: 'onnx-community/Qwen2.5-0.5B-Instruct',
+    id: 'onnx-community/llm-jp-3-150m-instruct2-ONNX',
     revision: 'main',
-    label: 'Qwen2.5 0.5B（日本語が使えます）',
-    approxMB: 400,
-    dtype: 'q4',
-  },
-  {
-    id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
-    revision: 'main',
-    label: 'SmolLM2 135M（英語・いちばん軽い）',
+    label: 'LLM-jp-3 150M（国立情報学研究所）',
     approxMB: 110,
     dtype: 'q4',
+    ready: true,
   },
   {
-    id: 'HuggingFaceTB/SmolLM2-360M-Instruct',
+    id: 'onnx-community/llm-jp-3-440m-instruct2-ONNX',
     revision: 'main',
-    label: 'SmolLM2 360M（英語・中間の大きさ）',
-    approxMB: 260,
+    label: 'LLM-jp-3 440M（国立情報学研究所）',
+    approxMB: 300,
     dtype: 'q4',
+    ready: false,
   },
   {
-    id: 'Xenova/Qwen1.5-0.5B-Chat',
+    id: 'onnx-community/llm-jp-3-980m-instruct2-ONNX',
     revision: 'main',
-    label: 'Qwen1.5 0.5B（日本語・予備）',
-    approxMB: 380,
+    label: 'LLM-jp-3 980M（国立情報学研究所）',
+    approxMB: 600,
     dtype: 'q4',
+    ready: false,
+  },
+  {
+    id: 'onnx-community/llm-jp-3-150m-instruct3-ONNX',
+    revision: 'main',
+    label: 'LLM-jp-3 150M instruct3（国立情報学研究所・安全性調整版）',
+    approxMB: 110,
+    dtype: 'q4',
+    ready: false,
+  },
+  {
+    id: 'onnx-community/llm-jp-3-440m-instruct3-ONNX',
+    revision: 'main',
+    label: 'LLM-jp-3 440M instruct3（国立情報学研究所・安全性調整版）',
+    approxMB: 300,
+    dtype: 'q4',
+    ready: false,
+  },
+  {
+    id: 'onnx-community/sarashina2.2-0.5b-instruct-v0.1-ONNX',
+    revision: 'main',
+    label: 'Sarashina2.2 0.5B（SB Intuitions）',
+    approxMB: 350,
+    dtype: 'q4',
+    ready: false,
+  },
+  {
+    id: 'onnx-community/sarashina2.2-1b-instruct-v0.1-ONNX',
+    revision: 'main',
+    label: 'Sarashina2.2 1B（SB Intuitions）',
+    approxMB: 700,
+    dtype: 'q4',
+    ready: false,
   },
 ];
+
+/** 画面の選択肢に出してよいモデル（実在を確認済みのもの） */
+export function aiReadyModels() {
+  return AI_MODELS.filter((m) => m.ready);
+}
 
 /** モデル配布元。transformers.js の既定値と同じだが、明示して固定する */
 const AI_MODEL_HOST = 'https://huggingface.co/';
@@ -131,24 +177,93 @@ export function aiExplainError(err) {
   return m;
 }
 
+/* --------------------------------------------------------------
+   3-2. モデルが本当に使えるかを調べる
+
+   「リポジトリはあるが ONNX の重みが無い」ことがよくある（配布元の公式リポジトリは
+   PyTorch 形式だけ、という場合）。設定ファイルの有無だけでは判定できないため、
+   重みの実在まで確かめる。重みは数百MBあるので、中身は取らず HEAD で存在と大きさだけ見る。
+   -------------------------------------------------------------- */
+
+/** transformers.js が探す重みのファイル名（左から順に、使いたい順） */
+const ONNX_WEIGHT_FILES = [
+  { file: 'onnx/model_q4.onnx', dtype: 'q4' },
+  { file: 'onnx/model_q4f16.onnx', dtype: 'q4f16' },
+  { file: 'onnx/model_quantized.onnx', dtype: 'q8' },
+  { file: 'onnx/model_fp16.onnx', dtype: 'fp16' },
+  { file: 'onnx/model.onnx', dtype: 'fp32' },
+];
+
+const fileUrl = (m, path) => `${AI_MODEL_HOST}${m.id}/resolve/${m.revision}/${path}`;
+
+/** バイト数を「約110MB」のような読みやすい形にする */
+function humanMB(bytes) {
+  const n = Number(bytes);
+  if (!Number.isFinite(n) || n <= 0) return '';
+  return n >= 1024 * 1024 * 1024
+    ? `約${(n / 1024 / 1024 / 1024).toFixed(1)}GB`
+    : `約${Math.round(n / 1024 / 1024)}MB`;
+}
+
 /**
- * 許可リストの各モデルが配布元に実在するかを確かめる。
- * 確認するのは設定ファイル（config.json）1つだけで、通信量はごくわずか。
+ * 許可リストの各モデルについて、次を確かめる。
+ *   1. config.json … リポジトリと版が存在するか（あわせてコミットIDを控える）
+ *   2. onnx/…      … ブラウザで動く重みが実在するか、その大きさ（HEADのみ）
+ *   3. tokenizer_config.json … 会話形式（chat template）に対応しているか
  * 通信ガードを通るため、ここでも許可リスト外へは一切アクセスしない。
  */
 export async function aiCheckModels(onEach) {
   const results = [];
   for (const m of AI_MODELS) {
-    const url = `${AI_MODEL_HOST}${m.id}/resolve/${m.revision}/config.json`;
-    let ok = false, detail = '';
+    const r = {
+      id: m.id, label: m.label, ready: !!m.ready,
+      ok: false, detail: '', weights: [], commit: '', chat: null,
+    };
     try {
-      const res = await fetch(url, { method: 'GET' });
-      ok = res.ok;
-      detail = res.ok ? '見つかりました' : `見つかりません（${res.status}）`;
+      // 1. リポジトリと版
+      const cfg = await fetch(fileUrl(m, 'config.json'), { method: 'GET' });
+      if (!cfg.ok) {
+        r.detail = cfg.status === 404
+          ? 'このモデルは配布元にありません（404）'
+          : `配布元が応答しませんでした（${cfg.status}）`;
+      } else {
+        // 版の固定に使えるよう、コミットIDが読めれば控える
+        r.commit = cfg.headers.get('X-Repo-Commit') || '';
+
+        // 2. ブラウザで動く重み（HEAD なので中身は落とさない）
+        for (const w of ONNX_WEIGHT_FILES) {
+          try {
+            const head = await fetch(fileUrl(m, w.file), { method: 'HEAD' });
+            if (head.ok) {
+              r.weights.push({
+                dtype: w.dtype,
+                file: w.file.replace('onnx/', ''),
+                size: humanMB(head.headers.get('Content-Length')),
+              });
+            }
+          } catch (_) { /* 個別の失敗は「無い」として扱う */ }
+        }
+
+        // 3. 会話形式に対応しているか
+        try {
+          const tk = await fetch(fileUrl(m, 'tokenizer_config.json'), { method: 'GET' });
+          if (tk.ok) r.chat = (await tk.text()).includes('chat_template');
+        } catch (_) { /* 判定できなければ null のまま */ }
+
+        if (r.weights.length === 0) {
+          r.detail = 'ブラウザ用の重み（ONNX）がありません。このままでは読み込めません';
+        } else {
+          r.ok = true;
+          const w = r.weights[0];
+          const parts = [`${w.file}${w.size ? ' ' + w.size : ''}`];
+          if (r.commit) parts.push(`コミット ${r.commit.slice(0, 7)}`);
+          if (r.chat === false) parts.push('会話形式には未対応（そのまま文章を渡します）');
+          r.detail = `使えます（${parts.join('／')}）`;
+        }
+      }
     } catch (e) {
-      detail = aiExplainError(e);
+      r.detail = aiExplainError(e);
     }
-    const r = { id: m.id, label: m.label, ok, detail };
     results.push(r);
     if (typeof onEach === 'function') onEach(r);
   }
@@ -178,7 +293,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260808c', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260808d', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }
