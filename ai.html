@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AIを動かしてみる（試験公開） | PyHiroba（ぱいひろば）</title>
+  <meta name="robots" content="noindex">
+
+  <!-- ファビコン -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="icon" type="image/png" href="favicon-64.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+  <!-- 表示の設定（描画前に適用してちらつきを防ぐため、head内で同期読み込み） -->
+  <script src="js/theme.js?v=20260807e"></script>
+  <meta name="description" content="ブラウザの中だけで小さな言語モデル（AI）を動かす試験ページです。入力した文章が外部に送られることはありません。">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css?v=20260807e">
+
+  <!-- transformers.js は計算部品（onnxruntime）を名前で参照するため、その実体の場所を
+       ここで固定する。配布元は Pyodide と同じ jsDelivr で、許可ドメインの追加は不要。
+       版まで固定しているので、あとから中身が入れ替わることはない。 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "onnxruntime-web/webgpu": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0-dev.20260416-b7804b056c/dist/ort.webgpu.bundle.min.mjs",
+      "onnxruntime-common": "https://cdn.jsdelivr.net/npm/onnxruntime-common@1.24.0-dev.20251116-b39e144322/dist/esm/index.js"
+    }
+  }
+  </script>
+  <style>
+    /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
+    .ai-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 999px;
+      background: var(--accent-soft); color: var(--accent-dk);
+      border: 1px solid var(--accent-border);
+      font-size: 0.75rem; font-weight: 700; margin-bottom: 12px;
+    }
+    .ai-card {
+      margin-top: 18px; padding: 20px; border-radius: 16px;
+      background: var(--paper); border: 1px solid var(--line);
+    }
+    .ai-card h2 { font-size: 1rem; margin: 0 0 10px; color: var(--ink); }
+    .ai-card p { font-size: 0.875rem; line-height: calc(1.85 * var(--line-scale, 1)); color: var(--ink-2); margin: 0 0 10px; }
+    .ai-note { font-size: 0.8125rem; color: var(--ink-3); }
+    .ai-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+    .ai-select, .ai-input {
+      font-family: var(--font-ui); font-size: 0.875rem; color: var(--ink);
+      background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+      padding: 9px 12px; min-width: 0;
+    }
+    .ai-select { flex: 1 1 260px; }
+    .ai-input { flex: 1 1 100%; resize: vertical; min-height: 84px; line-height: calc(1.7 * var(--line-scale, 1)); }
+    .ai-btn {
+      display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+      padding: 9px 18px; border-radius: 999px; border: 1px solid var(--accent);
+      background: var(--accent); color: #fff;
+      font-family: var(--font-ui); font-size: 0.875rem; font-weight: 700; cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+    .ai-btn:hover { background: var(--accent-dk); }
+    .ai-btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+    .ai-btn-sub { background: transparent; color: var(--ink-2); border-color: var(--line); }
+    .ai-btn-sub:hover { background: var(--bg-2); color: var(--ink); }
+    .ai-bar-outer { height: 8px; border-radius: 999px; background: var(--bg-2); overflow: hidden; margin-top: 12px; }
+    .ai-bar-inner { height: 100%; width: 0; background: var(--accent); transition: width 0.2s ease; }
+    .ai-status { font-size: 0.8125rem; color: var(--ink-3); margin-top: 8px; }
+    .ai-output {
+      margin-top: 12px; padding: 14px 16px; border-radius: 12px;
+      background: var(--color-code-bg); border: 1px solid var(--line);
+      font-size: 0.875rem; line-height: calc(1.85 * var(--line-scale, 1)); color: var(--ink);
+      white-space: pre-wrap; word-break: break-word; min-height: 3em;
+    }
+    .ai-warn {
+      margin-top: 18px; padding: 16px 18px; border-radius: 14px;
+      background: var(--accent-soft); border: 1px solid var(--accent-border);
+    }
+    .ai-warn h3 { margin: 0 0 8px; font-size: 0.9375rem; color: var(--ink); }
+    .ai-warn ul { margin: 0; padding-left: 20px; }
+    .ai-warn li { font-size: 0.84375rem; line-height: calc(1.85 * var(--line-scale, 1)); color: var(--ink-2); margin: 4px 0; }
+  </style>
+</head>
+<body>
+
+  <header class="guide-topbar">
+    <a href="./" class="guide-logo">PyHiroba</a>
+    <a href="./#features" class="guide-back">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      特徴へもどる
+    </a>
+  </header>
+
+  <main class="guide-page">
+    <section class="guide-hero">
+      <div class="guide-eyebrow">AI</div>
+      <h1>AIを動かしてみる</h1>
+      <p><span class="ai-badge">試験公開</span></p>
+      <p>小さな言語モデル（AI）を、ブラウザの中だけで動かします。<strong>入力した文章が外部に送られることはありません。</strong>外部との通信は、最初にモデルの部品を受け取るときだけです。</p>
+    </section>
+
+    <div class="ai-warn">
+      <h3>はじめる前にお読みください</h3>
+      <ul>
+        <li>最初の1回だけ、モデルの部品をダウンロードします（下の選択肢に目安の通信量を書いています）。2回目以降は端末に保存されたものを使うため、通信は発生しません。</li>
+        <li>学校のネットワークでは、通信量が大きいため<strong>クラス全員での一斉ダウンロードは避けて</strong>ください。</li>
+        <li>ここで使うのはごく小さなモデルです。答えの内容が事実と異なることがよくあります。<strong>調べものには使わず</strong>、「AIがどう動くか」を体験する目的でお使いください。</li>
+        <li>読み込めるモデルは、運営者があらかじめ指定したものだけに限定しています。</li>
+      </ul>
+    </div>
+
+    <div class="ai-card">
+      <h2>1. モデルを選んで読み込む</h2>
+      <p>お使いの端末で動かすため、選んだモデルの大きさだけメモリを使います。まずは軽いものからお試しください。</p>
+      <div class="ai-row">
+        <select class="ai-select" id="ai-model" aria-label="使うモデルを選ぶ"></select>
+        <button class="ai-btn" id="ai-load" type="button">読み込む</button>
+        <button class="ai-btn ai-btn-sub" id="ai-unload" type="button" disabled>解放する</button>
+      </div>
+      <div class="ai-bar-outer" id="ai-bar-outer" hidden><div class="ai-bar-inner" id="ai-bar"></div></div>
+      <p class="ai-status" id="ai-status" role="status">まだ読み込んでいません。</p>
+    </div>
+
+    <div class="ai-card">
+      <h2>2. 文章を入力して生成する</h2>
+      <div class="ai-row">
+        <textarea class="ai-input" id="ai-prompt" placeholder="例：小学生にもわかるように、円周率について3行で説明してください。" aria-label="AIに渡す文章"></textarea>
+      </div>
+      <div class="ai-row">
+        <button class="ai-btn" id="ai-run" type="button" disabled>生成する</button>
+        <span class="ai-note">生成には時間がかかります（端末によっては1分以上）。</span>
+      </div>
+      <div class="ai-output" id="ai-output" aria-live="polite"></div>
+    </div>
+
+    <div class="guide-foot">
+      <a class="primary" href="./#features">特徴へもどる →</a>
+    </div>
+  </main>
+
+  <!-- フッター（LPと共通） -->
+  <footer class="v3-footer">
+    <div class="container">
+      <div class="v3-footer-top">
+        <div>
+          <div class="v3-footer-logo">PyHiroba<span class="v3-footer-kana">（ぱいひろば）</span></div>
+          <p class="v3-footer-tagline">すべての日本の生徒が安心してPythonプログラミングを学べる広場。</p>
+          <div style="margin-top:24px">
+            <a class="v3-btn v3-btn-primary" href="./#faq">
+              ご利用はこちら
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="v3-footer-cols">
+          <div>
+            <h5>サービス</h5>
+            <a href="./#features">特徴</a>
+            <a href="./#preview">プレビュー</a>
+            <a href="./#faq">ご利用方法</a>
+            <a href="setup.html">対応環境</a>
+          </div>
+          <div>
+            <h5>リソース</h5>
+            <a href="errors.html">対応エラーの一覧</a>
+            <a href="materials.html">公開教材の一覧</a>
+            <a href="guide-publish.html">自作教材の公開方法</a>
+            <a href="security.html">安心・安全への取り組み</a>
+            <a href="accessibility.html">アクセシビリティ方針</a>
+          </div>
+          <div>
+            <h5>規約・プライバシー</h5>
+            <a href="terms.html">利用規約</a>
+            <a href="terms.html#privacy">プライバシーポリシー</a>
+            <a href="https://forms.gle/2m68Qf9MNo45k5WV7" target="_blank" rel="noopener">お問い合わせ</a>
+          </div>
+        </div>
+      </div>
+      <div class="v3-footer-bottom">
+        <span>© 2026 東京大学 松尾・岩澤研究室</span>
+        <button class="theme-toggle" type="button" onclick="toggleTheme()" aria-pressed="false" title="ダークモードの切り替え">
+          <svg class="theme-ic-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg class="theme-ic-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          ダークモード
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- AI 本体（許可リストと通信ガードを含む）。ESM のため type="module" で読み込む -->
+  <script type="module">
+    const { AI_MODELS, aiLoadModel, aiGenerate, aiUnload } = await import('./js/ai.js?v=20260808a');
+
+    const $ = (id) => document.getElementById(id);
+    const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
+    const btnLoad = $('ai-load'), btnUnload = $('ai-unload'), btnRun = $('ai-run'), out = $('ai-output');
+
+    // 選択肢は許可リストからのみ作る（画面側で任意のモデル名を指定できないようにする）
+    AI_MODELS.forEach((m) => {
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = `${m.label}／約${m.approxMB}MB`;
+      sel.appendChild(o);
+    });
+
+    const setStatus = (t) => { status.textContent = t; };
+    const setProgress = (pct) => { barOuter.hidden = false; bar.style.width = Math.max(0, Math.min(100, pct)) + '%'; };
+
+    btnLoad.addEventListener('click', async () => {
+      const spec = AI_MODELS.find((m) => m.id === sel.value);
+      if (!spec) return;
+      if (!window.confirm(`「${spec.label}」を読み込みます。\n最初の1回だけ、約${spec.approxMB}MB のダウンロードが発生します。\nよろしいですか？`)) return;
+      btnLoad.disabled = true; sel.disabled = true; btnRun.disabled = true;
+      try {
+        await aiLoadModel(spec.id, (pct, text) => { setProgress(pct); setStatus(`${text}（${pct}%）`); });
+        setStatus('準備ができました。文章を入力して「生成する」を押してください。');
+        btnRun.disabled = false; btnUnload.disabled = false;
+      } catch (e) {
+        setStatus('読み込めませんでした：' + (e && e.message ? e.message : e));
+        barOuter.hidden = true; sel.disabled = false;
+      } finally {
+        btnLoad.disabled = false;
+      }
+    });
+
+    btnUnload.addEventListener('click', async () => {
+      await aiUnload();
+      btnRun.disabled = true; btnUnload.disabled = true; sel.disabled = false;
+      barOuter.hidden = true; out.textContent = '';
+      setStatus('モデルを解放しました。');
+    });
+
+    btnRun.addEventListener('click', async () => {
+      const prompt = $('ai-prompt').value.trim();
+      if (!prompt) { setStatus('文章を入力してください。'); return; }
+      btnRun.disabled = true;
+      out.textContent = '';
+      setStatus('生成しています…（時間がかかります）');
+      try {
+        // 生成結果は必ず textContent で入れる（HTMLとして解釈させない）
+        out.textContent = await aiGenerate(prompt, { maxNewTokens: 128 });
+        setStatus('生成が終わりました。');
+      } catch (e) {
+        setStatus('生成に失敗しました：' + (e && e.message ? e.message : e));
+      } finally {
+        btnRun.disabled = false;
+      }
+    });
+  </script>
+
+</body>
+</html>
