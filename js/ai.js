@@ -26,10 +26,9 @@
 
    方針: 日本で作られたモデル（国産）に限る。
    ・LLM-jp-3 … 国立情報学研究所（NII）大規模言語モデル研究開発センター。Apache-2.0
-   ・Sarashina2.2 … SB Intuitions。MIT
-   どちらも配布元の公式リポジトリは PyTorch 形式のみで、ブラウザでは動かせない。
-   そのため、ONNX 形式へ変換したものを読み込む（onnx-community は Hugging Face 公式系
-   の変換元で、Pyodide と同じく「版を固定して使う」方針に合う）。
+   配布元の公式リポジトリは PyTorch 形式のみで、ブラウザでは動かせない。そのため
+   ONNX 形式へ変換したものを読み込む（onnx-community は Hugging Face 公式系の変換元で、
+   Pyodide と同じく「版を固定して使う」方針に合う）。
 
    ready の意味
    ------------
@@ -37,66 +36,39 @@
    ・false … 実在が未確認の候補。選択肢には出さず、「使えるモデルを調べる」でのみ確認する
    推測でモデルを載せると「読み込めません」に行き当たるため、確認できたものだけを出す。
 
-   revision には、その時点のコミットIDを書くのが望ましい。
-   'main' のままだと、配布元でモデルが更新されたとき内容が変わりうる。
-   コミットIDは「使えるモデルを調べる」の結果に表示される。
+   2026-08-08 に開発環境の実ブラウザから確認した結果
+   -------------------------------------------------
+   ・下の2件（150M の instruct2 / instruct3）… 実在。model_q4.onnx が約255MB
+   ・440M / 980M と Sarashina2.2 の ONNX 版 … いずれも 401（配布元に無い）。
+     そのため一覧から外した。許可リストは通信を許す先そのものなので、
+     実在しないものを残さず、必要になった時点で追加する。
+
+   revision について
+   ----------------
+   'main' のままだと、配布元でモデルが更新されたとき内容が変わりうるため、
+   本来はコミットIDで固定したい。確認時点のコミットは下記のとおりだが、
+   短縮形（7桁）で配布元が解決できるか確かめられていないため、いまは 'main' のまま。
+   「使えるモデルを調べる」がコミットIDを省略せずに出すようにしたので、
+   次回の確認結果をもとに固定する。
    -------------------------------------------------------------- */
 export const AI_MODELS = [
   {
-    id: 'onnx-community/llm-jp-3-150m-instruct2-ONNX',
+    // 確認時点のコミット: 762812c…（安全性の調整まで済んでいる版なので、こちらを既定にする）
+    id: 'onnx-community/llm-jp-3-150m-instruct3-ONNX',
     revision: 'main',
-    label: 'LLM-jp-3 150M（国立情報学研究所）',
-    approxMB: 110,
+    label: 'LLM-jp-3 150M（国立情報学研究所・安全性を高めた版）',
+    approxMB: 255,
     dtype: 'q4',
     ready: true,
   },
   {
-    id: 'onnx-community/llm-jp-3-440m-instruct2-ONNX',
+    // 確認時点のコミット: 48da01c…
+    id: 'onnx-community/llm-jp-3-150m-instruct2-ONNX',
     revision: 'main',
-    label: 'LLM-jp-3 440M（国立情報学研究所）',
-    approxMB: 300,
+    label: 'LLM-jp-3 150M（国立情報学研究所・標準の版）',
+    approxMB: 255,
     dtype: 'q4',
-    ready: false,
-  },
-  {
-    id: 'onnx-community/llm-jp-3-980m-instruct2-ONNX',
-    revision: 'main',
-    label: 'LLM-jp-3 980M（国立情報学研究所）',
-    approxMB: 600,
-    dtype: 'q4',
-    ready: false,
-  },
-  {
-    id: 'onnx-community/llm-jp-3-150m-instruct3-ONNX',
-    revision: 'main',
-    label: 'LLM-jp-3 150M instruct3（国立情報学研究所・安全性調整版）',
-    approxMB: 110,
-    dtype: 'q4',
-    ready: false,
-  },
-  {
-    id: 'onnx-community/llm-jp-3-440m-instruct3-ONNX',
-    revision: 'main',
-    label: 'LLM-jp-3 440M instruct3（国立情報学研究所・安全性調整版）',
-    approxMB: 300,
-    dtype: 'q4',
-    ready: false,
-  },
-  {
-    id: 'onnx-community/sarashina2.2-0.5b-instruct-v0.1-ONNX',
-    revision: 'main',
-    label: 'Sarashina2.2 0.5B（SB Intuitions）',
-    approxMB: 350,
-    dtype: 'q4',
-    ready: false,
-  },
-  {
-    id: 'onnx-community/sarashina2.2-1b-instruct-v0.1-ONNX',
-    revision: 'main',
-    label: 'Sarashina2.2 1B（SB Intuitions）',
-    approxMB: 700,
-    dtype: 'q4',
-    ready: false,
+    ready: true,
   },
 ];
 
@@ -223,8 +195,10 @@ export async function aiCheckModels(onEach) {
       // 1. リポジトリと版
       const cfg = await fetch(fileUrl(m, 'config.json'), { method: 'GET' });
       if (!cfg.ok) {
-        r.detail = cfg.status === 404
-          ? 'このモデルは配布元にありません（404）'
+        // 配布元は、存在しないモデルにも 401 を返すことがある（非公開との区別を
+        // つけさせないため）。404 と同じ扱いで案内する。
+        r.detail = (cfg.status === 404 || cfg.status === 401)
+          ? `このモデルは配布元にないか、公開されていません（${cfg.status}）`
           : `配布元が応答しませんでした（${cfg.status}）`;
       } else {
         // 版の固定に使えるよう、コミットIDが読めれば控える
@@ -256,7 +230,8 @@ export async function aiCheckModels(onEach) {
           r.ok = true;
           const w = r.weights[0];
           const parts = [`${w.file}${w.size ? ' ' + w.size : ''}`];
-          if (r.commit) parts.push(`コミット ${r.commit.slice(0, 7)}`);
+          // コミットIDは revision の固定に使うため、省略せずそのまま出す
+          if (r.commit) parts.push(`コミット ${r.commit}`);
           if (r.chat === false) parts.push('会話形式には未対応（そのまま文章を渡します）');
           r.detail = `使えます（${parts.join('／')}）`;
         }
@@ -293,7 +268,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260808d', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260808e', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }

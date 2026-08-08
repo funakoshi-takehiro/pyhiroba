@@ -126,7 +126,7 @@
       <p class="ai-status" id="ai-status" role="status">まだ読み込んでいません。</p>
       <div class="ai-row">
         <button class="ai-btn ai-btn-sub" id="ai-check" type="button">使えるモデルを調べる</button>
-        <span class="ai-note">候補もふくめ、どのモデルがブラウザで動かせるかを確認します（通信はごくわずかです）。</span>
+        <span class="ai-note">一覧のモデルが、いまもブラウザで動かせるかを確認します（通信はごくわずかです）。</span>
       </div>
       <div class="ai-output" id="ai-check-out" aria-live="polite" hidden></div>
     </div>
@@ -205,7 +205,7 @@
        実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
     const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiExplainError } =
-      await import('./js/ai.js?v=20260808d');
+      await import('./js/ai.js?v=20260808e');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
@@ -276,15 +276,19 @@
       const btn = $('ai-check');
       btn.disabled = true;
       box.hidden = false;
+      // 未確認の候補が一覧にあるときだけ、その旨を書き分ける
+      const hasCandidates = AI_MODELS.some((m) => !m.ready);
       box.textContent = `確認しています…（${AI_MODELS.length}件）\n\n`;
       try {
         await aiCheckModels((r) => {
           const mark = r.ok ? '○' : '×';
-          const now = r.ready ? '［いま選べます］' : '［候補］';
-          box.textContent += `${mark} ${r.label} ${now}\n    ${r.id}\n    ${r.detail}\n`;
+          const now = hasCandidates ? (r.ready ? ' ［いま選べます］' : ' ［候補］') : '';
+          box.textContent += `${mark} ${r.label}${now}\n    ${r.id}\n    ${r.detail}\n`;
         });
-        box.textContent += '\n○ が付いたものはブラウザで動かせます。'
-          + '\n［候補］に ○ が付いていたら、次の更新で選べるようにしますのでお知らせください。';
+        box.textContent += '\n○ が付いたものはブラウザで動かせます。';
+        if (hasCandidates) {
+          box.textContent += '\n［候補］に ○ が付いていたら、次の更新で選べるようにしますのでお知らせください。';
+        }
       } catch (e) {
         box.textContent += aiExplainError(e);
       } finally {

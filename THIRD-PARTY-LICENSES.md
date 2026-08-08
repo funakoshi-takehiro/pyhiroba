@@ -20,7 +20,6 @@ PyHiroba は、以下のオープンソースソフトウェアを利用して�
 | モデル | 作り手 | ライセンス | 配布元 |
 | --- | --- | --- | --- |
 | LLM-jp-3 | 国立情報学研究所 大規模言語モデル研究開発センター | Apache License 2.0 | https://huggingface.co/llm-jp |
-| Sarashina2.2 | SB Intuitions株式会社 | MIT License | https://huggingface.co/sbintuitions |
 
 ## フォント
 
