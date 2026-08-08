@@ -24,18 +24,30 @@
 export const AI_MODELS = [
   {
     id: 'onnx-community/Qwen2.5-0.5B-Instruct',
-    revision: 'main',          // TODO: 動作確認後、コミットIDに固定する
+    revision: 'main',
     label: 'Qwen2.5 0.5B（日本語が使えます）',
-    note: '日本語と英語に対応した小さなモデルです。',
     approxMB: 400,
     dtype: 'q4',
   },
   {
-    id: 'onnx-community/SmolLM2-135M-Instruct',
-    revision: 'main',          // TODO: 動作確認後、コミットIDに固定する
+    id: 'HuggingFaceTB/SmolLM2-135M-Instruct',
+    revision: 'main',
     label: 'SmolLM2 135M（英語・いちばん軽い）',
-    note: '英語向けのごく小さなモデルです。通信量を抑えたいときに。',
     approxMB: 110,
+    dtype: 'q4',
+  },
+  {
+    id: 'HuggingFaceTB/SmolLM2-360M-Instruct',
+    revision: 'main',
+    label: 'SmolLM2 360M（英語・中間の大きさ）',
+    approxMB: 260,
+    dtype: 'q4',
+  },
+  {
+    id: 'Xenova/Qwen1.5-0.5B-Chat',
+    revision: 'main',
+    label: 'Qwen1.5 0.5B（日本語・予備）',
+    approxMB: 380,
     dtype: 'q4',
   },
 ];
@@ -90,7 +102,54 @@ export function installAiFetchGuard() {
 installAiFetchGuard();
 
 /* --------------------------------------------------------------
-   3. モデルの読み込みと文章生成
+   3. 失敗の理由を日本語で伝える
+   -------------------------------------------------------------- */
+
+/** ライブラリが返す英語のエラーを、利用者に分かる言葉へ言い換える */
+export function aiExplainError(err) {
+  const m = String((err && err.message) || err || '');
+  if (m.includes('許可されていない')) return m;
+  if (/Unauthorized|401|403/i.test(m)) {
+    return 'このモデルが配布元に見つかりませんでした。モデルの指定が正しくない可能性があります（下の「使えるモデルを調べる」で確認できます）。';
+  }
+  if (/404|not ?found/i.test(m)) {
+    return 'このモデルのファイルが配布元にありませんでした。別のモデルをお試しください。';
+  }
+  if (/Failed to fetch|NetworkError|dynamically imported module|ERR_|net::/i.test(m)) {
+    return '配布元に接続できませんでした。学校のネットワークで huggingface.co と cdn.jsdelivr.net への通信が許可されているかご確認ください。';
+  }
+  if (/out of memory|Aborted|RangeError/i.test(m)) {
+    return 'メモリが足りませんでした。もっと小さいモデルをお試しいただくか、他のタブを閉じてからやり直してください。';
+  }
+  return m;
+}
+
+/**
+ * 許可リストの各モデルが配布元に実在するかを確かめる。
+ * 確認するのは設定ファイル（config.json）1つだけで、通信量はごくわずか。
+ * 通信ガードを通るため、ここでも許可リスト外へは一切アクセスしない。
+ */
+export async function aiCheckModels(onEach) {
+  const results = [];
+  for (const m of AI_MODELS) {
+    const url = `${AI_MODEL_HOST}${m.id}/resolve/${m.revision}/config.json`;
+    let ok = false, detail = '';
+    try {
+      const res = await fetch(url, { method: 'GET' });
+      ok = res.ok;
+      detail = res.ok ? '見つかりました' : `見つかりません（${res.status}）`;
+    } catch (e) {
+      detail = aiExplainError(e);
+    }
+    const r = { id: m.id, label: m.label, ok, detail };
+    results.push(r);
+    if (typeof onEach === 'function') onEach(r);
+  }
+  return results;
+}
+
+/* --------------------------------------------------------------
+   4. モデルの読み込みと文章生成
    -------------------------------------------------------------- */
 
 let _aiLib = null;        // transformers.js 本体

@@ -121,6 +121,11 @@
       </div>
       <div class="ai-bar-outer" id="ai-bar-outer" hidden><div class="ai-bar-inner" id="ai-bar"></div></div>
       <p class="ai-status" id="ai-status" role="status">まだ読み込んでいません。</p>
+      <div class="ai-row">
+        <button class="ai-btn ai-btn-sub" id="ai-check" type="button">使えるモデルを調べる</button>
+        <span class="ai-note">どのモデルが配布元にあるかを確認します（通信はごくわずかです）。</span>
+      </div>
+      <div class="ai-output" id="ai-check-out" aria-live="polite" hidden></div>
     </div>
 
     <div class="ai-card">
@@ -191,7 +196,8 @@
 
   <!-- AI 本体（許可リストと通信ガードを含む）。ESM のため type="module" で読み込む -->
   <script type="module">
-    const { AI_MODELS, aiLoadModel, aiGenerate, aiUnload } = await import('./js/ai.js?v=20260808a');
+    const { AI_MODELS, aiLoadModel, aiGenerate, aiUnload, aiCheckModels, aiExplainError } =
+      await import('./js/ai.js?v=20260808b');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
@@ -218,7 +224,7 @@
         setStatus('準備ができました。文章を入力して「生成する」を押してください。');
         btnRun.disabled = false; btnUnload.disabled = false;
       } catch (e) {
-        setStatus('読み込めませんでした：' + (e && e.message ? e.message : e));
+        setStatus('読み込めませんでした。' + aiExplainError(e));
         barOuter.hidden = true; sel.disabled = false;
       } finally {
         btnLoad.disabled = false;
@@ -232,6 +238,24 @@
       setStatus('モデルを解放しました。');
     });
 
+    $('ai-check').addEventListener('click', async () => {
+      const box = $('ai-check-out');
+      const btn = $('ai-check');
+      btn.disabled = true;
+      box.hidden = false;
+      box.textContent = '確認しています…\n';
+      try {
+        await aiCheckModels((r) => {
+          box.textContent += `${r.ok ? '○' : '×'} ${r.label}\n    ${r.id}\n    ${r.detail}\n`;
+        });
+        box.textContent += '\n○ が付いたモデルが読み込めます。';
+      } catch (e) {
+        box.textContent += aiExplainError(e);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
     btnRun.addEventListener('click', async () => {
       const prompt = $('ai-prompt').value.trim();
       if (!prompt) { setStatus('文章を入力してください。'); return; }
@@ -243,7 +267,7 @@
         out.textContent = await aiGenerate(prompt, { maxNewTokens: 128 });
         setStatus('生成が終わりました。');
       } catch (e) {
-        setStatus('生成に失敗しました：' + (e && e.message ? e.message : e));
+        setStatus('生成に失敗しました。' + aiExplainError(e));
       } finally {
         btnRun.disabled = false;
       }
