@@ -136,7 +136,9 @@ function clearAllOutputs() {
 // 出力表示
 // ============================================================
 
-/** よく試されるが、ブラウザ環境では動かないライブラリの分かりやすい理由 */
+/** よく試されるが、ブラウザ環境では動かないライブラリの分かりやすい理由。
+ *  Pyodide に同梱されているものをここへ入れないよう注意（同梱状況は
+ *  Pyodide のバージョンを上げる際に pyodide-lock.json で確認すること）。 */
 const PIP_INCOMPATIBLE = {
   gradio: 'gradio は画面表示に専用のサーバーが必要なため、ブラウザ内では動作しません。',
   streamlit: 'streamlit はサーバーが必要なため、ブラウザ内では動作しません。',
@@ -144,12 +146,22 @@ const PIP_INCOMPATIBLE = {
   django: 'django はサーバーを起動するライブラリのため、ブラウザ内では動作しません。',
   tensorflow: 'tensorflow は大きなネイティブ（C/GPU）依存があり、ブラウザ環境では利用できません。',
   torch: 'PyTorch（torch）は大きなネイティブ依存があり、ブラウザ環境では利用できません。',
-  'opencv-python': 'opencv-python はネイティブ依存のため、ブラウザ環境では利用できません。',
+};
+
+/** 別名で試されがちだが、実は最初から使えるライブラリの案内（import 名を伝える） */
+const PIP_ALREADY_AVAILABLE = {
+  'opencv-python': 'opencv は最初から使えます。インストールは不要で、import cv2 と書けばそのまま利用できます。',
+  'opencv-contrib-python': 'opencv は最初から使えます。インストールは不要で、import cv2 と書けばそのまま利用できます。',
+  'scikit-learn': 'scikit-learn は最初から使えます。インストールは不要で、import sklearn と書けばそのまま利用できます。',
+  sklearn: 'scikit-learn は最初から使えます。インストールは不要で、import sklearn と書けばそのまま利用できます。',
+  bs4: 'BeautifulSoup は最初から使えます。インストールは不要で、from bs4 import BeautifulSoup と書けばそのまま利用できます。',
+  pil: 'Pillow は最初から使えます。インストールは不要で、from PIL import Image と書けばそのまま利用できます。',
 };
 
 /** pip インストール失敗を、初学者向けの日本語メッセージに変換する */
 function translatePipError(pkg, rawError) {
   const base = String(pkg).split(/[=<>!~[ ]/)[0].trim().toLowerCase();
+  if (PIP_ALREADY_AVAILABLE[base]) return PIP_ALREADY_AVAILABLE[base];
   if (PIP_INCOMPATIBLE[base]) return PIP_INCOMPATIBLE[base];
   if (/pure Python 3 wheel/i.test(rawError || '')) {
     return 'このライブラリは、C言語やRust製の部品を含むため、ブラウザ上のPython（Pyodide）では利用できません。';
