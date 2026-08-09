@@ -91,9 +91,10 @@ async function loadLibrary() {
 
 async function handleLoad(msg) {
   ALLOWED_MODELS = msg.models || [];
-  const spec = ALLOWED_MODELS.find((m) => m.id === msg.modelId);
-  if (!spec) throw new Error('このモデルは許可されていません: ' + msg.modelId);
-  if (pipe && loadedId === spec.id) { post({ type: 'loaded', device: loadedDevice }); return; }
+  // 同じモデルを精度違いで持てるよう、id ではなく key で選ぶ
+  const spec = ALLOWED_MODELS.find((m) => m.key === msg.modelKey);
+  if (!spec) throw new Error('このモデルは許可されていません: ' + msg.modelKey);
+  if (pipe && loadedId === spec.key) { post({ type: 'loaded', device: loadedDevice }); return; }
 
   post({ type: 'progress', pct: 0, text: 'AIの部品を準備しています…' });
   const t = await loadLibrary();
@@ -110,11 +111,21 @@ async function handleLoad(msg) {
       }
     },
   });
-  loadedId = spec.id;
+  loadedId = spec.key;
   loadedDevice = device;
   // 進捗はファイルごとに来るため、最後に必ず 100% を送って表示を揃える
   post({ type: 'progress', pct: 100, text: '準備ができました' });
   post({ type: 'loaded', device });
+}
+
+/**
+ * 生成結果の後始末。
+ * 決められた長さで打ち切ると、文字の途中で終わることがある。Qwen などは文字を
+ * バイト単位に分けて扱うため、その場合「�」（読めなかった印）が末尾に残る。
+ * 打ち切りは必ず起こりうるので、そこで表示が壊れないように取り除く。
+ */
+function tidy(text) {
+  return String(text || '').replace(/�+\s*$/, '').replace(/\s+$/, '');
 }
 
 async function handleGenerate(msg) {
@@ -137,24 +148,30 @@ async function handleGenerate(msg) {
   const input = hasChatTemplate
     ? [{ role: 'user', content: String(msg.prompt) }]
     : String(msg.prompt);
+  // 生成する長さ。短すぎると文の途中で打ち切られてしまう（多バイト文字の途中で
+  // 終わると文字化けにもなる）。WebGPU は速いので長め、CPU は待ち時間を考えて控えめ。
+  // 逐次表示と「停止」があるので、長めでも待たされ感は増えない。
+  const defaultTokens = loadedDevice === 'webgpu' ? 256 : 128;
   try {
     const out = await pipe(input, {
-      max_new_tokens: msg.maxNewTokens || 64,
+      max_new_tokens: msg.maxNewTokens || defaultTokens,
       // 小さなモデルは、確率のばらつきを大きくすると意味の通らない文章になりやすい。
       // 温度を下げ、上位の候補だけから選ぶことで、まだしも読める文章にする。
       temperature: msg.temperature != null ? msg.temperature : 0.3,
       top_p: 0.9,
-      // 同じ語の繰り返し（「caption caption …」のような出力）を抑える
+      // 同じ語の繰り返しを抑える。
+      // なお no_repeat_ngram_size は使わない。あれは「同じN個の並びを全面禁止」する指定で、
+      // 番号つきリストの「1. 」「2. 」のような正当な繰り返しまで禁じてしまい、
+      // かえって不自然な語を選ばせることになるため。
       repetition_penalty: 1.15,
-      no_repeat_ngram_size: 3,
       do_sample: true,
       return_full_text: false,
       streamer,
       stopping_criteria: stopper,
     });
     const g = out && out[0] && out[0].generated_text;
-    const text = Array.isArray(g) ? ((g[g.length - 1] || {}).content || '') : String(g || '');
-    post({ type: 'done', text, ms: Date.now() - started, device: loadedDevice, interrupted });
+    const raw = Array.isArray(g) ? ((g[g.length - 1] || {}).content || '') : String(g || '');
+    post({ type: 'done', text: tidy(raw), ms: Date.now() - started, device: loadedDevice, interrupted });
   } finally {
     stopper = null;
   }

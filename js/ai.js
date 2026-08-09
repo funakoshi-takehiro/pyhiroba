@@ -57,19 +57,37 @@
    'main' のままだと配布元の更新で内容が変わりうるため、本来はコミットIDで固定したい。
    短縮形（7桁）で配布元が解決できるか未確認のため、いまは 'main'。
    「使えるモデルを調べる」がコミットIDを省略せず出すので、次回の結果をもとに固定する。
+
+   key について
+   ----------
+   同じモデルを精度違い（4bit / 8bit）で並べるため、id だけでは一意にならない。
+   画面の選択やワーカーへの指定には、この key を使う。
    -------------------------------------------------------------- */
 export const AI_MODELS = [
   {
-    // このセッションで実際に読み込み・生成まで動くことを確認済みのモデル
+    // 同じモデルの高精度版。4bit(q4) は小さいモデルほど劣化が効くため、
+    // 8bit(q8) にして語彙の選び方が安定するかを見る。重みは model_quantized.onnx
+    key: 'qwen05-q8',
     id: 'onnx-community/Qwen2.5-0.5B-Instruct',
     revision: 'main',
-    label: 'Qwen2.5 0.5B（日本語が使えます・おすすめ）',
+    label: 'Qwen2.5 0.5B 高精度版（いちばん品質が良い見込み）',
+    approxMB: 900,
+    dtype: 'q8',
+    ready: true,
+  },
+  {
+    // このセッションで実際に読み込み・生成まで動くことを確認済みの組み合わせ
+    key: 'qwen05-q4',
+    id: 'onnx-community/Qwen2.5-0.5B-Instruct',
+    revision: 'main',
+    label: 'Qwen2.5 0.5B 軽い版（通信量を抑えたいとき）',
     approxMB: 700,
     dtype: 'q4',
     ready: true,
   },
   {
     // 日本語がより自然になる大きさ。ただし重いので、端末診断で目安を出したうえで選ばせる
+    key: 'qwen15-q4',
     id: 'onnx-community/Qwen2.5-1.5B-Instruct',
     revision: 'main',
     label: 'Qwen2.5 1.5B（日本語がより自然・重い）',
@@ -79,6 +97,7 @@ export const AI_MODELS = [
   },
   {
     // 確認時点のコミット: 762812c…（国産。ただし150Mでは会話は成立しない）
+    key: 'llmjp150m-q4',
     id: 'onnx-community/llm-jp-3-150m-instruct3-ONNX',
     revision: 'main',
     label: 'LLM-jp-3 150M（国産・とても軽い／文章は不自然です）',
@@ -173,6 +192,15 @@ export function aiExplainError(err) {
    重みの実在まで確かめる。重みは数百MBあるので、中身は取らず HEAD で存在と大きさだけ見る。
    -------------------------------------------------------------- */
 
+/** 精度の呼び名（数字が大きいほど元のモデルに忠実で、容量も増える） */
+const DTYPE_LABEL = {
+  fp32: '32bit',
+  fp16: '16bit',
+  q8: '8bit',
+  q4f16: '4bit(16bit混在)',
+  q4: '4bit',
+};
+
 /** transformers.js が探す重みのファイル名（左から順に、使いたい順） */
 const ONNX_WEIGHT_FILES = [
   { file: 'onnx/model_q4.onnx', dtype: 'q4' },
@@ -202,7 +230,15 @@ function humanMB(bytes) {
  */
 export async function aiCheckModels(onEach) {
   const results = [];
-  for (const m of AI_MODELS) {
+  // 同じモデルを精度違いで並べているため、配布元への問い合わせは「モデル×版」ごとに1回でよい
+  const seen = new Set();
+  const targets = AI_MODELS.filter((m) => {
+    const k = `${m.id}@${m.revision}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  for (const m of targets) {
     const r = {
       id: m.id, label: m.label, ready: !!m.ready,
       ok: false, detail: '', weights: [], commit: '', chat: null,
@@ -244,8 +280,12 @@ export async function aiCheckModels(onEach) {
           r.detail = 'ブラウザ用の重み（ONNX）がありません。このままでは読み込めません';
         } else {
           r.ok = true;
-          const w = r.weights[0];
-          const parts = [`${w.file}${w.size ? ' ' + w.size : ''}`];
+          // 用意されている精度をすべて出す。どれを採用するかの判断に直結するため、
+          // 見つかった先頭ひとつではなく全部を並べる（精度が高いほど品質は良く、容量は増える）
+          const list = r.weights
+            .map((w) => `${DTYPE_LABEL[w.dtype] || w.dtype} ${w.size || 'サイズ不明'}`)
+            .join('、');
+          const parts = [`使える精度: ${list}`];
           // コミットIDは revision の固定に使うため、省略せずそのまま出す
           if (r.commit) parts.push(`コミット ${r.commit}`);
           if (r.chat === false) parts.push('会話形式には未対応（そのまま文章を渡します）');
@@ -422,7 +462,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260808h', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260808i', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }
@@ -485,23 +525,23 @@ function request(payload, handlers = {}) {
 
 /** ワーカーへ渡す許可リスト（画面から任意のモデルを指定させないため、ここでも絞る） */
 function allowListForWorker() {
-  return AI_MODELS.map((m) => ({ id: m.id, revision: m.revision, dtype: m.dtype }));
+  return AI_MODELS.map((m) => ({ key: m.key, id: m.id, revision: m.revision, dtype: m.dtype }));
 }
 
 /**
  * 指定したモデルを読み込む。
- * @param {string} modelId AI_MODELS に載っているモデルID
+ * @param {string} modelKey AI_MODELS の key（同じモデルの精度違いを区別するため id ではない）
  * @param {(pct:number, text:string)=>void} onProgress 進捗の通知
  * @returns {Promise<{device:string}>} 実際に使う計算方式（webgpu / wasm）
  */
-export async function aiLoadModel(modelId, onProgress) {
-  const spec = AI_MODELS.find((m) => m.id === modelId);
-  if (!spec) throw new Error('このモデルは許可されていません: ' + modelId);
+export async function aiLoadModel(modelKey, onProgress) {
+  const spec = AI_MODELS.find((m) => m.key === modelKey);
+  if (!spec) throw new Error('このモデルは許可されていません: ' + modelKey);
   const res = await request(
-    { type: 'load', modelId: spec.id, models: allowListForWorker() },
+    { type: 'load', modelKey: spec.key, models: allowListForWorker() },
     { onProgress },
   );
-  _loadedId = spec.id;
+  _loadedId = spec.key;
   return res;
 }
 
@@ -518,7 +558,9 @@ export async function aiGenerate(prompt, opts = {}) {
     {
       type: 'generate',
       prompt: String(prompt),
-      maxNewTokens: opts.maxNewTokens || 64,
+      // 未指定なら、ワーカー側が計算方式（WebGPU / CPU）に応じて決める。
+      // ここで既定値を入れてしまうと、その判断が効かなくなる。
+      maxNewTokens: opts.maxNewTokens,
       temperature: opts.temperature,
     },
     { onToken: opts.onToken },

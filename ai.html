@@ -141,8 +141,13 @@
     <div class="ai-card">
       <h2>2. 文章を入力して生成する</h2>
       <div class="ai-row">
-        <textarea class="ai-input" id="ai-prompt" placeholder="例：小学生にもわかるように、円周率について3行で説明してください。" aria-label="AIに渡す文章"></textarea>
+        <textarea class="ai-input" id="ai-prompt" placeholder="例：「むかしむかし、あるところに」の続きを、3行くらいで書いてください。" aria-label="AIに渡す文章"></textarea>
       </div>
+      <p class="ai-note">
+        小さなモデルは、<strong>文章を作ること</strong>（続きを書く・言い換える・短い詩をつくる）は得意ですが、
+        <strong>事実を答えること</strong>（計算、ものの大きさ、歴史）はとても苦手で、平気で作り話をします。
+        まずは文章を作る指示でお試しください。
+      </p>
       <div class="ai-row">
         <button class="ai-btn" id="ai-run" type="button" disabled>生成する</button>
         <button class="ai-btn ai-btn-sub" id="ai-stop" type="button" hidden>停止</button>
@@ -216,7 +221,7 @@
        実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
     const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiDiagnose, aiExplainError } =
-      await import('./js/ai.js?v=20260808h');
+      await import('./js/ai.js?v=20260808i');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
@@ -230,7 +235,7 @@
     //   まだ確認できていないモデルを生徒に見せないため）
     aiReadyModels().forEach((m) => {
       const o = document.createElement('option');
-      o.value = m.id;
+      o.value = m.key;
       o.textContent = `${m.label}／約${m.approxMB}MB`;
       sel.appendChild(o);
     });
@@ -246,7 +251,7 @@
     let cancelled = false;  // 利用者が自分で中止したか
 
     btnLoad.addEventListener('click', async () => {
-      const spec = AI_MODELS.find((m) => m.id === sel.value);
+      const spec = AI_MODELS.find((m) => m.key === sel.value);
       if (!spec) return;
       // サイト共通のモーダルで確認する（ブラウザ標準の confirm はサイトのデザイン・
       // ダークモード・文字サイズの設定に従わないため使わない）
@@ -272,7 +277,7 @@
       // ダウンロードは大きいので、途中でやめられるようにしておく
       btnUnload.disabled = false; btnUnload.textContent = '中止する';
       try {
-        const res = await aiLoadModel(spec.id, (pct, text) => { setProgress(pct); setStatus(`${text}（${pct}%）`); });
+        const res = await aiLoadModel(spec.key, (pct, text) => { setProgress(pct); setStatus(`${text}（${pct}%）`); });
         device = res.device || '';
         const dev = DEVICE_LABEL[device] || device;
         setStatus(`準備ができました${dev ? `（${dev}で動きます）` : ''}。文章を入力して「生成する」を押してください。`);
@@ -307,7 +312,7 @@
     /** 診断結果にあわせて、選択肢に「重すぎるかも」の目印を付ける */
     function markOptions() {
       Array.from(sel.options).forEach((o) => {
-        const m = AI_MODELS.find((x) => x.id === o.value);
+        const m = AI_MODELS.find((x) => x.key === o.value);
         if (!m) return;
         const heavy = diagMaxMB != null && m.approxMB > diagMaxMB;
         o.textContent = `${m.label}／約${m.approxMB}MB${heavy ? '（この端末には重いかもしれません）' : ''}`;
@@ -413,7 +418,6 @@
       try {
         // 生成結果は必ず textContent で入れる（HTMLとして解釈させない）
         const res = await aiGenerate(prompt, {
-          maxNewTokens: 64,
           onToken: (t) => { out.textContent += t; },
         });
         if (res.text) out.textContent = res.text;   // 最終結果で整える
