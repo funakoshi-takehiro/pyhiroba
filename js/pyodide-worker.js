@@ -35,6 +35,53 @@ class _CapIO:
 # ノートブック全体で共有される変数空間
 _nb_globals = {}
 exec("", _nb_globals)
+
+# ============================================================
+# pyhiroba モジュール（ノートブックから使える道具）
+# ============================================================
+# Colab でも同じコードが動くよう、同じ名前・同じ形にしてある。
+# Colab 側の中身は py/pyhiroba.py（transformers + torch）。
+import json as _json, types as _types
+import js as _js
+
+class _Ai:
+    """ブラウザの中だけで動く、小さな言語モデル。
+
+    入力した文章が外部に送られることはない。通信はモデルを受け取るときだけ。
+
+    使い方（Colab でも同じ）:
+        from pyhiroba import ai
+        await ai.load()
+        print(await ai.ask("日本の四季について、2行で書いて"))
+    """
+
+    def __init__(self):
+        self._loaded = False
+
+    async def load(self, model=None):
+        """モデルを読み込む。初回だけ時間と通信量がかかる。"""
+        _res = _json.loads(await _js.pyhirobaAsk('ai-load', _json.dumps({'model': model})))
+        self._loaded = True
+        return _res.get('message', '準備ができました')
+
+    async def ask(self, prompt, max_tokens=None):
+        """文章を渡して、続きを書いてもらう。"""
+        if not self._loaded:
+            await self.load()
+        _res = _json.loads(await _js.pyhirobaAsk(
+            'ai-ask', _json.dumps({'prompt': str(prompt), 'max_tokens': max_tokens})))
+        return _res.get('text', '')
+
+    async def models(self):
+        """選べるモデルの一覧（名前と目安の通信量）。"""
+        return _json.loads(await _js.pyhirobaAsk('ai-models', 'null'))
+
+ai = _Ai()
+
+_pyhiroba = _types.ModuleType('pyhiroba')
+_pyhiroba.__doc__ = 'PyHiroba でノートブックから使える道具（Colab でも同じ形で使えます）'
+_pyhiroba.ai = ai
+sys.modules['pyhiroba'] = _pyhiroba
 `;
 
 // ============================================================
@@ -67,20 +114,36 @@ if 'matplotlib.pyplot' in sys.modules:
     except Exception:
         pass
 
+# セルの中で await が使えるようにする（Jupyter / Colab と同じ振る舞い）。
+# await を含むコードは、compile がコルーチンのコードオブジェクトを返すので、
+# その場合だけ await する。await を含まないコードの動きはこれまでと変わらない。
+_AWAIT_FLAGS = _ast.PyCF_ALLOW_TOP_LEVEL_AWAIT
+_CO_COROUTINE = 0x80   # コルーチンかどうかを示す印（inspect.CO_COROUTINE と同じ）
+
+async def _run_block(_node_or_src, _mode):
+    _code = compile(_node_or_src, '<セル>', _mode, _AWAIT_FLAGS)
+    if _code.co_flags & _CO_COROUTINE:
+        return await eval(_code, _nb_globals)
+    if _mode == 'eval':
+        return eval(_code, _nb_globals)
+    exec(_code, _nb_globals)
+    return None
+
 try:
-    _tree = _ast.parse(_cell_code, '<セル>')
+    # await を含むコードは通常の parse では構文エラーになるため、ここでも同じ印をつける
+    _tree = compile(_cell_code, '<セル>', 'exec', _AWAIT_FLAGS | _ast.PyCF_ONLY_AST)
     # 最後の文が「式」かどうか判定（Jupyter と同じ自動表示ロジック）
     if _tree.body and isinstance(_tree.body[-1], _ast.Expr):
-        # 最後の式より前の行を exec
+        # 最後の式より前の行を実行
         _exec_part = _tree.body[:-1]
         if _exec_part:
             _mod = _ast.Module(body=_exec_part, type_ignores=[])
             _ast.fix_missing_locations(_mod)
-            exec(compile(_mod, '<セル>', 'exec'), _nb_globals)
-        # 最後の式を eval
+            await _run_block(_mod, 'exec')
+        # 最後の式を評価
         _expr_node = _ast.Expression(body=_tree.body[-1].value)
         _ast.fix_missing_locations(_expr_node)
-        _last_val = eval(compile(_expr_node, '<セル>', 'eval'), _nb_globals)
+        _last_val = await _run_block(_expr_node, 'eval')
         # None 以外なら表示
         if _last_val is not None:
             if hasattr(_last_val, '_repr_html_'):
@@ -88,7 +151,7 @@ try:
             else:
                 _last_display = repr(_last_val)
     else:
-        exec(compile(_cell_code, '<セル>', 'exec'), _nb_globals)
+        await _run_block(_cell_code, 'exec')
 except SystemExit:
     pass
 except Exception as _e:
@@ -292,9 +355,43 @@ async function runCode(runId, code) {
   }
 }
 
+// ============================================================
+// メインスレッドへの問い合わせ（依頼 → 応答）
+// ============================================================
+// Python から「外へ聞いて、答えを待つ」ための橋。
+// AI の実行はメインスレッド側の専用ワーカー（js/ai-worker.js）が担うため、
+// ここは取り次ぐだけで、このワーカーの外向き通信封鎖は一切緩めない。
+//
+// やり取りは文字列（JSON）に限る。Pyodide と JS の間でオブジェクトを渡すと
+// プロキシの解放漏れなど面倒が増えるので、境界は単純に保つ。
+let _askSeq = 0;
+const _askWaiting = new Map();
+
+self.pyhirobaAsk = function (kind, argsJson) {
+  return new Promise((resolve, reject) => {
+    const askId = ++_askSeq;
+    _askWaiting.set(askId, { resolve, reject });
+    postMessage({
+      type: 'ask',
+      askId,
+      kind: String(kind),
+      argsJson: String(argsJson == null ? 'null' : argsJson),
+    });
+  });
+};
+
+function handleAskResult(msg) {
+  const w = _askWaiting.get(msg.askId);
+  if (!w) return;                      // 取り消し済み・二重応答は無視
+  _askWaiting.delete(msg.askId);
+  if (msg.ok) w.resolve(msg.valueJson);
+  else w.reject(new Error(msg.error || '処理できませんでした。'));
+}
+
 onmessage = (e) => {
   const msg = e.data || {};
   if (msg.type === 'run') runCode(msg.runId, msg.code);
+  else if (msg.type === 'ask-result') handleAskResult(msg);
 };
 
 init();

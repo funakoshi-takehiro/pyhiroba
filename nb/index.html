@@ -350,6 +350,13 @@
         <p>import と書くだけで、自動的に読み込まれます（インストールは不要です）。</p>
         <code>numpy, pandas, matplotlib, scikit-learn, scipy, sympy,<br>Pillow, cv2（画像処理）, requests, random, math ...</code>
       </section>
+
+      <section class="help-sec">
+        <h3>AIを動かす（試験公開）</h3>
+        <p>小さな言語モデルを、この画面の中だけで動かせます。入力した文章が外部に送られることはありません。初回だけモデルを受け取るため、時間と通信量がかかります。</p>
+        <code>from pyhiroba import ai<br><br>await ai.load()<br>print(await ai.ask("日本の四季について、2行で書いて"))</code>
+        <p>Google Colab でも、取り込みの1行を足せば<strong>同じコードが動きます</strong>。答えの内容が事実と違うことがよくあるため、調べものには使わないでください。</p>
+      </section>
     </div>
   </div>
 
@@ -475,11 +482,12 @@
 
   <!-- アプリ本体（役割ごとに分割・この順序で読み込む） -->
   <script src="../js/modal.js?v=20260808f"></script>
-  <script src="../js/app.core.js?v=20260807a"></script>
+  <script src="../js/app.core.js?v=20260808i"></script>
   <script src="../js/app.lessons.js?v=20260722a"></script>
   <script src="../js/app.io.js?v=20260806a"></script>
   <script src="../js/app.notebook.js?v=20260808f"></script>
   <script src="../js/app.exec.js?v=20260807f"></script>
+  <script src="../js/app.ai.js?v=20260808i"></script>
 
 </body>
 </html>

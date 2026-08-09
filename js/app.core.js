@@ -149,7 +149,7 @@ function startWorker() {
       timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
     };
     try {
-      pyWorker = new Worker('../js/pyodide-worker.js?v=20260725b');
+      pyWorker = new Worker('../js/pyodide-worker.js?v=20260808i');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
@@ -175,6 +175,8 @@ function startWorker() {
         if (currentRun && currentRun.runId === msg.runId) {
           const r = currentRun; currentRun = null; r.resolve(msg.result);
         }
+      } else if (msg.type === 'ask') {
+        handleWorkerAsk(msg);
       }
     };
     pyWorker.onerror = () => {

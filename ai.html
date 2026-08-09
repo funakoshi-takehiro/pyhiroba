@@ -375,7 +375,9 @@
       box.hidden = false;
       // 未確認の候補が一覧にあるときだけ、その旨を書き分ける
       const hasCandidates = AI_MODELS.some((m) => !m.ready);
-      box.textContent = `確認しています…（${AI_MODELS.length}件）\n\n`;
+      // 同じモデルを精度違いで並べているため、調べる件数は重複を除いた数になる
+      const repoCount = new Set(AI_MODELS.map((m) => `${m.id}@${m.revision}`)).size;
+      box.textContent = `確認しています…（${repoCount}件）\n\n`;
       try {
         await aiCheckModels((r) => {
           const mark = r.ok ? '○' : '×';
