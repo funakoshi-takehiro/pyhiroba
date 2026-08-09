@@ -126,6 +126,12 @@
       <div class="ai-bar-outer" id="ai-bar-outer" hidden><div class="ai-bar-inner" id="ai-bar"></div></div>
       <p class="ai-status" id="ai-status" role="status">まだ読み込んでいません。</p>
       <div class="ai-row">
+        <button class="ai-btn ai-btn-sub" id="ai-diagnose" type="button">この端末で動くか調べる</button>
+        <span class="ai-note">お使いの端末の性能を調べて、どのモデルまで動かせそうかの目安を出します（通信は発生しません）。</span>
+      </div>
+      <div class="ai-output" id="ai-diagnose-out" aria-live="polite" hidden></div>
+
+      <div class="ai-row">
         <button class="ai-btn ai-btn-sub" id="ai-check" type="button">使えるモデルを調べる</button>
         <span class="ai-note">一覧のモデルが、いまもブラウザで動かせるかを確認します（通信はごくわずかです）。</span>
       </div>
@@ -209,8 +215,8 @@
   <!-- AI 本体（許可リストと通信ガードを含む）。ESM のため type="module" で読み込む。
        実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
-    const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiExplainError } =
-      await import('./js/ai.js?v=20260808g');
+    const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiDiagnose, aiExplainError } =
+      await import('./js/ai.js?v=20260808h');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
@@ -244,14 +250,21 @@
       if (!spec) return;
       // サイト共通のモーダルで確認する（ブラウザ標準の confirm はサイトのデザイン・
       // ダークモード・文字サイズの設定に従わないため使わない）
+      // 端末診断で「重すぎる」と出ているモデルは、ダウンロード前に一言添える
+      const tooHeavy = diagMaxMB != null && spec.approxMB > diagMaxMB;
       const ok = await showModal({
         title: 'モデルを読み込みます',
         message: `${spec.label}\n\n`
           + `最初の1回だけ、約${spec.approxMB}MB のダウンロードが発生します。\n`
           + '2回目以降は端末に保存されたものを使うため、通信は発生しません。\n\n'
+          + (tooHeavy
+            ? `この端末で動かせる目安は約${diagMaxMB}MB でした。`
+              + 'このモデルは重すぎて、途中で止まったり、返事がとても遅くなったりするかもしれません。\n\n'
+            : '')
           + '学校のネットワークでは、クラス全員での一斉ダウンロードは避けてください。',
-        okText: '読み込む',
+        okText: tooHeavy ? 'それでも読み込む' : '読み込む',
         cancelText: 'やめる',
+        danger: tooHeavy,
       });
       if (!ok) return;
       loading = true; cancelled = false;
@@ -285,6 +298,69 @@
       barOuter.hidden = true; out.textContent = ''; genStatus.textContent = '';
       device = '';
       setStatus(wasLoading ? '読み込みを中止しました。' : 'モデルを解放しました。');
+    });
+
+    // --- この端末で動くかの事前診断 ---
+    // 診断した上限（MB）。null は「まだ調べていない」
+    let diagMaxMB = null;
+
+    /** 診断結果にあわせて、選択肢に「重すぎるかも」の目印を付ける */
+    function markOptions() {
+      Array.from(sel.options).forEach((o) => {
+        const m = AI_MODELS.find((x) => x.id === o.value);
+        if (!m) return;
+        const heavy = diagMaxMB != null && m.approxMB > diagMaxMB;
+        o.textContent = `${m.label}／約${m.approxMB}MB${heavy ? '（この端末には重いかもしれません）' : ''}`;
+      });
+    }
+
+    $('ai-diagnose').addEventListener('click', async () => {
+      const box = $('ai-diagnose-out');
+      const btn = $('ai-diagnose');
+      btn.disabled = true;
+      box.hidden = false;
+      box.textContent = '調べています…';
+      try {
+        const d = await aiDiagnose();
+        diagMaxMB = d.maxMB;
+
+        const yesNo = (b) => (b ? '使えます' : '使えません');
+        const lines = [];
+        lines.push('【この端末で分かったこと】');
+        lines.push(`  計算方式        ${d.webgpu.available ? 'WebGPU（画像処理装置）が使えます — 速く動きます' : 'CPU のみ — 動きますが遅くなります'}`);
+        if (d.webgpu.available && d.webgpu.vendor) lines.push(`  画像処理装置    ${d.webgpu.vendor}`);
+        lines.push(`  必要な仕組み    ${yesNo(d.moduleWorker)}`);
+        lines.push(`  メモリ          ${d.memoryGB != null ? `約${d.memoryGB}GB` : '分かりません（ブラウザが教えてくれません）'}`);
+        lines.push(`  CPUの数         ${d.cores != null ? `${d.cores}` : '分かりません'}`);
+        lines.push(`  計算の速さ      ${d.bench.ms}ミリ秒（小さいほど速い）`);
+        if (d.storage) lines.push(`  保存できる空き  約${d.storage.freeMB}MB`);
+        lines.push(`  端末の種類      ${d.mobile ? 'スマートフォン・タブレット' : 'パソコン'}`);
+        lines.push('');
+
+        if (d.maxMB <= 0) {
+          lines.push('【結果】この端末では動かせません。');
+        } else {
+          lines.push(`【結果】おおよそ ${d.maxMB}MB くらいまでのモデルが動かせそうです。`);
+          lines.push('');
+          AI_MODELS.filter((m) => m.ready).forEach((m) => {
+            const ok = m.approxMB <= d.maxMB;
+            lines.push(`  ${ok ? '○' : '△'} ${m.label}／約${m.approxMB}MB`);
+            if (!ok) lines.push('      重すぎる可能性があります（試すことはできます）');
+          });
+        }
+        if (d.notes.length) {
+          lines.push('');
+          d.notes.forEach((n) => lines.push(`※ ${n}`));
+        }
+        lines.push('');
+        lines.push('これは目安です。実際に動くかどうかは、読み込んでみないと分かりません。');
+        box.textContent = lines.join('\n');
+        markOptions();
+      } catch (e) {
+        box.textContent = '調べられませんでした。' + aiExplainError(e);
+      } finally {
+        btn.disabled = false;
+      }
     });
 
     $('ai-check').addEventListener('click', async () => {

@@ -69,13 +69,13 @@ export const AI_MODELS = [
     ready: true,
   },
   {
-    // 日本語がより自然になる大きさ。実在とサイズは「調べる」で確認してから出す
+    // 日本語がより自然になる大きさ。ただし重いので、端末診断で目安を出したうえで選ばせる
     id: 'onnx-community/Qwen2.5-1.5B-Instruct',
     revision: 'main',
     label: 'Qwen2.5 1.5B（日本語がより自然・重い）',
     approxMB: 1600,
     dtype: 'q4',
-    ready: false,
+    ready: true,
   },
   {
     // 確認時点のコミット: 762812c…（国産。ただし150Mでは会話は成立しない）
@@ -262,6 +262,144 @@ export async function aiCheckModels(onEach) {
 }
 
 /* --------------------------------------------------------------
+   3-3. この端末で動きそうかを調べる（事前診断）
+
+   モデルの重さは端末によって「動く／動かない」がはっきり分かれる。
+   数百MB〜1.6GB を落としてから動かないと分かるのは負担が大きいので、
+   ダウンロードの前に、ブラウザから分かる範囲で目安を出す。
+
+   あくまで目安であり、保証ではない。分からない項目は安全側（控えめ）に倒す。
+   -------------------------------------------------------------- */
+
+/** モジュール形式のワーカーが使えるか（この機能の前提。Firefox は 114 以降） */
+function detectModuleWorker() {
+  let supported = false;
+  let url = '';
+  try {
+    url = URL.createObjectURL(new Blob([''], { type: 'text/javascript' }));
+    // type を読みに来たか＝オプションを解釈できるか。古い Firefox はここで例外になる
+    const w = new Worker(url, { get type() { supported = true; return 'module'; } });
+    w.terminate();
+  } catch (_) {
+    supported = false;
+  } finally {
+    if (url) { try { URL.revokeObjectURL(url); } catch (_) { /* 無視 */ } }
+  }
+  return supported;
+}
+
+/** 計算の速さをその場で測る。AI の計算は行列のかけ算が中心なので、それを模した処理で測る */
+function benchmarkCpu() {
+  const N = 96;
+  const a = new Float32Array(N * N);
+  const b = new Float32Array(N * N);
+  for (let i = 0; i < a.length; i++) { a[i] = (i % 17) * 0.01; b[i] = (i % 13) * 0.02; }
+  const c = new Float32Array(N * N);
+  const t0 = performance.now();
+  for (let rep = 0; rep < 6; rep++) {
+    for (let i = 0; i < N; i++) {
+      for (let k = 0; k < N; k++) {
+        const av = a[i * N + k];
+        if (av === 0) continue;
+        for (let j = 0; j < N; j++) c[i * N + j] += av * b[k * N + j];
+      }
+    }
+  }
+  const ms = performance.now() - t0;
+  return { ms: Math.round(ms), checksum: c[0] };   // checksum は最適化で消されないため
+}
+
+/**
+ * この端末の力量を調べ、「どのくらいの大きさまでなら動かせそうか」を返す。
+ * @returns {Promise<Object>} maxMB（目安の上限）と、その根拠になった項目
+ */
+export async function aiDiagnose() {
+  const r = { notes: [], webgpu: { available: false } };
+
+  r.moduleWorker = detectModuleWorker();
+
+  // WebGPU（画像処理装置）が使えると、計算が大幅に速くなり、重みもGPU側に置ける
+  try {
+    if (navigator.gpu) {
+      const adapter = await navigator.gpu.requestAdapter();
+      if (adapter) {
+        r.webgpu.available = true;
+        const lim = adapter.limits || {};
+        r.webgpu.maxBufferMB = Math.round((lim.maxBufferSize || 0) / 1048576);
+        r.webgpu.maxStorageMB = Math.round((lim.maxStorageBufferBindingSize || 0) / 1048576);
+        try {
+          const info = adapter.info || (adapter.requestAdapterInfo ? await adapter.requestAdapterInfo() : null);
+          if (info) r.webgpu.vendor = [info.vendor, info.architecture].filter(Boolean).join(' ');
+        } catch (_) { /* 取れなくてよい */ }
+      }
+    }
+  } catch (_) { /* 判定できなければ「使えない」扱い */ }
+
+  // 端末のメモリとCPU。deviceMemory は一部のブラウザだけ、しかも 8GB で頭打ちになる
+  r.memoryGB = (typeof navigator.deviceMemory === 'number') ? navigator.deviceMemory : null;
+  r.cores = navigator.hardwareConcurrency || null;
+  r.mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.maxTouchPoints > 1 && /Mac/i.test(navigator.platform || ''));
+
+  // モデルは端末に保存して再利用するため、保存できる空きも見る
+  try {
+    const est = await (navigator.storage && navigator.storage.estimate ? navigator.storage.estimate() : null);
+    if (est && est.quota) {
+      r.storage = {
+        quotaMB: Math.round(est.quota / 1048576),
+        usageMB: Math.round((est.usage || 0) / 1048576),
+      };
+      r.storage.freeMB = Math.max(0, r.storage.quotaMB - r.storage.usageMB);
+    }
+  } catch (_) { /* 分からなければ触れない */ }
+
+  r.bench = benchmarkCpu();
+
+  /* ---- 目安の上限を決める ---- */
+  let maxMB;
+  if (!r.moduleWorker) {
+    maxMB = 0;
+    r.notes.push('この機能に必要な仕組み（モジュール形式のワーカー）が使えません。ブラウザを最新版に更新してください。');
+  } else if (r.webgpu.available) {
+    const mem = r.memoryGB != null ? r.memoryGB : 8;   // 分からないときは中庸に見る
+    if (r.mobile) {
+      maxMB = 800;
+      r.notes.push('スマートフォン・タブレットは、パソコンより余裕が少なめです。軽いモデルをおすすめします。');
+    } else if (mem >= 8 && r.webgpu.maxStorageMB >= 1024) {
+      maxMB = 2000;
+    } else if (mem >= 4) {
+      maxMB = 800;
+    } else {
+      maxMB = 300;
+      r.notes.push('端末のメモリが少なめです。いちばん軽いモデルをおすすめします。');
+    }
+  } else {
+    // WebGPU が無い＝CPU計算。速度もメモリの上限も厳しくなる
+    const mem = r.memoryGB != null ? r.memoryGB : 4;
+    r.notes.push('WebGPU が使えないため CPU で計算します。動きますが、返事までかなり時間がかかります。');
+    if (r.mobile) maxMB = 300;
+    else if (mem >= 8) maxMB = 800;
+    else maxMB = 300;
+  }
+
+  // 計算が遅い端末では、大きいモデルは待ち時間が現実的でなくなる
+  if (maxMB > 800 && r.bench.ms > 400) {
+    maxMB = 800;
+    r.notes.push('計算の速さを測ったところ控えめでした。大きいモデルは待ち時間が長くなるため、ひとつ下をおすすめします。');
+  }
+
+  // 保存できる空きが足りなければ、そこに合わせる
+  if (r.storage && r.storage.freeMB && r.storage.freeMB < maxMB * 1.3) {
+    const fit = Math.floor(r.storage.freeMB / 1.3);
+    r.notes.push(`端末に保存できる空きが約 ${r.storage.freeMB}MB です。これに収まる大きさをおすすめします。`);
+    maxMB = Math.max(0, Math.min(maxMB, fit));
+  }
+
+  r.maxMB = maxMB;
+  return r;
+}
+
+/* --------------------------------------------------------------
    4. ワーカーとのやり取り
    -------------------------------------------------------------- */
 
@@ -284,7 +422,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260808f', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260808h', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }
