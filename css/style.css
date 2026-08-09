@@ -2013,6 +2013,31 @@ body {
   font-weight: 400;
 }
 
+/* AI のモデル読み込みの進み具合（数百MBのダウンロードになるため、
+   何％・あと何MBかを見せて「固まった」と誤解されないようにする） */
+.output-progress {
+  flex: 1 1 140px;
+  min-width: 80px;
+  max-width: 260px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  overflow: hidden;
+}
+.output-progress-bar {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+.output-ai-progress .ai-load-pct {
+  font-variant-numeric: tabular-nums;   /* 数字の幅を揃え、左右に揺れないようにする */
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 /* !pip install の結果表示 */
 .output-pip {
   font-size: 0.8125rem;

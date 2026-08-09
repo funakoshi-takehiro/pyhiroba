@@ -13,7 +13,7 @@
    ================================================== */
 'use strict';
 
-const VERSION = 'pyhiroba-v3-20260808j';
+const VERSION = 'pyhiroba-v3-20260809a';
 const CACHE = VERSION;
 
 // 同一オリジンで先読みしておく最小限のシェル。スコープは '/'（sw.js はルート）だが、

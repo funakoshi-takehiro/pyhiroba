@@ -462,7 +462,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260808i', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260809a', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }
@@ -474,7 +474,11 @@ function ensureWorker() {
       case 'ready':
         break;
       case 'progress':
-        if (p && typeof p.onProgress === 'function') p.onProgress(msg.pct, msg.text);
+        // 第3引数には受け取ったバイト数を渡す。％だけだと「あと何MBか」が
+        // 分からず、数百MBのダウンロードでは待ち時間の見当がつかないため。
+        if (p && typeof p.onProgress === 'function') {
+          p.onProgress(msg.pct, msg.text, { loaded: msg.loaded || 0, total: msg.total || 0 });
+        }
         break;
       case 'token':
         if (p && typeof p.onToken === 'function') p.onToken(msg.text);
@@ -529,9 +533,23 @@ function allowListForWorker() {
 }
 
 /**
+ * 進捗を「410MB / 900MB」の形にする。
+ * 総量が分からないうちは、受け取った分だけを出す（0MB と出して止まって見せない）。
+ */
+export function aiFormatProgressSize(loaded, total) {
+  const unit = (n) => (n >= 1024 * 1024 * 1024
+    ? `${(n / 1024 / 1024 / 1024).toFixed(1)}GB`
+    : `${Math.round(n / 1024 / 1024)}MB`);
+  const l = Number(loaded) || 0;
+  const t = Number(total) || 0;
+  if (t <= 0) return l > 0 ? unit(l) : '';
+  return `${unit(l)} / ${unit(t)}`;
+}
+
+/**
  * 指定したモデルを読み込む。
  * @param {string} modelKey AI_MODELS の key（同じモデルの精度違いを区別するため id ではない）
- * @param {(pct:number, text:string)=>void} onProgress 進捗の通知
+ * @param {(pct:number, text:string, size:{loaded:number,total:number})=>void} onProgress 進捗の通知
  * @returns {Promise<{device:string}>} 実際に使う計算方式（webgpu / wasm）
  */
 export async function aiLoadModel(modelKey, onProgress) {

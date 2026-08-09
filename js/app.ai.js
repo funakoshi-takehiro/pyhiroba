@@ -20,8 +20,13 @@ const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models'];
 let _aiModule = null;
 async function loadAiModule() {
   // 相対パスは表示中のページ（/nb/）が基準になるため ../js/ を指す
-  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260808i');
+  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260809a');
   return _aiModule;
+}
+
+/** 実行中のセルの出力欄に、進み具合を出す（js/app.exec.js の onAiProgress） */
+function showAiProgress(info) {
+  if (currentRun && typeof currentRun.onAiProgress === 'function') currentRun.onAiProgress(info);
 }
 
 /** エラーを日本語にする。ai.js が読めていればそちらの言い換えを使う */
@@ -79,9 +84,17 @@ async function handleWorkerAsk(msg) {
       });
       if (!ok) throw new Error('読み込みをやめました。');
 
-      const res = await mod.aiLoadModel(spec.key, (pct, text) => {
-        // 実行中のセルの状態表示に出す（!pip のときと同じ経路）
-        if (currentRun && currentRun.onPkg) currentRun.onPkg(`${text}（${pct}%）`);
+      // 押した直後から表示を出す。ここから最初の進捗が届くまでに数秒あり、
+      // その間なにも出ないと「押しても反応がない」ように見えるため。
+      showAiProgress({ status: 'ai-loading', pct: 0, text: 'AIの準備を始めています' });
+      const res = await mod.aiLoadModel(spec.key, (pct, text, size) => {
+        showAiProgress({
+          status: 'ai-loading',
+          pct,
+          text,
+          // 「あと何MBか」も出す。％だけでは、数百MBの残りが読めないため
+          sizeText: mod.aiFormatProgressSize(size && size.loaded, size && size.total),
+        });
       });
       const dev = res.device === 'webgpu' ? 'WebGPU' : 'CPU';
       reply(true, JSON.stringify({
@@ -92,9 +105,20 @@ async function handleWorkerAsk(msg) {
     }
 
     if (msg.kind === 'ai-ask') {
-      if (currentRun && currentRun.onPkg) currentRun.onPkg('AIが考えています…');
+      // 生成中も、どこまで進んだかを出す。文章は最後にまとめて Python へ返すが、
+      // CPU で動く端末では数十秒かかるため、書けた文字数だけでも見せる。
+      let chars = 0;
+      let lastShown = 0;
+      showAiProgress({ status: 'ai-thinking', chars: 0 });
       const res = await mod.aiGenerate(String(args.prompt || ''), {
         maxNewTokens: args.max_tokens || undefined,
+        onToken: (t) => {
+          chars += String(t || '').length;
+          const now = Date.now();
+          if (now - lastShown < 120) return;   // 出しすぎて画面を占領しないようにする
+          lastShown = now;
+          showAiProgress({ status: 'ai-thinking', chars });
+        },
       });
       reply(true, JSON.stringify({ text: res.text, ms: res.ms, device: res.device }));
       return;

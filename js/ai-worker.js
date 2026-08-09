@@ -101,14 +101,55 @@ async function handleLoad(msg) {
   const device = await pickDevice();
   post({ type: 'progress', pct: 0, text: 'モデルを読み込んでいます…' });
 
+  // 進捗はファイルごとに届く。モデルは複数のファイルに分かれているため、
+  // ファイル単位の％をそのまま出すと数字が行ったり来たりして分からない。
+  // ここで全体の合計に直してから知らせる（あと何MBかも分かるようにする）。
+  //
+  // 数字が逆戻りしないための工夫が2つある。
+  //  1. 設定ファイル（数KB）だけを受け取り終えた時点でも合計としては 100% になるが、
+  //     そのあと本体（数百MB）が現れた瞬間に 1% へ落ちてしまう。
+  //     そこで、本体が現れるまでは％を出さず「情報を受け取っています」と伝える。
+  //  2. 受け取り終わってからも、AI を組み立てる時間（数秒〜数十秒）が残っている。
+  //     ここで 100% を出すと「100%のまま止まった」ように見えるため、99% で止め、
+  //     組み立て中であることを言葉で伝える。100% は最後に一度だけ出す。
+  const BIG_FILE_BYTES = 8 * 1024 * 1024;   // これ以上なら「本体が始まった」とみなす
+  const parts = new Map();                  // ファイル名 → { loaded, total }
+  let lastSent = 0;
+  const reportProgress = (force) => {
+    const now = Date.now();
+    if (!force && now - lastSent < 150) return;   // 送りすぎて画面を占領しないようにする
+    lastSent = now;
+    let loaded = 0;
+    let total = 0;
+    parts.forEach((v) => { loaded += v.loaded; total += v.total; });
+    const started = total >= BIG_FILE_BYTES;
+    const received = started && loaded >= total;
+    post({
+      type: 'progress',
+      pct: started ? Math.min(99, Math.round((loaded / total) * 100)) : 0,
+      loaded: started ? loaded : 0,
+      total: started ? total : 0,
+      text: !started ? 'モデルの情報を受け取っています…'
+        : received ? '受け取りました。AIを組み立てています…'
+          : 'モデルを受け取っています',
+    });
+  };
+
   pipe = await t.pipeline('text-generation', spec.id, {
     revision: spec.revision,
     dtype: spec.dtype || 'q4',
     device,
     progress_callback: (p) => {
-      if (p && p.status === 'progress' && p.total) {
-        post({ type: 'progress', pct: Math.round((p.loaded / p.total) * 100), text: 'ダウンロード中… ' + (p.file || '') });
+      if (!p || !p.file) return;
+      const cur = parts.get(p.file) || { loaded: 0, total: 0 };
+      if (p.status === 'progress' && p.total) {
+        cur.total = p.total;
+        cur.loaded = p.loaded || 0;
+      } else if (p.status === 'done') {
+        cur.loaded = cur.total || cur.loaded;   // 取り終えたファイルは満了として数える
       }
+      parts.set(p.file, cur);
+      reportProgress(p.status === 'done');
     },
   });
   loadedId = spec.key;

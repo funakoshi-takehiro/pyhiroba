@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260807e">
+  <link rel="stylesheet" href="css/style.css?v=20260809a">
 
   <style>
     /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
@@ -220,8 +220,8 @@
   <!-- AI 本体（許可リストと通信ガードを含む）。ESM のため type="module" で読み込む。
        実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
-    const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiDiagnose, aiExplainError } =
-      await import('./js/ai.js?v=20260808i');
+    const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiDiagnose, aiExplainError, aiFormatProgressSize } =
+      await import('./js/ai.js?v=20260809a');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
@@ -277,7 +277,13 @@
       // ダウンロードは大きいので、途中でやめられるようにしておく
       btnUnload.disabled = false; btnUnload.textContent = '中止する';
       try {
-        const res = await aiLoadModel(spec.key, (pct, text) => { setProgress(pct); setStatus(`${text}（${pct}%）`); });
+        const res = await aiLoadModel(spec.key, (pct, text, size) => {
+          setProgress(pct);
+          // 「あと何MBか」が分かるようにする（％だけでは待ち時間の見当がつかないため）。
+          // 受け取った量が分かるまでは、％を出さず言葉だけで伝える（0% を長く見せない）
+          const mb = aiFormatProgressSize(size && size.loaded, size && size.total);
+          setStatus(mb ? `${text}（${pct}%／${mb}）` : text);
+        });
         device = res.device || '';
         const dev = DEVICE_LABEL[device] || device;
         setStatus(`準備ができました${dev ? `（${dev}で動きます）` : ''}。文章を入力して「生成する」を押してください。`);

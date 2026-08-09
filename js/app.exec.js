@@ -80,6 +80,11 @@ async function runCell(id) {
         onPip: (pkg) => {
           // !pip install 実行中の表示
           renderOutput(id, { status: 'installing-pip', packages: pkg });
+        },
+        onAiProgress: (info) => {
+          // AI（pyhiroba.ai）の読み込み・生成の進み具合。数百MBのダウンロードになるため、
+          // 何も出ないと「固まった」ようにしか見えない。js/app.ai.js から呼ばれる。
+          renderOutput(id, info);
         }
       };
       pyWorker.postMessage({ type: 'run', runId, code });
@@ -172,6 +177,57 @@ function translatePipError(pkg, rawError) {
   return 'このライブラリはブラウザ環境ではインストールできませんでした。（対応していないライブラリの可能性があります）';
 }
 
+/**
+ * AI の進み具合の表示（読み込み中／生成中）を用意する。すでに同じ種類のものが
+ * 出ていれば作り直さずに使い回す。進捗は 0.1 秒ごとに何度も届くため、毎回
+ * 作り直すと、くるくる回るしるしが振り出しに戻って、かえって止まって見えるため。
+ * mode はこのファイルが決める固定の文字列で、外から来た値は入らない。
+ */
+function ensureAiBox(el, mode) {
+  const found = el.querySelector('.output-ai-progress');
+  if (found && found.dataset.mode === mode) return found;
+  const loading = mode === 'ai-loading';
+  el.innerHTML = `
+    <div class="output-running output-loading-pkg output-ai-progress" data-mode="${loading ? 'ai-loading' : 'ai-thinking'}">
+      <span class="spinner">⚙</span>
+      <span class="ai-load-text"></span>
+      ${loading ? `<span class="output-progress" role="progressbar" aria-label="モデルの読み込み"
+              aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="output-progress-bar"></span></span>
+      <span class="ai-load-pct"></span>` : ''}
+      <small>${loading
+        ? '初回だけ時間がかかります。2回目からは端末に保存されたものを使うため、すぐ始まります'
+        : '返事ができあがると、まとめて表示されます'}</small>
+    </div>`;
+  return el.querySelector('.output-ai-progress');
+}
+
+/** AI のモデル読み込み・生成の進み具合を出す */
+function renderAiProgress(el, result) {
+  const box = ensureAiBox(el, result.status);
+  // 文字はすべて textContent で入れる（利用者の入力やモデル名が混ざる余地を作らない）
+  const label = box.querySelector('.ai-load-text');
+
+  if (result.status === 'ai-thinking') {
+    const n = Number(result.chars) || 0;
+    label.textContent = `AIが文章を作っています…${n > 0 ? `（${n}文字）` : ''}`;
+    return;
+  }
+
+  const pct = Math.max(0, Math.min(100, Math.round(Number(result.pct) || 0)));
+  label.textContent = String(result.text || 'AIのモデルを読み込み中…')
+                    + (result.sizeText ? `（${result.sizeText}）` : '');
+  // どれだけ受け取ったかが分かるまでは、目盛りも％も出さない。
+  // 「0%」だけを長く見せると、かえって止まっているように見えるため。
+  const known = !!result.sizeText;
+  const pctEl = box.querySelector('.ai-load-pct');
+  const meter = box.querySelector('.output-progress');
+  pctEl.hidden = !known;
+  meter.hidden = !known;
+  pctEl.textContent = `${pct}%`;
+  meter.setAttribute('aria-valuenow', String(pct));
+  meter.querySelector('.output-progress-bar').style.width = `${pct}%`;
+}
+
 function renderOutput(id, result) {
   const el = document.getElementById(`output-${id}`);
   if (!el) return;
@@ -203,6 +259,11 @@ function renderOutput(id, result) {
         <span>ライブラリをインストール中…${names ? `（${names}）` : ''}</span>
         <small>初回はダウンロードのため少し時間がかかります</small>
       </div>`;
+    return;
+  }
+
+  if (result.status === 'ai-loading' || result.status === 'ai-thinking') {
+    renderAiProgress(el, result);
     return;
   }
 
