@@ -144,3 +144,7 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# CPython で検証したときに残る中間ファイル（同梱物には含めない）
+__pycache__/
+*.pyc

@@ -12,6 +12,26 @@ importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js');
 let pyodide = null;
 
 // ============================================================
+// 同梱ファイル（py/library_hiroba/）
+// ============================================================
+// PyPI から取らずに同梱するのは、学校の閉域網でも import だけで使えるようにするため。
+// 取得は init() の中、lockdownNetwork() より前に行う。したがって
+// NET_ALLOW_PREFIXES（生徒コードから見た許可リスト）は一切広げていない。
+//
+// 一覧をここに持つのはビルド工程が無いため。ファイルが増減したら
+// ここも更新すること（実ファイルとの一致は検証スクリプトが確かめる）。
+const BUNDLE_DIR = '/lib/hiroba';
+const BUNDLE_FILES = [
+  'library_hiroba/__init__.py',
+  'library_hiroba/ui.py',
+  'library_hiroba/_core.py',
+  'library_hiroba/_css.py',
+  'library_hiroba/_components.py',
+  'library_hiroba/_forms.py',
+  'library_hiroba/_ai.py',
+];
+
+// ============================================================
 // Pythonセットアップコード（環境の初期化）
 // ============================================================
 const PYTHON_SETUP_CODE = `
@@ -37,53 +57,80 @@ _nb_globals = {}
 exec("", _nb_globals)
 
 # ============================================================
-# pyhiroba モジュール（ノートブックから使える道具）
+# 同梱した library-hiroba（ui と ai）を import できるようにする
 # ============================================================
-# 【移設中】この中身は library-hiroba パッケージ（library_hiroba._ai）へ移す。
-# 移設と同梱が済んだら、ここは import library_hiroba に置き換え、
-# 互換のため sys.modules['pyhiroba'] = library_hiroba だけを残す。
-# 段取りは CLAUDE.md「AI 部分を library-hiroba へ移設中」を参照。
-import json as _json, types as _types
-import js as _js
+# 実体は py/library_hiroba/。ファイルは init() が封鎖前に取得して置いてある。
+# ここでは読める場所として sys.path に足すだけ。
+# 生徒は次のように書ける（Colab でも同じコードが動く）:
+#     from library_hiroba import ai, ui
+if '${BUNDLE_DIR}' not in sys.path:
+    sys.path.insert(0, '${BUNDLE_DIR}')
+`;
 
-class _Ai:
-    """ブラウザの中だけで動く、小さな言語モデル。
+/**
+ * 同梱ファイルを取得して Pyodide のファイルシステムへ書く。
+ * 取得できなかった場合も起動は続ける（import が失敗するだけに留める）。
+ * @returns {Promise<boolean>} すべて書けたか
+ */
+async function installBundle() {
+  try {
+    // 取得先はワーカー自身の場所から組み立てる（github.io の /pyhiroba/ 配下と
+    // 独自ドメインの直下、どちらでも解決できるようにするため）。
+    const base = new URL('../py/', self.location.href);
+    // 版数はこのワーカー自身の ?v= をそのまま使う（別の定数を持つと更新漏れが起きるため）
+    const ver = self.location.search;
+    const sources = await Promise.all(BUNDLE_FILES.map(async (rel) => {
+      const res = await fetch(new URL(rel + ver, base));
+      if (!res.ok) throw new Error(`${rel}: ${res.status}`);
+      return [rel, await res.text()];
+    }));
+    for (const dir of new Set(BUNDLE_FILES.map((f) => f.slice(0, f.lastIndexOf('/'))))) {
+      pyodide.FS.mkdirTree(`${BUNDLE_DIR}/${dir}`);
+    }
+    for (const [rel, text] of sources) {
+      pyodide.FS.writeFile(`${BUNDLE_DIR}/${rel}`, text, { encoding: 'utf8' });
+    }
+    return true;
+  } catch (e) {
+    // オフラインの初回など。ここで止めると Python 自体が使えなくなるので続行する
+    return false;
+  }
+}
 
-    入力した文章が外部に送られることはない。通信はモデルを受け取るときだけ。
+// ============================================================
+// フォームの送信を受ける Python コード（ボタンが押されたときに呼ぶ）
+// ============================================================
+// ui.form() は「表示していったんセルを終える」→「押されたら登録済みの関数を呼ぶ」
+// という2段階で動く。ここはその2段階目。セルの実行とは独立して呼ばれる。
+//
+// handler の書き方は3通りあり、すべてに対応する必要がある。
+//   def            … 部品がそのまま返る
+//   async def      … 待つもの（awaitable）が返る。ai.ask() を使う教材はこれになる
+//   async def+yield… 非同期の反復子が返る。書けたところから見せる教材で使う
+// await を忘れると _repr_html_() が失敗するため、ここで必ず見分ける。
+const PYTHON_HUI_CODE = `
+import inspect as _inspect
 
-    使い方（Colab でも同じ）:
-        from pyhiroba import ai
-        await ai.load()
-        print(await ai.ask("日本の四季について、2行で書いて"))
-    """
-
-    def __init__(self):
-        self._loaded = False
-
-    async def load(self, model=None):
-        """モデルを読み込む。初回だけ時間と通信量がかかる。"""
-        _res = _json.loads(await _js.pyhirobaAsk('ai-load', _json.dumps({'model': model})))
-        self._loaded = True
-        return _res.get('message', '準備ができました')
-
-    async def ask(self, prompt, max_tokens=None):
-        """文章を渡して、続きを書いてもらう。"""
-        if not self._loaded:
-            await self.load()
-        _res = _json.loads(await _js.pyhirobaAsk(
-            'ai-ask', _json.dumps({'prompt': str(prompt), 'max_tokens': max_tokens})))
-        return _res.get('text', '')
-
-    async def models(self):
-        """選べるモデルの一覧（名前と目安の通信量）。"""
-        return _json.loads(await _js.pyhirobaAsk('ai-models', 'null'))
-
-ai = _Ai()
-
-_pyhiroba = _types.ModuleType('pyhiroba')
-_pyhiroba.__doc__ = 'PyHiroba でノートブックから使える道具（Colab でも同じ形で使えます）'
-_pyhiroba.ai = ai
-sys.modules['pyhiroba'] = _pyhiroba
+async def _hui_submit(_form_id, _values, _send):
+    from library_hiroba import ui as _ui
+    _form = _ui.get_form(_form_id)
+    if _form is None:
+        # 保存した .ipynb を開き直した直後など、登録が残っていない場合。
+        # 黙って何も起きないと「壊れている」と見えるので、やることを伝える。
+        _send('__hui_stale__')
+        return
+    # 押した直後に「考え中」を出す（Colab と同じものが出るので見え方が変わらない）
+    _pending = _form.pending_html()
+    if _pending:
+        _send(_pending)
+    _result = _form.submit(**_values)
+    if _inspect.isasyncgen(_result):
+        async for _item in _result:
+            _send(_item._repr_html_())
+        return
+    if _inspect.isawaitable(_result):
+        _result = await _result
+    _send(_result._repr_html_())
 `;
 
 // ============================================================
@@ -249,7 +296,11 @@ async function init() {
     clearInterval(heartbeat); heartbeat = null;
 
     postMessage({ type: 'progress', pct: 80, msg: 'Python実行環境を準備しています...' });
+    // 同梱ファイルの取得は「封鎖の前」に済ませる。こうすることで、生徒コードから見た
+    // 許可リスト（NET_ALLOW_PREFIXES）を広げずに、閉域網でも import だけで使えるようにする。
+    await installBundle();
     await pyodide.runPythonAsync(PYTHON_SETUP_CODE);
+    await pyodide.runPythonAsync(PYTHON_HUI_CODE);
 
     // ユーザーコード実行前に外向き通信を封鎖（Pyodide のパッケージ取得は許可リストで維持）
     lockdownNetwork();
@@ -369,6 +420,12 @@ async function runCode(runId, code) {
 let _askSeq = 0;
 const _askWaiting = new Map();
 
+// フォームの handler の中から呼ばれたときは、そのフォームの ID を添える。
+// メイン側が「どこに進み具合を出せばよいか」を知るために要る（AI の読み込みは
+// 数百MBかかるため、何も出ないと固まったように見える）。送信は1件ずつ順に
+// 処理しているので、この1つで取り違えは起きない。
+let _activeHuiForm = null;
+
 self.pyhirobaAsk = function (kind, argsJson) {
   return new Promise((resolve, reject) => {
     const askId = ++_askSeq;
@@ -378,6 +435,7 @@ self.pyhirobaAsk = function (kind, argsJson) {
       askId,
       kind: String(kind),
       argsJson: String(argsJson == null ? 'null' : argsJson),
+      huiForm: _activeHuiForm,
     });
   });
 };
@@ -390,10 +448,51 @@ function handleAskResult(msg) {
   else w.reject(new Error(msg.error || '処理できませんでした。'));
 }
 
+// ============================================================
+// フォームの送信を受ける
+// ============================================================
+// セルの実行とは独立して届く（生徒がボタンを押したとき）。
+// 値は必ず文字列で受け取り、型の変換は library-hiroba の submit() に任せる
+// （ブラウザの入力欄からは文字列しか取れないが、Colab の数値欄は float を返す。
+//   その差を library-hiroba 側で吸収してもらうことで、handler に届く型が揃う）。
+// 送信は1件ずつ順番に処理する。同時に走らせると、Python へ渡すための一時変数
+// （_hui_form_id など）を互いに上書きし、別のフォームの値で呼んでしまうため。
+let _huiChain = Promise.resolve();
+
+function handleHuiSubmit(msg) {
+  _huiChain = _huiChain.then(() => runHuiSubmit(msg)).catch(() => {});
+}
+
+async function runHuiSubmit(msg) {
+  const formId = String(msg.formId || '');
+  const send = (html) => postMessage({ type: 'hui-html', formId, html: String(html) });
+  try {
+    if (!pyodide || !pyodide.globals.has('_hui_submit')) { send('__hui_stale__'); return; }
+    _activeHuiForm = formId;
+    const values = {};
+    Object.keys(msg.values || {}).forEach((k) => { values[String(k)] = String(msg.values[k]); });
+    // 値は JSON 文字列で渡し、Python 側で読み解く（境界にオブジェクトを持ち込まない）
+    pyodide.globals.set('_hui_form_id', formId);
+    pyodide.globals.set('_hui_values_json', JSON.stringify(values));
+    pyodide.globals.set('_hui_send', send);
+    await pyodide.runPythonAsync(
+      'import json as _json\n'
+      + 'await _hui_submit(_hui_form_id, _json.loads(_hui_values_json), _hui_send)\n',
+    );
+  } catch (err) {
+    postMessage({ type: 'hui-error', formId, message: String((err && err.message) || err) });
+  } finally {
+    _activeHuiForm = null;
+    // 渡した関数を握ったままにしない
+    try { pyodide.globals.set('_hui_send', null); } catch (_) { /* 無視 */ }
+  }
+}
+
 onmessage = (e) => {
   const msg = e.data || {};
   if (msg.type === 'run') runCode(msg.runId, msg.code);
   else if (msg.type === 'ask-result') handleAskResult(msg);
+  else if (msg.type === 'hui-submit') handleHuiSubmit(msg);
 };
 
 init();

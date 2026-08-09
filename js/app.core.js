@@ -149,7 +149,7 @@ function startWorker() {
       timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
     };
     try {
-      pyWorker = new Worker('../js/pyodide-worker.js?v=20260809b');
+      pyWorker = new Worker('../js/pyodide-worker.js?v=20260809c');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
@@ -177,6 +177,9 @@ function startWorker() {
         }
       } else if (msg.type === 'ask') {
         handleWorkerAsk(msg);
+      } else if (msg.type === 'hui-html' || msg.type === 'hui-error') {
+        // ui.form() の結果。セルの実行とは独立して届く（ボタンが押されたとき）
+        showHuiResult(msg);
       }
     };
     pyWorker.onerror = () => {

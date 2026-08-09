@@ -20,13 +20,26 @@ const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models'];
 let _aiModule = null;
 async function loadAiModule() {
   // 相対パスは表示中のページ（/nb/）が基準になるため ../js/ を指す
-  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260809a');
+  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260809c');
   return _aiModule;
 }
 
-/** 実行中のセルの出力欄に、進み具合を出す（js/app.exec.js の onAiProgress） */
+/** どの依頼を処理しているかの手掛かり。フォームから呼ばれた場合はフォームの ID が入る */
+let _askContext = null;
+
+/**
+ * 進み具合を出す。出し先は依頼元によって変わる。
+ *  ・セルの実行中 … そのセルの出力欄
+ *  ・フォームの送信中 … そのフォームの出力欄（セルは動いていないため）
+ * フォームの handler の中で ai.load() を呼ぶ教材があり、そこで数百MBの取得が
+ * 起きても何も出ないと「固まった」ようにしか見えないため、両方に出す。
+ */
 function showAiProgress(info) {
-  if (currentRun && typeof currentRun.onAiProgress === 'function') currentRun.onAiProgress(info);
+  if (currentRun && typeof currentRun.onAiProgress === 'function') {
+    currentRun.onAiProgress(info);
+    return;
+  }
+  if (_askContext && typeof showHuiProgress === 'function') showHuiProgress(_askContext, info);
 }
 
 /** エラーを日本語にする。ai.js が読めていればそちらの言い換えを使う */
@@ -50,6 +63,7 @@ async function handleWorkerAsk(msg) {
   }
 
   let mod = null;
+  _askContext = msg.huiForm || null;   // フォームの handler の中から来た依頼か
   try {
     const args = JSON.parse(msg.argsJson || 'null') || {};
     mod = await loadAiModule();
@@ -67,9 +81,15 @@ async function handleWorkerAsk(msg) {
       const spec = args.model
         ? mod.AI_MODELS.find((m) => m.key === args.model || m.id === args.model)
         : list[0];
-      if (!spec || !spec.ready) {
+      if (!spec) {
         throw new Error('そのモデルは選べません: ' + String(args.model)
-          + '（await ai.models() で選べるものを確認できます）');
+          + '（いま使えるのは ' + list.map((m) => m.key).join('・') + ' です）');
+      }
+      // 一覧には入れたが、配布元に本当にあるかをまだ確認できていないモデル。
+      // 数百MBの取得を始めてから失敗するのは負担が大きいので、手前で止める。
+      if (!spec.ready) {
+        throw new Error('「' + spec.label + '」は、この環境でまだ動作確認ができていません。'
+          + 'いま使えるのは ' + list.map((m) => m.key).join('・') + ' です。');
       }
 
       // 大きなダウンロードの前に必ず確認する（ai.html と同じ作法）
@@ -125,5 +145,7 @@ async function handleWorkerAsk(msg) {
     }
   } catch (e) {
     reply(false, null, aiAskErrorText(mod, e));
+  } finally {
+    _askContext = null;
   }
 }

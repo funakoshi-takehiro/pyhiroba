@@ -177,6 +177,98 @@ function translatePipError(pkg, rawError) {
   return 'このライブラリはブラウザ環境ではインストールできませんでした。（対応していないライブラリの可能性があります）';
 }
 
+// ============================================================
+// ui.form() — 画面の入力を Python に戻す
+// ============================================================
+// library-hiroba の ui.form() は、目印（data-hui-*）だけを持つ HTML を出す。
+// **動きを付けるのは、この本体側のコードだけ**。出力の HTML は無害化を通ったうえで
+// 目印を持つに過ぎず、それ自体は何も実行しない（教材が JavaScript を仕込めない）。
+//
+// 流れ: 押す → 値を集めてワーカーへ → Python の handler を呼ぶ
+//       → 返った HTML を無害化して data-hui-output に入れる
+
+/** フォームごとの最後の結果。セルを足すなどで画面を描き直しても消えないように持っておく。
+ *  （出力欄の中身は DOM にしか無いため、描き直すと消えてしまう）
+ *  Python 側の登録上限と同じ 64 件までにして、際限なく増えないようにする。 */
+const huiResults = new Map();
+
+/** 出力欄の中にあるフォームに、送信の動きを付ける（描画のたびに呼ぶ） */
+function bindHuiForms(container) {
+  // 描き直しで消えた結果を戻す
+  container.querySelectorAll('[data-hui-output]').forEach((out) => {
+    const saved = huiResults.get(out.getAttribute('data-hui-output'));
+    if (saved) out.innerHTML = saved;
+  });
+
+  container.querySelectorAll('[data-hui-submit]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const formId = button.getAttribute('data-hui-submit');
+      const root = container.querySelector(`[data-hui-form="${CSS.escape(formId)}"]`);
+      if (!root || !pyWorker) return;
+
+      // 入力値は文字列のまま送る。型の変換は library-hiroba 側が行う
+      // （ブラウザの入力欄は常に文字列だが、Colab の数値欄は数値を返す。
+      //   その差をあちらで吸収してもらうことで、handler に届く型が揃う）
+      const values = {};
+      root.querySelectorAll('[data-hui-field]').forEach((el) => {
+        values[el.getAttribute('data-hui-field')] = el.value;
+      });
+
+      // 押している間は止める（連打で同じ依頼が並ばないように）
+      button.disabled = true;
+      setTimeout(() => { button.disabled = false; }, 400);
+
+      pyWorker.postMessage({ type: 'hui-submit', formId, values });
+
+      if (root.hasAttribute('data-hui-clear')) {
+        root.querySelectorAll('[data-hui-field]').forEach((el) => {
+          if (el.tagName !== 'SELECT') el.value = '';
+        });
+      }
+    });
+  });
+}
+
+/**
+ * フォームの handler が AI を呼んだときの進み具合を、そのフォームの出力欄に出す。
+ * セルは動いていないので、セルの出力欄には出せない。
+ * 覚えておく（huiResults）のは結果だけにして、途中経過は残さない。
+ */
+function showHuiProgress(formId, info) {
+  const out = document.querySelector(`[data-hui-output="${CSS.escape(String(formId))}"]`);
+  if (!out) return;
+  const text = info.status === 'ai-thinking'
+    ? `AIが文章を作っています…${info.chars > 0 ? `（${info.chars}文字）` : ''}`
+    : `${info.text || 'AIのモデルを読み込み中…'}${info.sizeText ? `（${info.sizeText}）` : ''}`;
+  out.innerHTML = `<div class="output-running output-loading-pkg">`
+    + `<span class="spinner">⚙</span><span class="ai-load-text"></span></div>`;
+  out.querySelector('.ai-load-text').textContent = text;
+}
+
+/** ワーカーから返ったフォームの結果を、そのフォームの出力欄に入れる */
+function showHuiResult(msg) {
+  const formId = String(msg.formId || '');
+  let html;
+  if (msg.type === 'hui-error') {
+    html = `<div class="output-error"><div class="error-japanese">`
+      + `フォームの処理でエラーが起きました。<br>${escHtml(msg.message || '')}</div></div>`;
+  } else if (msg.html === '__hui_stale__') {
+    // 保存した .ipynb を開き直した直後など、Python 側に登録が残っていない場合
+    html = '<div class="output-warning"><div class="warning-japanese">'
+      + 'このフォームは、いまの Python 環境に登録されていません。<br>'
+      + 'フォームを作ったセルを、もう一度実行してください。</div></div>';
+  } else {
+    // 返ってきた HTML も、通常の実行結果とまったく同じ無害化を通す
+    html = sanitizeHtml(msg.html);
+  }
+
+  huiResults.set(formId, html);
+  if (huiResults.size > 64) huiResults.delete(huiResults.keys().next().value);
+
+  const out = document.querySelector(`[data-hui-output="${CSS.escape(formId)}"]`);
+  if (out) out.innerHTML = html;   // 画面に無ければ、次に描いたときに戻る
+}
+
 /**
  * AI の進み具合の表示（読み込み中／生成中）を用意する。すでに同じ種類のものが
  * 出ていれば作り直さずに使い回す。進捗は 0.1 秒ごとに何度も届くため、毎回
@@ -365,6 +457,8 @@ function renderOutput(id, result) {
 
   // 出力なしは何も表示しない（Jupyter と同じ挙動）
   el.innerHTML = html;
+  // 描き直すとイベントも消えるため、毎回付け直す
+  bindHuiForms(el);
 }
 
 // ============================================================

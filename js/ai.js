@@ -96,16 +96,50 @@ export const AI_MODELS = [
     ready: true,
   },
   {
-    // 確認時点のコミット: 762812c…（国産。ただし150Mでは会話は成立しない）
+    // Qwen2.5 0.5B より新しい。答えの前に <think>…</think> で考えを書くため、
+    // ai-worker.js 側で enable_thinking: false を渡し、残りも取り除く
+    key: 'qwen3_06-q4',
+    id: 'onnx-community/Qwen3-0.6B-ONNX',
+    revision: 'main',
+    label: 'Qwen3 0.6B（Qwen2.5 0.5B より新しい・日本語が少し良い）',
+    approxMB: 550,
+    dtype: 'q4',
+    ready: false,
+  },
+  {
+    key: 'qwen3_06-q8',
+    id: 'onnx-community/Qwen3-0.6B-ONNX',
+    revision: 'main',
+    label: 'Qwen3 0.6B 高精度版',
+    approxMB: 750,
+    dtype: 'q8',
+    ready: false,
+  },
+  {
+    key: 'qwen3_17-q4',
+    id: 'onnx-community/Qwen3-1.7B-ONNX',
+    revision: 'main',
+    label: 'Qwen3 1.7B（この一覧でいちばん賢い・重い）',
+    approxMB: 1300,
+    dtype: 'q4',
+    ready: false,
+  },
+  {
+    // instruct3 ではなく instruct2。ONNX に変換されているのが instruct2 だけで、
+    // Colab 側（library-hiroba）もこちらを使う。揃えないと、同じ名前なのに
+    // 環境ごとに別のモデルが動いてしまう。
     key: 'llmjp150m-q4',
-    id: 'onnx-community/llm-jp-3-150m-instruct3-ONNX',
+    id: 'onnx-community/llm-jp-3-150m-instruct2-ONNX',
     revision: 'main',
     label: 'LLM-jp-3 150M（国産・とても軽い／文章は不自然です）',
     approxMB: 255,
     dtype: 'q4',
-    ready: true,
+    ready: false,
   },
 ];
+
+/** 答えの前に「考えていること」を書くモデル（Qwen3 系）。生成時に抑える */
+export const AI_THINKING_KEYS = new Set(['qwen3_06-q4', 'qwen3_06-q8', 'qwen3_17-q4']);
 
 /** 画面の選択肢に出してよいモデル（実在を確認済みのもの） */
 export function aiReadyModels() {
@@ -462,7 +496,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260809a', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260809c', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }
@@ -529,7 +563,10 @@ function request(payload, handlers = {}) {
 
 /** ワーカーへ渡す許可リスト（画面から任意のモデルを指定させないため、ここでも絞る） */
 function allowListForWorker() {
-  return AI_MODELS.map((m) => ({ key: m.key, id: m.id, revision: m.revision, dtype: m.dtype }));
+  return AI_MODELS.map((m) => ({
+    key: m.key, id: m.id, revision: m.revision, dtype: m.dtype,
+    thinking: AI_THINKING_KEYS.has(m.key),
+  }));
 }
 
 /**

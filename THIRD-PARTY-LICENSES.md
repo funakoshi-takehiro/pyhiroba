@@ -11,6 +11,12 @@ PyHiroba は、以下のオープンソースソフトウェアを利用して�
 | DOMPurify | Apache License 2.0 または MPL 2.0 | https://github.com/cure53/DOMPurify |
 | Transformers.js | Apache License 2.0 | https://github.com/huggingface/transformers.js |
 | ONNX Runtime Web | MIT License | https://github.com/microsoft/onnxruntime |
+| library-hiroba | MIT License | https://github.com/funakoshi-takehiro/library-hiroba |
+
+library-hiroba（`ui` と `ai`）は `py/library_hiroba/` に**同梱**している。
+学校の閉域網でも `!pip install` なしで使えるようにするため。
+同梱しているのは **0.3.1** で、配布元の内容を改変していない
+（ライセンス本文は `py/library_hiroba/LICENSE`）。版を上げるときは配布元から取り直すこと。
 
 ## AI体験ページで使う言語モデル
 
@@ -20,10 +26,12 @@ PyHiroba は、以下のオープンソースソフトウェアを利用して�
 | モデル | 作り手 | ライセンス | 配布元 |
 | --- | --- | --- | --- |
 | Qwen2.5（0.5B / 1.5B の instruct 版） | Alibaba Cloud | Apache License 2.0 | https://huggingface.co/Qwen |
+| Qwen3（0.6B / 1.7B） | Alibaba Cloud | Apache License 2.0 | https://huggingface.co/Qwen |
 | LLM-jp-3 | 国立情報学研究所 大規模言語モデル研究開発センター | Apache License 2.0 | https://huggingface.co/llm-jp |
 
 Qwen2.5 は大きさによってライセンスが異なり、3B と 72B は Apache License 2.0 ではない
 （研究用途などの制限がつく）。PyHiroba では **Apache License 2.0 の 0.5B / 1.5B のみ**を扱う。
+Qwen3 は 0.6B / 1.7B とも Apache License 2.0。
 
 ## フォント
 

@@ -352,10 +352,12 @@
       </section>
 
       <section class="help-sec">
-        <h3>AIを動かす（試験公開）</h3>
+        <h3>AIと画面部品（試験公開）</h3>
         <p>小さな言語モデルを、この画面の中だけで動かせます。入力した文章が外部に送られることはありません。初回だけモデルを受け取るため、時間と通信量がかかります。</p>
-        <code>from pyhiroba import ai<br><br>await ai.load()<br>print(await ai.ask("日本の四季について、2行で書いて"))</code>
-        <p>答えの内容が事実と違うことがよくあるため、調べものには使わないでください。Google Colab でも同じコードが動くようにする準備を進めています。</p>
+        <code>from library_hiroba import ai, ui<br><br>await ai.load()<br>print(await ai.ask("日本の四季について、2行で書いて"))</code>
+        <p>答えの内容が事実と違うことがよくあるため、調べものには使わないでください。</p>
+        <p><code>ui</code> を使うと、カードやクイズなどの部品をセルの下に表示できます。<code>ui.form()</code> で入力欄とボタンを出せば、打ち込んだ内容を Python の関数で受け取れます。</p>
+        <code>ui.form(lambda q: ui.card(q, "答え"), "質問")</code>
       </section>
     </div>
   </div>
@@ -482,12 +484,12 @@
 
   <!-- アプリ本体（役割ごとに分割・この順序で読み込む） -->
   <script src="../js/modal.js?v=20260808f"></script>
-  <script src="../js/app.core.js?v=20260809b"></script>
+  <script src="../js/app.core.js?v=20260809c"></script>
   <script src="../js/app.lessons.js?v=20260722a"></script>
   <script src="../js/app.io.js?v=20260806a"></script>
   <script src="../js/app.notebook.js?v=20260808f"></script>
-  <script src="../js/app.exec.js?v=20260809a"></script>
-  <script src="../js/app.ai.js?v=20260809a"></script>
+  <script src="../js/app.exec.js?v=20260809c"></script>
+  <script src="../js/app.ai.js?v=20260809c"></script>
 
 </body>
 </html>

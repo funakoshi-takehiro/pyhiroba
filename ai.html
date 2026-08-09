@@ -221,7 +221,7 @@
        実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
     const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiDiagnose, aiExplainError, aiFormatProgressSize } =
-      await import('./js/ai.js?v=20260809a');
+      await import('./js/ai.js?v=20260809c');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');

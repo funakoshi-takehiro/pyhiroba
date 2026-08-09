@@ -45,47 +45,45 @@ PyHiroba（ぱいひろば）— ブラウザだけで Python を学べる、日
 注意: `update-dompurify.yml` は本番のみで自動コミットするため、本番と開発の履歴は分岐しうる。
 本番へ反映する前に、必ず本番 `main` の最新状態を確認すること。
 
-## 【一時的】AI 部分を library-hiroba へ移設中（2026-08-09〜）
+## library-hiroba（`ui` と `ai`）の同梱
 
-ノートブックの `ai`（`from pyhiroba import ai`）と、UI 部品ライブラリ
-[ui-hiroba](https://pypi.org/project/ui-hiroba/) を、**`library-hiroba` という 1 つの
-Python パッケージにまとめる**ことが決まった（2026-08-09 運営者決定）。
+ノートブックの `ai` と UI 部品は、[library-hiroba](https://github.com/funakoshi-takehiro/library-hiroba)
+という 1 つの Python パッケージにまとまっている。生徒はこう書く（Colab でも同じ）:
 
-- 実装は **`funakoshi-takehiro/ui-hiroba` 側**で行う（同リポジトリを `library-hiroba` へ改名）
-- 目標の書き方: `from library_hiroba import ai, ui`（PyHiroba でも Colab でも同一）
-- **PyPI への公開はまだしない**（運営者の合図待ち）
-- リポジトリは分けたまま。統合パッケージは ui-hiroba を依存として呼ぶ
+```python
+from library_hiroba import ai, ui
+```
 
-### 片付け済み（2026-08-09）
+- **`py/library_hiroba/` に同梱**している（PyPI 未公開。学校の閉域網でも `!pip` なしで import できる）。
+  配布元の `src/library_hiroba/` の**複製で、改変しない**。版を上げるときは配布元から取り直し、
+  `THIRD-PARTY-LICENSES.md` の版数も直す（バイト一致は検証スクリプトで確認できる）
+- 取得は `js/pyodide-worker.js` の `installBundle()` が行う。**`lockdownNetwork()` より前**に
+  実行することで、`NET_ALLOW_PREFIXES` を広げずに済ませている。**この順序を入れ替えないこと**
+- ファイル一覧は `js/pyodide-worker.js` の `BUNDLE_FILES`。**ファイルが増減したらここも直す**
+  （ビルド工程が無いため。版数は同ファイルの `?v=` を流用している）
+- `ui.form()` の入力は、`hui-submit` / `hui-html` のやり取りで Python に戻る。
+  **イベント登録は本体（`bindHuiForms`）だけが行い、出力の HTML は目印を持つだけ**。
+  返ってきた HTML も通常の出力と同じ `sanitizeHtml()` を通す（設定は緩めない）
 
-- **`py/pyhiroba.py` は削除した**。Colab 用の `!wget` の案内は一度も外へ出しておらず、
-  中身は ui-hiroba 側へ引き継ぎ済みのため。内容が要るときは
-  `git show dab7770:py/pyhiroba.py` で取り出せる
-- これに伴い、/nb/ の使い方ガイドから「Colab でも同じコードが動く」という記述を外した。
-  library-hiroba を公開するまで Colab 側の入手経路が無いため（公開後に書き戻す）
+### モデル名は library-hiroba と本体で揃える
 
-### 移設が終わるまで消さないもの
+library-hiroba は利用者の書いた名前を**本体側の名前に変換して**渡す。
+`js/ai.js` の `AI_MODELS` と、あちらの `_ai.py` の `MODELS` は必ず対応させること
+（片方だけ増やすと「許可されていません」で落ちる）。
+Qwen3 系は答えの前に `<think>…</think>` を書くため、`AI_THINKING_KEYS` に入れて
+`enable_thinking: false` を渡し、残りも取り除く。
 
-| 対象 | 消せない理由 | 消してよくなる時点 |
-| --- | --- | --- |
-| `js/pyodide-worker.js` の `PYTHON_SETUP_CODE` 内 `_Ai` クラス | **/nb/ の AI がいま動いている実体**。消すと機能が止まる | `library_hiroba` を同梱し、`import library_hiroba` に置き換えたあと |
+## 移設の残り作業（2026-08-09 時点）
 
-### 本体側に残っている作業（ui-hiroba 側の完了後）
+`ai` の移設と `ui` の同梱は完了した。残っているのは次の2点だけ。
 
-1. `library_hiroba` と `ui_hiroba` を `py/` に同梱し、`!pip install` なしで import できるようにする
-   （閉域網の学校対応。**`lockdownNetwork()` は `init()` の最後に呼ばれる**ため、
-   同梱ファイルの取得を封鎖前に済ませれば `NET_ALLOW_PREFIXES` を広げずに実現できる）
-2. `PYTHON_SETUP_CODE` の `_Ai` を削り、`import library_hiroba` に置き換える。
-   互換のため `sys.modules['pyhiroba'] = library_hiroba` は残す（既存の教材を壊さないため）
-3. /nb/ の使い方ガイドに Colab の案内（`%pip install library-hiroba`）を書き戻す
+| 残り | 内容 |
+| --- | --- |
+| モデルの実在確認 | `Qwen3-0.6B-ONNX` / `Qwen3-1.7B-ONNX` / `llm-jp-3-150m-instruct2-ONNX` は配布元にあるか未確認のため `ready: false`。ai.html の「使えるモデルを調べる」で確認後に `true` へ |
+| PyPI 公開 | `library-hiroba` は未公開。公開後、Colab の案内を `%pip install library-hiroba` にできる |
 
-### 確認済みの事実（再調査は不要）
-
-- ui-hiroba の出力は、`sanitizeHtml()`（DOMPurify 3.4.12）を **1 文字も削られずに通る**。
-  同じ HTML は教材用の `sanitizeMarkdownHtml()` では `<style>` が除去される。
-  つまり **無害化の設定を緩める必要はない**（9 部品で実機確認済み）
-- ui-hiroba は **標準ライブラリのみに依存**（5 ファイル・46KB）。Pyodide でそのまま動く
-- PyPI の `library-hiroba` は未使用で取得可能
+書けたところから返す仕組み（`ai-ask-start` / `ai-ask-next`）は**任意**で、未実装。
+未対応なら library-hiroba が自動的に `ai-ask`（全文返し）に落ちるため、動作に支障はない。
 
 ## 開発の約束事
 

@@ -59,6 +59,7 @@ let lib = null;          // transformers.js 本体
 let pipe = null;         // 読み込み済みモデル
 let loadedId = null;
 let loadedDevice = '';   // 実際に使っている計算方式（webgpu / wasm）
+let loadedThinking = false;  // 答えの前に考えを書くモデルか（Qwen3 系）
 let stopper = null;      // 生成の中断に使う
 let interrupted = false; // 「停止」が押されたか
 const post = (msg) => self.postMessage(msg);
@@ -154,6 +155,7 @@ async function handleLoad(msg) {
   });
   loadedId = spec.key;
   loadedDevice = device;
+  loadedThinking = !!spec.thinking;
   // 進捗はファイルごとに来るため、最後に必ず 100% を送って表示を揃える
   post({ type: 'progress', pct: 100, text: '準備ができました' });
   post({ type: 'loaded', device });
@@ -161,12 +163,21 @@ async function handleLoad(msg) {
 
 /**
  * 生成結果の後始末。
- * 決められた長さで打ち切ると、文字の途中で終わることがある。Qwen などは文字を
- * バイト単位に分けて扱うため、その場合「�」（読めなかった印）が末尾に残る。
- * 打ち切りは必ず起こりうるので、そこで表示が壊れないように取り除く。
+ * 1. 決められた長さで打ち切ると、文字の途中で終わることがある。Qwen などは文字を
+ *    バイト単位に分けて扱うため、その場合「�」（読めなかった印）が末尾に残る。
+ *    打ち切りは必ず起こりうるので、そこで表示が壊れないように取り除く。
+ * 2. Qwen3 系は答えの前に <think>…</think> で考えを書く。授業では答えだけ見えれば
+ *    よいので取り除く。字数が尽きて </think> が来なかった場合は、考えの途中を
+ *    見せてしまわないよう空にする。
  */
 function tidy(text) {
-  return String(text || '').replace(/�+\s*$/, '').replace(/\s+$/, '');
+  let s = String(text || '');
+  if (s.includes('<think>')) {
+    s = s.includes('</think>')
+      ? s.replace(/<think>[\s\S]*?<\/think>/g, '')
+      : s.replace(/<think>[\s\S]*$/, '');
+  }
+  return s.replace(/�+\s*$/, '').replace(/^\s+/, '').replace(/\s+$/, '');
 }
 
 async function handleGenerate(msg) {
@@ -189,6 +200,12 @@ async function handleGenerate(msg) {
   const input = hasChatTemplate
     ? [{ role: 'user', content: String(msg.prompt) }]
     : String(msg.prompt);
+  // Qwen3 系は既定で <think>…</think> に考えを書く。授業では答えだけ見えればよく、
+  // 考えるぶんだけ待ち時間と字数が無駄になるので、会話形式のときは書かせない。
+  // （この指定は apply_chat_template を通ってテンプレートに届く）
+  const extra = (hasChatTemplate && loadedThinking)
+    ? { tokenizer_kwargs: { enable_thinking: false } }
+    : {};
   // 生成する長さ。短すぎると文の途中で打ち切られてしまう（多バイト文字の途中で
   // 終わると文字化けにもなる）。WebGPU は速いので長め、CPU は待ち時間を考えて控えめ。
   // 逐次表示と「停止」があるので、長めでも待たされ感は増えない。
@@ -209,6 +226,7 @@ async function handleGenerate(msg) {
       return_full_text: false,
       streamer,
       stopping_criteria: stopper,
+      ...extra,
     });
     const g = out && out[0] && out[0].generated_text;
     const raw = Array.isArray(g) ? ((g[g.length - 1] || {}).content || '') : String(g || '');
@@ -226,6 +244,7 @@ async function handleUnload() {
   pipe = null;
   loadedId = null;
   loadedDevice = '';
+  loadedThinking = false;
   post({ type: 'unloaded' });
 }
 
