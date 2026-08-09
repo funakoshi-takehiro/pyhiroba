@@ -149,7 +149,7 @@ function startWorker() {
       timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
     };
     try {
-      pyWorker = new Worker('../js/pyodide-worker.js?v=20260808i');
+      pyWorker = new Worker('../js/pyodide-worker.js?v=20260809b');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }

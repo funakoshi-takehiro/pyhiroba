@@ -39,8 +39,10 @@ exec("", _nb_globals)
 # ============================================================
 # pyhiroba モジュール（ノートブックから使える道具）
 # ============================================================
-# Colab でも同じコードが動くよう、同じ名前・同じ形にしてある。
-# Colab 側の中身は py/pyhiroba.py（transformers + torch）。
+# 【移設中】この中身は library-hiroba パッケージ（library_hiroba._ai）へ移す。
+# 移設と同梱が済んだら、ここは import library_hiroba に置き換え、
+# 互換のため sys.modules['pyhiroba'] = library_hiroba だけを残す。
+# 段取りは CLAUDE.md「AI 部分を library-hiroba へ移設中」を参照。
 import json as _json, types as _types
 import js as _js
 

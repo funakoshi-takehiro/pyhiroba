@@ -56,12 +56,19 @@ Python パッケージにまとめる**ことが決まった（2026-08-09 運営
 - **PyPI への公開はまだしない**（運営者の合図待ち）
 - リポジトリは分けたまま。統合パッケージは ui-hiroba を依存として呼ぶ
 
+### 片付け済み（2026-08-09）
+
+- **`py/pyhiroba.py` は削除した**。Colab 用の `!wget` の案内は一度も外へ出しておらず、
+  中身は ui-hiroba 側へ引き継ぎ済みのため。内容が要るときは
+  `git show dab7770:py/pyhiroba.py` で取り出せる
+- これに伴い、/nb/ の使い方ガイドから「Colab でも同じコードが動く」という記述を外した。
+  library-hiroba を公開するまで Colab 側の入手経路が無いため（公開後に書き戻す）
+
 ### 移設が終わるまで消さないもの
 
 | 対象 | 消せない理由 | 消してよくなる時点 |
 | --- | --- | --- |
 | `js/pyodide-worker.js` の `PYTHON_SETUP_CODE` 内 `_Ai` クラス | **/nb/ の AI がいま動いている実体**。消すと機能が止まる | `library_hiroba` を同梱し、`import library_hiroba` に置き換えたあと |
-| `py/pyhiroba.py` | 移設元として ui-hiroba 側へ引き継ぎ済み。先方が移し終える前に消すと引き継ぎが成立しない | ui-hiroba 側で `_ai.py` への移設が完了したあと |
 
 ### 本体側に残っている作業（ui-hiroba 側の完了後）
 
@@ -70,7 +77,7 @@ Python パッケージにまとめる**ことが決まった（2026-08-09 運営
    同梱ファイルの取得を封鎖前に済ませれば `NET_ALLOW_PREFIXES` を広げずに実現できる）
 2. `PYTHON_SETUP_CODE` の `_Ai` を削り、`import library_hiroba` に置き換える。
    互換のため `sys.modules['pyhiroba'] = library_hiroba` は残す（既存の教材を壊さないため）
-3. `py/pyhiroba.py` を削除し、Colab の案内を `!wget` から `%pip install library-hiroba` に変える
+3. /nb/ の使い方ガイドに Colab の案内（`%pip install library-hiroba`）を書き戻す
 
 ### 確認済みの事実（再調査は不要）
 
