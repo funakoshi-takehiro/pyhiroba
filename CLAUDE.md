@@ -65,6 +65,19 @@ from library_hiroba import ai, ui
   **イベント登録は本体（`bindHuiForms`）だけが行い、出力の HTML は目印を持つだけ**。
   返ってきた HTML も通常の出力と同じ `sanitizeHtml()` を通す（設定は緩めない）
 
+### 使えるモデルを調べる（運営者向け）
+
+試験公開ページ（`ai.html`）は廃止したため、専用の画面は無い。
+モデルを追加・変更したら、`/nb/` を開いて開発者コンソールで実行して確かめる。
+
+```js
+const ai = await import('../js/ai.js');
+(await ai.aiCheckModels()).forEach(r => console.log(r.ok ? '○' : '×', r.id, r.detail));
+```
+
+重みの実在・各精度の実サイズ・コミットIDが出る。**推測で `AI_MODELS` に足さないこと**
+（実在しないモデルは、数百MBを取りにいってから失敗する）。
+
 ### モデル名は library-hiroba と本体で揃える
 
 library-hiroba は利用者の書いた名前を**本体側の名前に変換して**渡す。
@@ -73,17 +86,26 @@ library-hiroba は利用者の書いた名前を**本体側の名前に変換し
 Qwen3 系は答えの前に `<think>…</think>` を書くため、`AI_THINKING_KEYS` に入れて
 `enable_thinking: false` を渡し、残りも取り除く。
 
-## 移設の残り作業（2026-08-09 時点）
+## 残っている作業（2026-08-09 時点）
 
-`ai` の移設と `ui` の同梱は完了した。残っているのは次の2点だけ。
+`ai` の移設・`ui` の同梱・`ui.form()` の往復は完了し、運営者が実機で確認済み
+（フォームから AI に聞くチャットまで動作）。残りは次の2点。
 
 | 残り | 内容 |
 | --- | --- |
-| モデルの実在確認 | `Qwen3-0.6B-ONNX` / `Qwen3-1.7B-ONNX` / `llm-jp-3-150m-instruct2-ONNX` は配布元にあるか未確認のため `ready: false`。ai.html の「使えるモデルを調べる」で確認後に `true` へ |
+| `revision` の固定 | いまは全モデル `'main'`。運営者の確認で取得したコミットIDへ固定したい（配布元の差し替えを防ぐため）。ただし固定すると端末のキャッシュが効かなくなり再取得になるので、様子を見て行う |
 | PyPI 公開 | `library-hiroba` は未公開。公開後、Colab の案内を `%pip install library-hiroba` にできる |
 
 書けたところから返す仕組み（`ai-ask-start` / `ai-ask-next`）は**任意**で、未実装。
 未対応なら library-hiroba が自動的に `ai-ask`（全文返し）に落ちるため、動作に支障はない。
+
+### 廃止したもの
+
+- **`ai.html`（AI体験ページ・試験公開）** — /nb/ から同じことができるようになったため削除
+  （2026-08-09）。未リンク・noindex で外には出していなかった。
+  中身が要るときは `git show df6d049:ai.html`。
+  そこにあった「この端末には重すぎるかもしれません」の警告は、
+  /nb/ の読み込み確認モーダルへ移してある
 
 ## 開発の約束事
 

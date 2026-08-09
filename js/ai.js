@@ -91,7 +91,7 @@ export const AI_MODELS = [
     id: 'onnx-community/Qwen2.5-1.5B-Instruct',
     revision: 'main',
     label: 'Qwen2.5 1.5B（日本語がより自然・重い）',
-    approxMB: 1600,
+    approxMB: 1700,
     dtype: 'q4',
     ready: true,
   },
@@ -102,27 +102,29 @@ export const AI_MODELS = [
     id: 'onnx-community/Qwen3-0.6B-ONNX',
     revision: 'main',
     label: 'Qwen3 0.6B（Qwen2.5 0.5B より新しい・日本語が少し良い）',
-    approxMB: 550,
+    approxMB: 877,
     dtype: 'q4',
-    ready: false,
+    ready: true,
   },
   {
+    // 実測では 8bit(589MB) のほうが 4bit(877MB) より小さく、精度も高い。
+    // 4bit の書き出しは語彙表を圧縮していないためで、こちらを既定に近い扱いにする。
     key: 'qwen3_06-q8',
     id: 'onnx-community/Qwen3-0.6B-ONNX',
     revision: 'main',
-    label: 'Qwen3 0.6B 高精度版',
-    approxMB: 750,
+    label: 'Qwen3 0.6B 高精度版（軽くて品質も良い）',
+    approxMB: 589,
     dtype: 'q8',
-    ready: false,
+    ready: true,
   },
   {
     key: 'qwen3_17-q4',
     id: 'onnx-community/Qwen3-1.7B-ONNX',
     revision: 'main',
     label: 'Qwen3 1.7B（この一覧でいちばん賢い・重い）',
-    approxMB: 1300,
+    approxMB: 2000,
     dtype: 'q4',
-    ready: false,
+    ready: true,
   },
   {
     // instruct3 ではなく instruct2。ONNX に変換されているのが instruct2 だけで、
@@ -134,7 +136,7 @@ export const AI_MODELS = [
     label: 'LLM-jp-3 150M（国産・とても軽い／文章は不自然です）',
     approxMB: 255,
     dtype: 'q4',
-    ready: false,
+    ready: true,
   },
 ];
 
@@ -257,6 +259,13 @@ function humanMB(bytes) {
 
 /**
  * 許可リストの各モデルについて、次を確かめる。
+ *
+ * 運営者向けの道具で、画面は持たない（試験公開ページを廃止したため）。
+ * モデルを追加・変更したときは、/nb/ を開いて開発者コンソールで次を実行する:
+ *
+ *   const ai = await import('../js/ai.js');
+ *   (await ai.aiCheckModels()).forEach(r => console.log(r.ok ? '○' : '×', r.id, r.detail));
+ *
  *   1. config.json … リポジトリと版が存在するか（あわせてコミットIDを控える）
  *   2. onnx/…      … ブラウザで動く重みが実在するか、その大きさ（HEADのみ）
  *   3. tokenizer_config.json … 会話形式（chat template）に対応しているか
@@ -496,7 +505,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260809c', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260809d', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }

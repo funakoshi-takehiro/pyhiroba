@@ -23,7 +23,7 @@ AI 側の重い依存（transformers / torch）を持ち込まないためです
 
 from __future__ import annotations
 
-__version__ = "0.3.1"
+__version__ = "0.3.2"
 
 __all__ = ["__version__", "ai", "ui"]
 

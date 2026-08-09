@@ -149,7 +149,7 @@ function startWorker() {
       timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
     };
     try {
-      pyWorker = new Worker('../js/pyodide-worker.js?v=20260809c');
+      pyWorker = new Worker('../js/pyodide-worker.js?v=20260809d');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }
@@ -219,6 +219,10 @@ function stopExecution() {
   stopRequested = true;
   const running = currentRun;
   currentRun = null;
+  // AI が文章を作っている最中なら、そちらも止める。
+  // Python のワーカーを終わらせても AI は別のワーカーで動き続けるため、
+  // ここで止めないと「停止したのに端末が重いまま」になる。
+  stopAiIfRunning();
   // ワーカーを終了（実行中のPythonを強制停止）
   if (pyWorker) { pyWorker.terminate(); pyWorker = null; }
   pyodideReady = false;

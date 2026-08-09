@@ -20,7 +20,7 @@ const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models'];
 let _aiModule = null;
 async function loadAiModule() {
   // 相対パスは表示中のページ（/nb/）が基準になるため ../js/ を指す
-  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260809c');
+  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260809d');
   return _aiModule;
 }
 
@@ -40,6 +40,31 @@ function showAiProgress(info) {
     return;
   }
   if (_askContext && typeof showHuiProgress === 'function') showHuiProgress(_askContext, info);
+}
+
+/** 「停止」が押されたときに、AI の生成も止める（js/app.core.js から呼ばれる）。
+ *  AI は別のワーカーで動くため、Python を止めただけでは動き続けてしまう。 */
+function stopAiIfRunning() {
+  if (_aiModule && typeof _aiModule.aiStop === 'function') {
+    try { _aiModule.aiStop(); } catch (_) { /* 止められなくても続行 */ }
+  }
+}
+
+/**
+ * 読み込む前に、この端末で動かせそうかを調べて注意文を作る。
+ * 数百MB〜2GB を受け取ってから動かないと分かるのは負担が大きいため、手前で伝える。
+ * 調べられなければ空文字を返す（判定できないことを理由に止めはしない）。
+ */
+async function aiWeightWarning(mod, spec) {
+  try {
+    const d = await mod.aiDiagnose();
+    if (!d || !d.maxMB) return '';
+    if (spec.approxMB <= d.maxMB) return '';
+    return `\n※ この端末で動かせる目安は約${d.maxMB}MB でした。`
+      + 'このモデルは重すぎて、途中で止まったり、返事がとても遅くなったりするかもしれません。';
+  } catch (_) {
+    return '';
+  }
 }
 
 /** エラーを日本語にする。ai.js が読めていればそちらの言い換えを使う */
@@ -92,15 +117,19 @@ async function handleWorkerAsk(msg) {
           + 'いま使えるのは ' + list.map((m) => m.key).join('・') + ' です。');
       }
 
-      // 大きなダウンロードの前に必ず確認する（ai.html と同じ作法）
+      // 大きなダウンロードの前に必ず確認する。
+      // あわせて、この端末に対して重すぎないかも調べて伝える（通信は発生しない）。
+      const warning = await aiWeightWarning(mod, spec);
       const ok = await showModal({
         title: 'AIのモデルを読み込みます',
         message: `${spec.label}\n\n`
           + `最初の1回だけ、約${spec.approxMB}MB のダウンロードが発生します。\n`
           + '2回目以降は端末に保存されたものを使うため、通信は発生しません。\n\n'
-          + '学校のネットワークでは、クラス全員での一斉ダウンロードは避けてください。',
-        okText: '読み込む',
+          + '学校のネットワークでは、クラス全員での一斉ダウンロードは避けてください。'
+          + warning,
+        okText: warning ? 'それでも読み込む' : '読み込む',
         cancelText: 'やめる',
+        danger: !!warning,
       });
       if (!ok) throw new Error('読み込みをやめました。');
 
