@@ -140,7 +140,13 @@ async function handleGenerate(msg) {
   try {
     const out = await pipe(input, {
       max_new_tokens: msg.maxNewTokens || 64,
-      temperature: msg.temperature != null ? msg.temperature : 0.7,
+      // 小さなモデルは、確率のばらつきを大きくすると意味の通らない文章になりやすい。
+      // 温度を下げ、上位の候補だけから選ぶことで、まだしも読める文章にする。
+      temperature: msg.temperature != null ? msg.temperature : 0.3,
+      top_p: 0.9,
+      // 同じ語の繰り返し（「caption caption …」のような出力）を抑える
+      repetition_penalty: 1.15,
+      no_repeat_ngram_size: 3,
       do_sample: true,
       return_full_text: false,
       streamer,

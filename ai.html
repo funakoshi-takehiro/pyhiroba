@@ -201,11 +201,15 @@
     </div>
   </footer>
 
+  <!-- サイト共通の確認モーダル（.pmodal-* のスタイルは css/style.css にある）。
+       classic script はモジュールより先に実行されるので、下の showModal は必ず定義済みになる。 -->
+  <script src="js/modal.js?v=20260808f"></script>
+
   <!-- AI 本体（許可リストと通信ガードを含む）。ESM のため type="module" で読み込む。
        実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
     const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiExplainError } =
-      await import('./js/ai.js?v=20260808e');
+      await import('./js/ai.js?v=20260808f');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
@@ -237,7 +241,18 @@
     btnLoad.addEventListener('click', async () => {
       const spec = AI_MODELS.find((m) => m.id === sel.value);
       if (!spec) return;
-      if (!window.confirm(`「${spec.label}」を読み込みます。\n最初の1回だけ、約${spec.approxMB}MB のダウンロードが発生します。\nよろしいですか？`)) return;
+      // サイト共通のモーダルで確認する（ブラウザ標準の confirm はサイトのデザイン・
+      // ダークモード・文字サイズの設定に従わないため使わない）
+      const ok = await showModal({
+        title: 'モデルを読み込みます',
+        message: `${spec.label}\n\n`
+          + `最初の1回だけ、約${spec.approxMB}MB のダウンロードが発生します。\n`
+          + '2回目以降は端末に保存されたものを使うため、通信は発生しません。\n\n'
+          + '学校のネットワークでは、クラス全員での一斉ダウンロードは避けてください。',
+        okText: '読み込む',
+        cancelText: 'やめる',
+      });
+      if (!ok) return;
       loading = true; cancelled = false;
       btnLoad.disabled = true; sel.disabled = true; btnRun.disabled = true;
       // ダウンロードは大きいので、途中でやめられるようにしておく
