@@ -19,7 +19,11 @@ PyHiroba は、以下のオープンソースソフトウェアを利用して�
 
 | モデル | 作り手 | ライセンス | 配布元 |
 | --- | --- | --- | --- |
+| Qwen2.5（0.5B / 1.5B の instruct 版） | Alibaba Cloud | Apache License 2.0 | https://huggingface.co/Qwen |
 | LLM-jp-3 | 国立情報学研究所 大規模言語モデル研究開発センター | Apache License 2.0 | https://huggingface.co/llm-jp |
+
+Qwen2.5 は大きさによってライセンスが異なり、3B と 72B は Apache License 2.0 ではない
+（研究用途などの制限がつく）。PyHiroba では **Apache License 2.0 の 0.5B / 1.5B のみ**を扱う。
 
 ## フォント
 

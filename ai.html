@@ -108,8 +108,9 @@
         <li>最初の1回だけ、モデルの部品をダウンロードします（下の選択肢に目安の通信量を書いています）。2回目以降は端末に保存されたものを使うため、通信は発生しません。</li>
         <li>学校のネットワークでは、通信量が大きいため<strong>クラス全員での一斉ダウンロードは避けて</strong>ください。</li>
         <li>ここで使うのは<strong>ごく小さなモデル</strong>です。答えの内容が事実と異なることがよくあり、日本語として不自然な文章になることもよくあります。<strong>調べものには使わず</strong>、「AIがどう動くか」を体験する目的でお使いください。</li>
+        <li>モデルによって日本語の得手不得手が大きく違います。<strong>いちばん軽い「LLM-jp-3 150M」は、日本語の文章としてはほとんど成立しません</strong>（それでも「小さいAIはここまでしかできない」ことを体験する材料にはなります）。会話らしいやりとりを見たいときは、上の「おすすめ」をお選びください。</li>
         <li>読み込みにも生成にも時間がかかります。とくに古い端末では、返事が出そろうまで数十秒かかることがあります（生成中もページの操作はできます）。</li>
-        <li>読み込めるモデルは、運営者があらかじめ指定したものだけに限定しています。日本で開発された、利用が認められているモデル（国立情報学研究所の LLM-jp など）を使います。</li>
+        <li>読み込めるモデルは、運営者があらかじめ指定したものだけに限定しています。いずれも Apache License 2.0 で公開され、利用が認められているものです。</li>
         <li>この機能は、PyHiroba の他のページより少し新しいブラウザが必要です（Firefox は 114 以降）。動かないときは、ブラウザを最新版に更新してからお試しください。</li>
       </ul>
     </div>
@@ -209,7 +210,7 @@
        実際の計算は js/ai-worker.js（別スレッド）で行うため、生成中も画面は固まらない。 -->
   <script type="module">
     const { AI_MODELS, aiReadyModels, aiLoadModel, aiGenerate, aiStop, aiUnload, aiIsLoaded, aiCheckModels, aiExplainError } =
-      await import('./js/ai.js?v=20260808f');
+      await import('./js/ai.js?v=20260808g');
 
     const $ = (id) => document.getElementById(id);
     const sel = $('ai-model'), status = $('ai-status'), bar = $('ai-bar'), barOuter = $('ai-bar-outer');
