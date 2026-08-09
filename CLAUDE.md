@@ -45,6 +45,41 @@ PyHiroba（ぱいひろば）— ブラウザだけで Python を学べる、日
 注意: `update-dompurify.yml` は本番のみで自動コミットするため、本番と開発の履歴は分岐しうる。
 本番へ反映する前に、必ず本番 `main` の最新状態を確認すること。
 
+## 【一時的】AI 部分を library-hiroba へ移設中（2026-08-09〜）
+
+ノートブックの `ai`（`from pyhiroba import ai`）と、UI 部品ライブラリ
+[ui-hiroba](https://pypi.org/project/ui-hiroba/) を、**`library-hiroba` という 1 つの
+Python パッケージにまとめる**ことが決まった（2026-08-09 運営者決定）。
+
+- 実装は **`funakoshi-takehiro/ui-hiroba` 側**で行う（同リポジトリを `library-hiroba` へ改名）
+- 目標の書き方: `from library_hiroba import ai, ui`（PyHiroba でも Colab でも同一）
+- **PyPI への公開はまだしない**（運営者の合図待ち）
+- リポジトリは分けたまま。統合パッケージは ui-hiroba を依存として呼ぶ
+
+### 移設が終わるまで消さないもの
+
+| 対象 | 消せない理由 | 消してよくなる時点 |
+| --- | --- | --- |
+| `js/pyodide-worker.js` の `PYTHON_SETUP_CODE` 内 `_Ai` クラス | **/nb/ の AI がいま動いている実体**。消すと機能が止まる | `library_hiroba` を同梱し、`import library_hiroba` に置き換えたあと |
+| `py/pyhiroba.py` | 移設元として ui-hiroba 側へ引き継ぎ済み。先方が移し終える前に消すと引き継ぎが成立しない | ui-hiroba 側で `_ai.py` への移設が完了したあと |
+
+### 本体側に残っている作業（ui-hiroba 側の完了後）
+
+1. `library_hiroba` と `ui_hiroba` を `py/` に同梱し、`!pip install` なしで import できるようにする
+   （閉域網の学校対応。**`lockdownNetwork()` は `init()` の最後に呼ばれる**ため、
+   同梱ファイルの取得を封鎖前に済ませれば `NET_ALLOW_PREFIXES` を広げずに実現できる）
+2. `PYTHON_SETUP_CODE` の `_Ai` を削り、`import library_hiroba` に置き換える。
+   互換のため `sys.modules['pyhiroba'] = library_hiroba` は残す（既存の教材を壊さないため）
+3. `py/pyhiroba.py` を削除し、Colab の案内を `!wget` から `%pip install library-hiroba` に変える
+
+### 確認済みの事実（再調査は不要）
+
+- ui-hiroba の出力は、`sanitizeHtml()`（DOMPurify 3.4.12）を **1 文字も削られずに通る**。
+  同じ HTML は教材用の `sanitizeMarkdownHtml()` では `<style>` が除去される。
+  つまり **無害化の設定を緩める必要はない**（9 部品で実機確認済み）
+- ui-hiroba は **標準ライブラリのみに依存**（5 ファイル・46KB）。Pyodide でそのまま動く
+- PyPI の `library-hiroba` は未使用で取得可能
+
 ## 開発の約束事
 
 - **ビルド工程なし**。HTML / CSS / 素の JavaScript のみ。`js/*.js` は `nb/index.html` の読み込み順に依存する（すべて同一グローバルスコープ）。

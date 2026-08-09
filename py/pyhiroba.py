@@ -1,5 +1,14 @@
 """PyHiroba の道具を、Colab など普通の Python でも同じ形で使えるようにするモジュール。
 
+【移設中】このファイルの中身は library-hiroba パッケージ（`library_hiroba._ai`）へ
+移設することが決まっている（2026-08-09 運営者決定）。移設と PyPI 公開が済んだら、
+Colab の案内は次の1行に変わり、このファイルは削除する。
+
+    %pip install library-hiroba
+
+それまでは、これが Colab 側の唯一の入手経路なので残しておくこと。
+経緯と段取りは、リポジトリ直下の CLAUDE.md「AI 部分を library-hiroba へ移設中」を参照。
+
 PyHiroba（ブラウザ）では、このモジュールは最初から用意されているため、
 取り込みの1行は要りません。Colab では次の1行だけ先に実行してください。
 
