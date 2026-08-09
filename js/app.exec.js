@@ -29,6 +29,7 @@ async function runCell(id) {
   // UI：実行中状態に切り替え
   const cellEl = document.querySelector(`[data-cell-id="${id}"]`);
   if (cellEl) cellEl.classList.add('running');
+  if (typeof cleanupRichOutputCell === 'function') cleanupRichOutputCell(id);
   const runBtn = document.getElementById(`run-btn-${id}`);
   if (runBtn) {
     // 実行中：スピナー（クルクル）を表示
@@ -134,6 +135,7 @@ async function runAllCells() {
 function clearAllOutputs() {
   cells.forEach(c => { delete outputs[c.id]; });
   document.querySelectorAll('.cell-output').forEach(el => { el.innerHTML = ''; });
+  if (typeof cleanupAllRichOutputs === 'function') cleanupAllRichOutputs();
 }
 
 
@@ -464,6 +466,10 @@ function renderOutput(id, result) {
   el.innerHTML = html;
   // 描き直すとイベントも消えるため、毎回付け直す
   bindHuiForms(el);
+
+  if (result.richOutputs && result.richOutputs.length && typeof renderRichOutputs === 'function') {
+    void renderRichOutputs(id, result.richOutputs);
+  }
 }
 
 // ============================================================

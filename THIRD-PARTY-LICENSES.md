@@ -5,6 +5,8 @@ PyHiroba は、以下のオープンソースソフトウェアを利用して�
 | ライブラリ | ライセンス | 配布元 |
 | --- | --- | --- |
 | Pyodide | Mozilla Public License 2.0 | https://github.com/pyodide/pyodide |
+| Panel | BSD 3-Clause License | https://github.com/holoviz/panel |
+| Bokeh | BSD 3-Clause License | https://github.com/bokeh/bokeh |
 | CodeMirror 5 | MIT License | https://github.com/codemirror/codemirror5 |
 | marked | MIT License | https://github.com/markedjs/marked |
 | MathJax | Apache License 2.0 | https://github.com/mathjax/MathJax |

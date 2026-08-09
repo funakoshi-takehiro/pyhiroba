@@ -180,6 +180,8 @@ function startWorker() {
       } else if (msg.type === 'hui-html' || msg.type === 'hui-error') {
         // ui.form() の結果。セルの実行とは独立して届く（ボタンが押されたとき）
         showHuiResult(msg);
+      } else if (msg.type === 'rich-patch') {
+        if (typeof applyRichPatchFromWorker === 'function') applyRichPatchFromWorker(msg);
       }
     };
     pyWorker.onerror = () => {
@@ -202,6 +204,9 @@ function handleWorkerCrash() {
   const running = currentRun;
   currentRun = null;
   if (pyWorker) { try { pyWorker.terminate(); } catch (e) { /* 既に停止 */ } pyWorker = null; }
+  if (typeof cleanupAllRichOutputs === 'function') {
+    cleanupAllRichOutputs('Python実行環境が再起動されました。 このUIを再度利用するにはセルを再実行してください。');
+  }
   if (running && typeof running.resolve === 'function') {
     running.resolve({
       status: 'done', stdout: '', stderr: '',
@@ -226,6 +231,9 @@ function stopExecution() {
   // ワーカーを終了（実行中のPythonを強制停止）
   if (pyWorker) { pyWorker.terminate(); pyWorker = null; }
   pyodideReady = false;
+  if (typeof cleanupAllRichOutputs === 'function') {
+    cleanupAllRichOutputs('Python実行環境が再起動されました。 このUIを再度利用するにはセルを再実行してください。');
+  }
   if (running) running.resolve({ status: 'done', stopped: true });
   // 環境を再起動（変数はリセットされる）
   reinitWorker();
@@ -337,4 +345,3 @@ function setProgress(pct, msg) {
 }
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
