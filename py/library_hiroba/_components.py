@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Sequence
+from html.parser import HTMLParser
 from typing import ClassVar, Union
 
 from ._core import (
@@ -383,11 +384,87 @@ def css_stays_inside_scope(css: str) -> bool:
     return depth == 0
 
 
+# PyHiroba は表示の直前に本体側のサニタイザ（DOMPurify）を通すため、ここに並べた
+# ものは出力から消える。Colab にはそのサニタイザが無いので、書いた本人は Colab で
+# 動くのを見て「できた」と思い、PyHiroba に載せて初めて消えているのに気付く。
+# それを避けるため、書いた時点で止める。
+#
+# tests/sanitize_check.py に同じ一覧がある。片方から import すると検査の正しさを
+# テスト自身が保証できなくなるので、あえて分けたうえで、両者が一致することを
+# test_components.py で確かめている。増やすときは両方を直す。
+DANGEROUS_TAGS = frozenset(
+    {
+        "script",
+        "iframe",
+        "frame",
+        "frameset",
+        "form",
+        "object",
+        "embed",
+        "applet",
+        "link",
+        "meta",
+        "base",
+    }
+)
+
+# 値に javascript: が書ける属性
+URL_ATTRS = frozenset({"href", "src", "action", "formaction", "xlink:href", "data"})
+
+
+class _DangerFinder(HTMLParser):
+    """``ui.html()`` に渡された HTML から、PyHiroba 側で消えるものを拾う。
+
+    正規表現ではなく HTMLParser を使うのは、属性値の実体参照が復元された状態で
+    渡ってくるため。``&#106;avascript:`` のような書き方を自前で戻さずに済む。
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.found: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        # <embed/> のような書き方は HTMLParser が既定でここへ回してくれる
+        if tag in DANGEROUS_TAGS:
+            self.found.append(f"<{tag}> タグ")
+        for name, value in attrs:
+            lowered = name.lower()
+            if lowered.startswith("on"):
+                self.found.append(f"<{tag}> の {name} 属性")
+            elif lowered in URL_ATTRS and value is not None:
+                # java\nscript: のように途中に空白を挟んでも URL としては通るため、
+                # 空白を落としてから見る
+                if "".join(value.split()).lower().startswith("javascript:"):
+                    self.found.append(f"<{tag}> の {name}=\"javascript:...\"")
+
+
+def dangerous_html(raw: str) -> list[str]:
+    """PyHiroba 側で取り除かれる要素を探し、見つかったものを並べて返す。
+
+    空リストなら、Colab と PyHiroba で同じ表示になる。``id`` や ``style`` は
+    どちらの環境でも残るので、ここでは見ない。
+    """
+    finder = _DangerFinder()
+    finder.feed(raw)
+    finder.close()
+    # 同じものが何度も出てきても、伝えたいことは1回で足りる
+    return list(dict.fromkeys(finder.found))
+
+
 class RawHtml(Widget):
     css_keys = ()
 
     def __init__(self, raw: object, css: str | None = None, scoped: bool = True):
         self.raw = str(raw)
+        found = dangerous_html(self.raw)
+        if found:
+            raise ValueError(
+                "ui.html() に、PyHiroba では表示できないものが含まれています: "
+                + "、".join(found)
+                + "。PyHiroba は表示の直前にこれらを取り除くため、Colab で動いても"
+                "本番では動きません。両方で同じ表示になるように書き直してください。"
+                "（Colab だけで試すなら IPython.display.HTML が使えます）"
+            )
         if css is not None and scoped and not css_stays_inside_scope(str(css)):
             raise ValueError(
                 "CSS の波括弧 { } の数が合っていません。閉じ忘れか、余分な } があります。"
@@ -518,9 +595,11 @@ def html(raw, css=None, scoped=True) -> RawHtml:
       PyHiroba では**ページ全体**に効く点に注意。``@keyframes`` などトップレベル
       専用の @ルールを使う場合はこちらを指定する。
 
-    渡した内容がそのまま出力に含まれるため、信頼できる内容にだけ使うこと。
-    PyHiroba 上では表示前に本体側のサニタイザ（DOMPurify）が適用されるため、
-    script などはそこで除去される。
+    渡した内容はエスケープされずそのまま出力に含まれるため、信頼できる内容にだけ
+    使うこと。ただし PyHiroba 側で消えてしまうもの — ``<script>`` ``<iframe>``
+    ``<form>`` などのタグ、``onclick`` のようなイベント属性、``javascript:`` の
+    URL — は、書いた時点で ``ValueError`` になる。Colab では動くのに PyHiroba では
+    動かない、という食い違いを防ぐため。``id`` や ``style`` は自由に書ける。
     """
     return RawHtml(raw, css=css, scoped=scoped)
 

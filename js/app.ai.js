@@ -13,14 +13,15 @@
 // Pyodide ワーカーの外向き通信封鎖も一切緩めない。
 
 /** 取り次いでよい依頼の種類。ここに無いものは受け付けない。
- *  （Python から任意の処理を呼び出せる状態にしないため） */
-const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models'];
+ *  （Python から任意の処理を呼び出せる状態にしないため）
+ *  ai-probe は ai.load("auto") が端末を尋ねるためのもの。 */
+const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models', 'ai-probe'];
 
 /** ai.js は ESM のため、必要になったときだけ読み込む（使わない人には一切影響しない） */
 let _aiModule = null;
 async function loadAiModule() {
   // 相対パスは表示中のページ（/nb/）が基準になるため ../js/ を指す
-  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260809d');
+  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260809e');
   return _aiModule;
 }
 
@@ -98,6 +99,21 @@ async function handleWorkerAsk(msg) {
         name: m.key, label: m.label, approxMB: m.approxMB,
       }));
       reply(true, JSON.stringify(list));
+      return;
+    }
+
+    if (msg.kind === 'ai-probe') {
+      // ai.load("auto") が「この端末にちょうどよいモデル」を選ぶための材料。
+      // 通信は発生せず、ブラウザから分かる範囲だけを返す。
+      // webgpu が入っていないと library-hiroba は「答えられなかった」とみなすので必ず入れる。
+      const d = await mod.aiDiagnose();
+      reply(true, JSON.stringify({
+        webgpu: !!(d && d.webgpu && d.webgpu.available),
+        memoryGB: (d && d.memoryGB) || null,
+        cores: (d && d.cores) || null,
+        storageMB: (d && d.storage && d.storage.freeMB) || null,
+        browser: (d && d.webgpu && d.webgpu.vendor) || '',
+      }));
       return;
     }
 

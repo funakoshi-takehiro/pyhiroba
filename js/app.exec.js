@@ -160,6 +160,9 @@ const PIP_ALREADY_AVAILABLE = {
   'scikit-learn': 'scikit-learn は最初から使えます。インストールは不要で、import sklearn と書けばそのまま利用できます。',
   sklearn: 'scikit-learn は最初から使えます。インストールは不要で、import sklearn と書けばそのまま利用できます。',
   bs4: 'BeautifulSoup は最初から使えます。インストールは不要で、from bs4 import BeautifulSoup と書けばそのまま利用できます。',
+  'library-hiroba': 'library-hiroba は最初から使えます。インストールは不要で、from library_hiroba import ai, ui と書けばそのまま利用できます。',
+  library_hiroba: 'library-hiroba は最初から使えます。インストールは不要で、from library_hiroba import ai, ui と書けばそのまま利用できます。',
+  'ui-hiroba': 'UI 部品は library-hiroba に入っています。インストールは不要で、from library_hiroba import ui と書けばそのまま利用できます。',
   pil: 'Pillow は最初から使えます。インストールは不要で、from PIL import Image と書けばそのまま利用できます。',
 };
 
@@ -194,8 +197,10 @@ const huiResults = new Map();
 
 /** 出力欄の中にあるフォームに、送信の動きを付ける（描画のたびに呼ぶ） */
 function bindHuiForms(container) {
-  // 描き直しで消えた結果を戻す
+  // 描き直しで消えた結果を戻す。あわせて読み上げ対象にしておく
+  // （中身を差し替えるだけでは、画面を見ていない人に答えが届かないため）
   container.querySelectorAll('[data-hui-output]').forEach((out) => {
+    out.setAttribute('role', 'status');
     const saved = huiResults.get(out.getAttribute('data-hui-output'));
     if (saved) out.innerHTML = saved;
   });

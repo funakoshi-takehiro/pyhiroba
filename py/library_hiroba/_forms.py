@@ -400,11 +400,17 @@ class Form(Widget):
         ``handler`` が ``async def`` のときは、返り値が待つもの（awaitable）に
         なる。呼び出し側で ``await`` してから表示すること。``yield`` で書かれて
         いるときは非同期の反復子になるので、回しながら表示を差し替えること。
+
+        **渡すのは ``fields`` に宣言した欄だけ**で、それ以外の値は捨てる。
+        本体は画面の ``data-hui-field`` を集めて呼ぶ（docs/PYHIROBA_FORMS.md
+        6-1）が、画面は検証ツールで書き換えられる。素通しすると、画面側の
+        書き換えが handler の引数を決められてしまう。何を受け取るかは、
+        教材に書かれた Python のほうを正とする。
         """
         missing = [f.name for f in self.fields if f.name not in values]
         if missing:
             raise ValueError(f"入力値が足りません: {missing}")
-        typed = dict(values)
+        typed = {}
         for field_ in self.fields:
             try:
                 typed[field_.name] = field_.convert(values[field_.name])
