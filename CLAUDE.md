@@ -54,7 +54,8 @@ PyHiroba（ぱいひろば）— ブラウザだけで Python を学べる、日
 from library_hiroba import ai, ui
 ```
 
-- **`py/library_hiroba/` に同梱**している（PyPI 未公開。学校の閉域網でも `!pip` なしで import できる）。
+- **`py/library_hiroba/` に同梱**している（PyPI にもあるが、学校の閉域網では `!pip` が通らないため、
+  同梱して `import` だけで使えるようにしている）。
   配布元の `src/library_hiroba/` の**複製で、改変しない**。版を上げるときは配布元から取り直し、
   `THIRD-PARTY-LICENSES.md` の版数も直す（バイト一致は検証スクリプトで確認できる）
 - 取得は `js/pyodide-worker.js` の `installBundle()` が行う。**`lockdownNetwork()` より前**に
@@ -86,15 +87,19 @@ library-hiroba は利用者の書いた名前を**本体側の名前に変換し
 Qwen3 系は答えの前に `<think>…</think>` を書くため、`AI_THINKING_KEYS` に入れて
 `enable_thinking: false` を渡し、残りも取り除く。
 
-## 残っている作業（2026-08-09 時点）
+## 残っている作業（2026-08-10 時点）
 
 `ai` の移設・`ui` の同梱・`ui.form()` の往復は完了し、運営者が実機で確認済み
-（フォームから AI に聞くチャットまで動作）。残りは次の2点。
+（フォームから AI に聞くチャットまで動作）。library-hiroba は PyPI に公開済み
+（`library-hiroba` 0.4.0）で、Colab では `%pip install library-hiroba` が使える。
+
+**PyPI にあっても同梱はやめない。** 学校の閉域網では `!pip` が通らないため、
+`py/library_hiroba/` に置いて `import` だけで使えるようにしておく必要がある。
+同梱物が公開物とバイト一致していることは検証スクリプトで確認できる。
 
 | 残り | 内容 |
 | --- | --- |
 | `revision` の固定 | いまは全モデル `'main'`。運営者の確認で取得したコミットIDへ固定したい（配布元の差し替えを防ぐため）。ただし固定すると端末のキャッシュが効かなくなり再取得になるので、様子を見て行う |
-| PyPI 公開 | `library-hiroba` は未公開。公開後、Colab の案内を `%pip install library-hiroba` にできる |
 
 書けたところから返す仕組み（`ai-ask-start` / `ai-ask-next`）は**任意**で、未実装。
 未対応なら library-hiroba が自動的に `ai-ask`（全文返し）に落ちるため、動作に支障はない。
