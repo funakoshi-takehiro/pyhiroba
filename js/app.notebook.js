@@ -169,6 +169,7 @@ async function deleteCell(id) {
     danger: true,
   });
   if (!ok) return;
+  if (typeof cleanupRichOutputCell === 'function') cleanupRichOutputCell(id);
   cells = cells.filter(c => c.id !== id);
   delete editors[id];
   delete outputs[id];
@@ -346,6 +347,8 @@ function ensureCodeMode() {
 function renderAll() {
   // エディタ内容を先に保存
   saveAllEditors();
+
+  if (typeof detachAllRichOutputViews === 'function') detachAllRichOutputViews();
 
   // 古いエディタインスタンスをクリア
   Object.keys(editors).forEach(id => { delete editors[id]; });
@@ -1108,4 +1111,3 @@ function setImageAlt(id, value) {
   if (img) img.alt = value || '画像';
   markDirty();
 }
-

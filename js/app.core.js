@@ -182,6 +182,10 @@ function startWorker() {
         showHuiResult(msg);
       } else if (msg.type === 'rich-patch') {
         if (typeof applyRichPatchFromWorker === 'function') applyRichPatchFromWorker(msg);
+      } else if (msg.type === 'rich-snapshot') {
+        if (typeof applyRichSnapshotFromWorker === 'function') {
+          applyRichSnapshotFromWorker(msg);
+        }
       }
     };
     pyWorker.onerror = () => {

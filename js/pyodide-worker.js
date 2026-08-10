@@ -10,9 +10,80 @@
 importScripts('https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js');
 
 let pyodide = null;
-let richPythonPackagesReady = false;
+let richBokehPackageReady = false;
+let richPanelPackageReady = false;
+const RICH_PATCH_MAX_BYTES = 512 * 1024;
+const RICH_SNAPSHOT_MAX_RETRIES = 3;
+let richOperationQueue = Promise.resolve();
+const richSnapshotStates = new Map();
+
+function estimatePayloadBytes(value, seen) {
+  if (value == null) return 0;
+  if (typeof value === 'string') return value.length * 2;
+  if (typeof value === 'number' || typeof value === 'boolean') return 8;
+  if (typeof value === 'bigint') return String(value).length;
+  if (value instanceof ArrayBuffer) return value.byteLength;
+  if (ArrayBuffer.isView(value)) return value.byteLength;
+  if (typeof value !== 'object') return 0;
+
+  const visited = seen || new WeakSet();
+  if (visited.has(value)) return RICH_PATCH_MAX_BYTES + 1;
+  visited.add(value);
+
+  let total = 0;
+  if (value instanceof Map) {
+    for (const [key, val] of value.entries()) {
+      total += estimatePayloadBytes(String(key), visited) + estimatePayloadBytes(val, visited);
+      if (total > RICH_PATCH_MAX_BYTES) return total;
+    }
+    return total;
+  }
+  if (value instanceof Set) {
+    for (const item of value.values()) {
+      total += estimatePayloadBytes(item, visited);
+      if (total > RICH_PATCH_MAX_BYTES) return total;
+    }
+    return total;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      total += estimatePayloadBytes(item, visited);
+      if (total > RICH_PATCH_MAX_BYTES) return total;
+    }
+    return total;
+  }
+  for (const key of Object.keys(value)) {
+    total += key.length * 2 + estimatePayloadBytes(value[key], visited);
+    if (total > RICH_PATCH_MAX_BYTES) return total;
+  }
+  return total;
+}
+
+function isValidRichPatchPayload(patch, buffers) {
+  if (!patch || typeof patch !== 'object') return false;
+  if (buffers != null && typeof buffers !== 'object') return false;
+  return estimatePayloadBytes({ patch, buffers }) <= RICH_PATCH_MAX_BYTES;
+}
+
+function enqueueRichOperation(fn) {
+  richOperationQueue = richOperationQueue
+    .catch(() => {})
+    .then(fn)
+    .catch((err) => {
+      console.error(err);
+    });
+  return richOperationQueue;
+}
+
+function markRichSnapshotDirty(sessionId) {
+  const state = richSnapshotStates.get(sessionId);
+  if (state && state.active) {
+    state.dirty = true;
+  }
+}
 
 function sendPatch(patch, buffers, msg_id) {
+  markRichSnapshotDirty(msg_id);
   postMessage({
     type: 'rich-patch',
     sessionId: msg_id,
@@ -122,10 +193,11 @@ if '${BUNDLE_DIR}' not in sys.path:
 
 _rich_sessions = {}
 _rich_safety_problem = None
-_RICH_BLOCKED_MESSAGE = 'このPanel機能はPyHirobaの安全設定では利用できません。'
-_RICH_UNSAFE_NAMES = {'CustomJS', 'ReactiveHTML', 'ReactiveESM'}
-_RICH_UNSAFE_ATTRS = {'js_on_change', 'js_on_event'}
-_RICH_UNSAFE_TEXT = ('customjs', 'reactivehtml', 'reactiveesm', '.js_on_change', '.js_on_event', '<script', 'javascript:')
+_RICH_BLOCKED_MESSAGE = 'このPanel/Bokeh出力はPyHirobaの安全設定では表示できません。'
+_RICH_MAX_MODELS = 3000
+_RICH_JS_MODEL_HINTS = ('CustomJS', 'ReactiveHTML', 'ReactiveESM')
+_RICH_JS_CALLBACK_ATTRS = ('js_event_callbacks', 'js_property_callbacks')
+_RICH_HTML_HINTS = ('<script', 'javascript:', ' onload=', ' onerror=', '<iframe', '<object', '<embed', 'srcdoc', 'data:text/html')
 
 def _rich_node_name(node):
     if isinstance(node, _ast.Name):
@@ -142,43 +214,33 @@ def _rich_blocked_output(reason=None):
     return [{'mimeType': 'text/plain', 'data': message}]
 
 def _rich_safety_problem_for_code(code):
-    lowered = str(code or '').lower()
-    for token in _RICH_UNSAFE_TEXT:
-        if token in lowered:
-            return '任意JavaScriptを埋め込めるAPIは利用できません。'
-    try:
-        tree = _ast.parse(code, '<セル>')
-    except Exception:
-        return None
-    for node in _ast.walk(tree):
-        if isinstance(node, _ast.ImportFrom):
-            module = node.module or ''
-            for alias in node.names:
-                if alias.name in _RICH_UNSAFE_NAMES:
-                    return f'{module}.{alias.name} は利用できません。'
-        if isinstance(node, _ast.Call):
-            name = _rich_node_name(node.func)
-            last = name.rsplit('.', 1)[-1]
-            if last in _RICH_UNSAFE_NAMES or last in _RICH_UNSAFE_ATTRS:
-                return f'{last} は利用できません。'
+    # Panel/Bokeh のフロントエンドは sandbox iframe 内で実行されるため、
+    # ソース文字列だけで HTML/JavaScript 表現を一律禁止しない。
+    # 生成後の Bokeh Document を補助的に検査する。
     return None
 
-async def _build_rich_output(value):
-  import json
-  import uuid
+def _rich_scan_value(value, features, depth=0):
+    if depth > 4:
+        return
+    if isinstance(value, str):
+        lowered = value.lower()
+        if '<' in lowered or 'style=' in lowered:
+            features.add('html')
+        if any(token in lowered for token in _RICH_HTML_HINTS):
+            features.add('active-html')
+        return
+    if isinstance(value, dict):
+        for item in value.values():
+            _rich_scan_value(item, features, depth + 1)
+        return
+    if isinstance(value, (list, tuple, set)):
+        for item in value:
+            _rich_scan_value(item, features, depth + 1)
 
-  outputs = []
-  session_id = uuid.uuid4().hex
-
-  try:
-    from bokeh.document import Document
-    from bokeh.embed.util import standalone_docs_json_and_render_items
-    from bokeh.model import Model
-  except Exception:
-    return outputs
-
-  def _unsafe_document(doc):
+def _rich_inspect_document(doc):
+    features = set()
     seen = set()
+    count = 0
     for root in getattr(doc, 'roots', []):
       models = [root]
       try:
@@ -190,18 +252,49 @@ async def _build_rich_output(value):
         if marker in seen:
           continue
         seen.add(marker)
+        count += 1
+        if count > _RICH_MAX_MODELS:
+          return features, 'Panel/Bokeh出力の部品数が多すぎます。'
         cls = type(model)
         name = cls.__name__
         module = getattr(cls, '__module__', '')
-        if name in {'ReactiveHTML', 'ReactiveESM'}:
-          return f'{name} は任意JavaScriptを含められるため利用できません。'
-        if module.startswith('panel.custom'):
-          return 'Panel のカスタムコンポーネントは利用できません。'
-    return None
+        if any(hint in name for hint in _RICH_JS_MODEL_HINTS) or module.startswith('panel.custom'):
+          features.add('client-javascript')
+        for attr in _RICH_JS_CALLBACK_ATTRS:
+          try:
+            if getattr(model, attr, None):
+              features.add('client-javascript')
+          except Exception:
+            pass
+        try:
+          props = model.properties_with_values(include_defaults=False)
+        except Exception:
+          props = {}
+        _rich_scan_value(props, features)
+    return features, None
+
+async def _build_rich_output(value):
+  import uuid
+
+  outputs = []
+  session_id = uuid.uuid4().hex
+
+  try:
+    from bokeh.document import Document
+    from bokeh.model import Model
+  except Exception:
+    return outputs
+
+  async def _make_output(doc, kind, features):
+    data = await _rich_serialize_document(session_id, doc, kind, features)
+    return {
+      'mimeType': 'application/bokeh',
+      'data': data,
+    }
 
   if hasattr(value, 'server_doc'):
     try:
-      from panel.io.pyodide import init_doc, write_doc
+      from panel.io.pyodide import init_doc
       from panel.io.state import state
 
       if globals().get('_rich_safety_problem'):
@@ -209,20 +302,11 @@ async def _build_rich_output(value):
       init_doc()
       doc = state.curdoc
       value.server_doc(doc=doc)
-      unsafe_reason = _unsafe_document(doc)
-      if unsafe_reason:
-        return _rich_blocked_output(unsafe_reason)
-      docs_json, render_items, root_ids = await write_doc(doc)
-      _rich_sessions[session_id] = {'doc': doc, 'rendered': False, 'kind': 'panel'}
-      outputs.append({
-        'mimeType': 'application/bokeh',
-        'data': {
-          'sessionId': session_id,
-          'docs_json': docs_json,
-          'render_items': render_items,
-          'root_ids': root_ids,
-        }
-      })
+      features, problem = _rich_inspect_document(doc)
+      if problem:
+        return _rich_blocked_output(problem)
+      _rich_sessions[session_id] = {'doc': doc, 'rendered': False, 'linked': False, 'kind': 'panel'}
+      outputs.append(await _make_output(doc, 'panel', features))
       return outputs
     except Exception:
       pass
@@ -233,24 +317,48 @@ async def _build_rich_output(value):
     doc = Document()
     doc.hold()
     doc.add_root(value)
-    unsafe_reason = _unsafe_document(doc)
-    if unsafe_reason:
-      return _rich_blocked_output(unsafe_reason)
-    docs_json, render_items = standalone_docs_json_and_render_items(doc.roots, suppress_callback_warning=True)
-    root_ids = [m.id for m in doc.roots]
-    _rich_sessions[session_id] = {'doc': doc, 'rendered': False, 'kind': 'bokeh'}
-    outputs.append({
-      'mimeType': 'application/bokeh',
-      'data': {
-        'sessionId': session_id,
-        'docs_json': json.dumps(docs_json),
-        'render_items': json.dumps([item.to_json() for item in render_items]),
-        'root_ids': json.dumps(root_ids),
-      }
-    })
+    features, problem = _rich_inspect_document(doc)
+    if problem:
+      return _rich_blocked_output(problem)
+    _rich_sessions[session_id] = {'doc': doc, 'rendered': False, 'linked': False, 'kind': 'bokeh'}
+    outputs.append(await _make_output(doc, 'bokeh', features))
     return outputs
 
   return outputs
+
+async def _rich_serialize_document(session_id, doc, kind, features=None):
+  import json
+  if features is None:
+    features, problem = _rich_inspect_document(doc)
+    if problem:
+      raise RuntimeError(problem)
+  if kind == 'panel':
+    from panel.io.pyodide import write_doc
+    docs_json, render_items, root_ids = await write_doc(doc)
+    return {
+      'sessionId': session_id,
+      'docs_json': docs_json,
+      'render_items': render_items,
+      'root_ids': root_ids,
+      'features': sorted(features),
+    }
+
+  from bokeh.embed.util import standalone_docs_json_and_render_items
+  docs_json, render_items = standalone_docs_json_and_render_items(doc.roots, suppress_callback_warning=True)
+  root_ids = [m.id for m in doc.roots]
+  return {
+    'sessionId': session_id,
+    'docs_json': json.dumps(docs_json),
+    'render_items': json.dumps([item.to_json() for item in render_items]),
+    'root_ids': json.dumps(root_ids),
+    'features': sorted(features),
+  }
+
+async def _rich_snapshot_for_session(session_id):
+  _session = _rich_sessions.get(session_id)
+  if not _session or _session.get('disposed'):
+    raise KeyError('rich session not found')
+  return await _rich_serialize_document(session_id, _session['doc'], _session.get('kind', 'bokeh'))
 `;
 
 /**
@@ -546,32 +654,35 @@ async function runCode(runId, code) {
   const { cleaned, pipPkgs, unsupported, needsPanel, needsBokeh } = extractDirectives(code);
 
   const autoPkgs = [];
-  if (!richPythonPackagesReady) {
-    if (needsPanel) {
-      autoPkgs.push(
-        'https://cdn.holoviz.org/panel/wheels/bokeh-3.6.3-py3-none-any.whl',
-        'https://cdn.holoviz.org/panel/wheels/panel-1.5.5-py3-none-any.whl'
-      );
-    } else if (needsBokeh) {
-      autoPkgs.push('https://cdn.holoviz.org/panel/wheels/bokeh-3.6.3-py3-none-any.whl');
+  if (needsPanel) {
+    if (!richBokehPackageReady) {
+      autoPkgs.push({ kind: 'bokeh', pkg: 'https://cdn.holoviz.org/panel/wheels/bokeh-3.6.3-py3-none-any.whl' });
     }
+    if (!richPanelPackageReady) {
+      autoPkgs.push({ kind: 'panel', pkg: 'https://cdn.holoviz.org/panel/wheels/panel-1.5.5-py3-none-any.whl' });
+    }
+  } else if (needsBokeh && !richBokehPackageReady) {
+    autoPkgs.push({ kind: 'bokeh', pkg: 'https://cdn.holoviz.org/panel/wheels/bokeh-3.6.3-py3-none-any.whl' });
   }
 
   // !pip install → micropip でインストール（Pyodideの pip 相当）
   const pipResults = [];
   if (pipPkgs.length || autoPkgs.length) {
     try { await pyodide.loadPackage('micropip'); } catch (_) {}
-    for (const pkg of [...autoPkgs, ...pipPkgs]) {
+    const installItems = [...autoPkgs, ...pipPkgs.map((pkg) => ({ kind: null, pkg }))];
+    for (const item of installItems) {
+      const pkg = item.pkg;
       postMessage({ type: 'pip', runId, pkg });
       try {
         pyodide.globals.set('_pip_pkg', pkg);
         await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg)');
         pipResults.push({ pkg: pkg, ok: true });
+        if (item.kind === 'bokeh') richBokehPackageReady = true;
+        if (item.kind === 'panel') richPanelPackageReady = true;
       } catch (e) {
         pipResults.push({ pkg: pkg, ok: false, error: String((e && e.message) || e) });
       }
     }
-    if (autoPkgs.length) richPythonPackagesReady = true;
   }
 
   // import文を解析してパッケージを自動ロード（初回のみダウンロード）
@@ -709,6 +820,115 @@ async function runHuiSubmit(msg) {
   }
 }
 
+async function handleRichRenderedMessage(msg) {
+  if (!msg.sessionId) return;
+  try {
+    pyodide.globals.set('_rich_session_id', msg.sessionId);
+    pyodide.globals.set('sendPatch', sendPatch);
+    pyodide.globals.set('rich_session_id', msg.sessionId);
+    await pyodide.runPythonAsync(`
+from panel.io.pyodide import _link_docs_worker
+from panel.io.state import state
+
+_session = _rich_sessions.get(rich_session_id)
+if _session and not _session.get('disposed'):
+    _session['rendered'] = True
+    if not _session.get('linked'):
+        _link_docs_worker(_session['doc'], sendPatch, msg_id=rich_session_id, setter='js')
+        _session['linked'] = True
+`);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function handleRichPatchMessage(msg) {
+  if (!msg.sessionId) return;
+  if (!isValidRichPatchPayload(msg.patch, msg.buffers)) return;
+  try {
+    pyodide.globals.set('rich_session_id', msg.sessionId);
+    pyodide.globals.set('patch', msg.patch);
+    await pyodide.runPythonAsync(`
+from panel.io.pyodide import _convert_json_patch
+
+_session = _rich_sessions.get(rich_session_id)
+if _session and _session.get('rendered') and not _session.get('disposed'):
+    _session['doc'].apply_json_patch(_convert_json_patch(patch), setter='js')
+`);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function handleRichSnapshotRequestMessage(msg) {
+  if (!msg.sessionId || !msg.requestId) return;
+
+  for (let attempt = 0; attempt < RICH_SNAPSHOT_MAX_RETRIES; attempt += 1) {
+    const state = { active: true, dirty: false };
+    richSnapshotStates.set(msg.sessionId, state);
+    try {
+      pyodide.globals.set('rich_session_id', msg.sessionId);
+      await pyodide.runPythonAsync(`
+_rich_snapshot = await _rich_snapshot_for_session(rich_session_id)
+`);
+      const snapshot = unwrapProxy(pyodide.globals.get('_rich_snapshot'));
+      state.active = false;
+      richSnapshotStates.delete(msg.sessionId);
+      if (state.dirty) {
+        continue;
+      }
+      postMessage({
+        type: 'rich-snapshot',
+        requestId: msg.requestId,
+        sessionId: msg.sessionId,
+        ok: true,
+        data: safeJson(snapshot),
+      });
+      return;
+    } catch (err) {
+      state.active = false;
+      richSnapshotStates.delete(msg.sessionId);
+      postMessage({
+        type: 'rich-snapshot',
+        requestId: msg.requestId,
+        sessionId: msg.sessionId,
+        ok: false,
+        error: String((err && err.message) || err),
+      });
+      return;
+    }
+  }
+
+  richSnapshotStates.delete(msg.sessionId);
+  postMessage({
+    type: 'rich-snapshot',
+    requestId: msg.requestId,
+    sessionId: msg.sessionId,
+    ok: false,
+    error: 'リッチ出力の現在状態が更新中のため、安定したsnapshotを取得できませんでした。',
+  });
+}
+
+async function handleRichDisposeMessage(msg) {
+  if (!msg.sessionId) return;
+  richSnapshotStates.delete(msg.sessionId);
+  try {
+    pyodide.globals.set('rich_session_id', msg.sessionId);
+    await pyodide.runPythonAsync(`
+_session = _rich_sessions.pop(rich_session_id, None)
+if _session:
+    _session['disposed'] = True
+    _doc = _session.get('doc')
+    try:
+        _doc.clear()
+    except Exception:
+        pass
+`);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 onmessage = async (e) => {
   const msg = e.data || {};
   if (msg.type === 'run') {
@@ -718,54 +938,13 @@ onmessage = async (e) => {
   } else if (msg.type === 'hui-submit') {
     handleHuiSubmit(msg);
   } else if (msg.type === 'rich-rendered') {
-    if (!msg.sessionId) return;
-    try {
-      pyodide.globals.set('_rich_session_id', msg.sessionId);
-      pyodide.globals.set('sendPatch', sendPatch);
-      pyodide.globals.set('rich_session_id', msg.sessionId);
-      await pyodide.runPythonAsync(`
-from panel.io.pyodide import _link_docs_worker
-from panel.io.state import state
-
-_session = _rich_sessions.get(rich_session_id)
-if _session and not _session.get('rendered'):
-    _session['rendered'] = True
-    _link_docs_worker(_session['doc'], sendPatch, msg_id=rich_session_id, setter='js')
-`);
-    } catch (err) {
-      console.error(err);
-    }
+    enqueueRichOperation(() => handleRichRenderedMessage(msg));
   } else if (msg.type === 'rich-patch') {
-    if (!msg.sessionId) return;
-    try {
-      pyodide.globals.set('rich_session_id', msg.sessionId);
-      pyodide.globals.set('patch', msg.patch);
-      await pyodide.runPythonAsync(`
-from panel.io.pyodide import _convert_json_patch
-
-_session = _rich_sessions.get(rich_session_id)
-if _session:
-    _session['doc'].apply_json_patch(_convert_json_patch(patch), setter='js')
-`);
-    } catch (err) {
-      console.error(err);
-    }
+    enqueueRichOperation(() => handleRichPatchMessage(msg));
+  } else if (msg.type === 'rich-snapshot-request') {
+    enqueueRichOperation(() => handleRichSnapshotRequestMessage(msg));
   } else if (msg.type === 'rich-dispose') {
-    if (!msg.sessionId) return;
-    try {
-      pyodide.globals.set('rich_session_id', msg.sessionId);
-      await pyodide.runPythonAsync(`
-_session = _rich_sessions.pop(rich_session_id, None)
-if _session:
-    _doc = _session.get('doc')
-    try:
-        _doc.clear()
-    except Exception:
-        pass
-`);
-    } catch (err) {
-      console.error(err);
-    }
+    enqueueRichOperation(() => handleRichDisposeMessage(msg));
   }
 };
 

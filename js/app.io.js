@@ -77,6 +77,7 @@ function _readAndLoadIpynb(file, fromWelcome) {
 
 /** .ipynb JSON をセルにロード（既存セルは全て置き換え） */
 function loadIpynb(json) {
+  if (typeof cleanupAllRichOutputs === 'function') cleanupAllRichOutputs();
   // 状態をリセット
   cells   = [];
   editors = {};
@@ -423,4 +424,3 @@ function toIpynbSource(content) {
   // 各行末に \n を付与（最後の行を除く）
   return lines.map((line, i) => i < lines.length - 1 ? line + '\n' : line);
 }
-
