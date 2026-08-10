@@ -426,6 +426,18 @@ const _askWaiting = new Map();
 // 処理しているので、この1つで取り違えは起きない。
 let _activeHuiForm = null;
 
+// この本体が何に対応しているかの目印。Python からは js.pyhirobaFeatures として
+// 読める（'forms' in js.pyhirobaFeatures のように使う）。
+//
+// library-hiroba は「フォームの入力が Python に戻るか」を知る手段が無く、
+// js.pyhirobaAsk の有無（＝AI の橋があるか）で代用していた。そのため
+// ai.talk().form() は、動く環境でも「Colab でだけ動きます」と出してしまう。
+// ここを見てもらえば、本体の版に関係なく正しく出し分けられる。
+//
+// 境界は文字列だけに保つ方針に合わせ、カンマ区切りの1つの文字列にする。
+// 逐次出力（ai-ask-start / ai-ask-next）に対応したら 'ai-stream' を足す。
+self.pyhirobaFeatures = 'forms,ai,ai-probe';
+
 self.pyhirobaAsk = function (kind, argsJson) {
   return new Promise((resolve, reject) => {
     const askId = ++_askSeq;

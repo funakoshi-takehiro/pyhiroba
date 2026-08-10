@@ -87,6 +87,21 @@ library-hiroba は利用者の書いた名前を**本体側の名前に変換し
 Qwen3 系は答えの前に `<think>…</think>` を書くため、`AI_THINKING_KEYS` に入れて
 `enable_thinking: false` を渡し、残りも取り除く。
 
+### 能力の目印（`js.pyhirobaFeatures`）
+
+`js/pyodide-worker.js` が `self.pyhirobaFeatures = 'forms,ai,ai-probe'` を置いている。
+library-hiroba は Python から `js.pyhirobaFeatures` として読み、
+「この本体でフォームが動くか」を判定する。
+
+これが無かったころ、あちらは `js.pyhirobaAsk` の有無（＝AI の橋があるか）で
+代用するしかなく、`ai.talk().form()` が**動く環境でも「Colab でだけ動きます」と
+表示していた**（library-hiroba 0.5.0 / 0.5.1）。同じ食い違いを繰り返さないための目印。
+
+**実装より多くを名乗らないこと。** 名乗った機能が無いと、
+「動くはずのものが動かない」という分かりにくい壊れ方になる。
+逐次出力に対応したら `ai-stream` を足す（`AI_ASK_KINDS` への追加とセットで行う）。
+名乗りと実装のずれは `bundletest.py` が機械で捕まえる。
+
 ## 残っている作業（2026-08-10 時点）
 
 `ai` の移設・`ui` の同梱・`ui.form()` の往復は完了し、運営者が実機で確認済み
@@ -100,6 +115,7 @@ Qwen3 系は答えの前に `<think>…</think>` を書くため、`AI_THINKING_
 | 残り | 内容 |
 | --- | --- |
 | `revision` の固定 | いまは全モデル `'main'`。運営者の確認で取得したコミットIDへ固定したい（配布元の差し替えを防ぐため）。ただし固定すると端末のキャッシュが効かなくなり再取得になるので、様子を見て行う |
+| 同梱版の 0.5.x への同期 | **いまは上げない。** 0.5.0 / 0.5.1 の `ai.talk().form()` は、PyHiroba でも動くのに「Colab でだけ動きます」という誤った警告を出す（`_ai.py` の `in_browser()` で判定しているため）。あちらが `js.pyhirobaFeatures` を見る形に直した版が PyPI に出てから同期する。本体が使っている口（`get_form` / `pending_html` / `submit` / `data-hui-*`）は 0.4.0 から変わっていないので、置き換えと版数の書き換えだけで済む |
 
 書けたところから返す仕組み（`ai-ask-start` / `ai-ask-next`）は**任意**で、未実装。
 未対応なら library-hiroba が自動的に `ai-ask`（全文返し）に落ちるため、動作に支障はない。
