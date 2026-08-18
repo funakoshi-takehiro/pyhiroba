@@ -144,6 +144,26 @@ library-hiroba は Python から `js.pyhirobaFeatures` として読み、
   - `nb/index.html` の CSP・Pyodide の SRI を維持する
 - コミットメッセージは日本語。件名＋本文に経緯を書く（既存の慣習に合わせる）。
 
+## Panel / Bokeh（グラフ・UI 部品）
+
+セル最終式に Panel / Bokeh のオブジェクトを返すと、インタラクティブな UI として描画する
+（`import panel` / `import bokeh` を検出して部品を取得。第三者提供のパッチを 2026-08-18 に反映）。
+`ui.form()`（送信ボタン方式）では作れない「スライダーを動かすとグラフが変わる」型の教材向け。
+
+- 描画は **`js/app.rich-output.js`**。ブラウザ側 UI は **sandbox iframe**（`allow-scripts` のみ・
+  `allow-same-origin` なし＝opaque origin）に隔離し、PyHiroba 本体 DOM・localStorage・
+  全外部通信から切り離す。iframe 自身の meta CSP（`connect-src 'none'` 等）と、親の
+  `default-src 'self'`（外部への遷移を捕捉）で二重に囲う。**この隔離を緩めないこと**
+  （`allow-same-origin` を足す・親 CSP に `frame-src` で外部を許すのは不可）
+- Python 側（`js/pyodide-worker.js` の `_rich_safety_problem` / `_rich_inspect_document`）で
+  CustomJS / ReactiveHTML 等の任意 JS 経路をブロックしている。**この検査を外さないこと**
+- **`cdn.holoviz.org` は Panel/Bokeh wheel のための例外的な許可先**（`NET_ALLOW_PREFIXES`）。
+  vendor 自ホスト方針の例外として運営者が許可（2026-08-18）。この例外を他へ拡大しない。
+  BokehJS / panel.min.js は既存の `cdn.jsdelivr.net` から取る
+- 初回取得の前に、`js/app.exec.js` の `confirmRichDownloadIfNeeded()` が確認モーダルを出す
+  （AI モデルと同じ作法。閉域網・従量課金の学校で不意の一斉ダウンロードを防ぐ）
+- 版は **Panel 1.5.5 / Bokeh 3.6.3** に固定（1.9 系は fastapi を要し Pyodide で動かない）
+
 ## ローカル検証
 
 ```

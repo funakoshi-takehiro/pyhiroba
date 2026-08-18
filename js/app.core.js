@@ -132,6 +132,8 @@ async function initApp() {
 function startWorker() {
   return new Promise((resolve, reject) => {
     pyodideReady = false;
+    // 新しいワーカーは Panel/Bokeh を持たない状態から始まる。取得の確認も取り直す。
+    if (typeof richDownloadConfirmed !== 'undefined') richDownloadConfirmed = false;
     let settled = false;
     let timer = null;
     // 一定時間まったく進捗が無ければ「ネットワーク遮断の可能性」として失敗扱いにする。
@@ -149,7 +151,7 @@ function startWorker() {
       timer = setTimeout(() => finish(reject, new Error('TIMEOUT')), STALL_MS);
     };
     try {
-      pyWorker = new Worker('../js/pyodide-worker.js?v=20260810a');
+      pyWorker = new Worker('../js/pyodide-worker.js?v=20260811a');
     } catch (e) {
       reject(new Error('実行環境（Worker）を起動できませんでした')); return;
     }

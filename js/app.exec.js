@@ -4,6 +4,35 @@
 // Python実行
 // ============================================================
 
+// Panel / Bokeh の初回取得を確認したかどうか（この Python 環境が生きている間だけ）。
+// ワーカーを作り直すと取得も一からやり直しになるため、startWorker() でリセットする。
+let richDownloadConfirmed = false;
+
+/**
+ * セルが Panel / Bokeh を使うなら、部品の取得（初回だけ・数MB〜）の前に確認する。
+ * 取得はワーカー内で自動的に始まるため、その手前で主スレッドから同意を取る。
+ * @returns {Promise<boolean>} 実行してよいなら true。「やめる」を押したら false。
+ */
+async function confirmRichDownloadIfNeeded(code) {
+  if (richDownloadConfirmed) return true;
+  // import panel / from panel …（bokeh も同様）。文字列やコメント中の誤検知より、
+  // 取りこぼしを避ける方を優先する（確認が一度多く出ても害はない）。
+  const usesRich = /^\s*(?:import|from)\s+(?:panel|bokeh)\b/m.test(code);
+  if (!usesRich) return true;
+
+  const ok = await showModal({
+    title: 'グラフ・UIの部品を読み込みます',
+    message: 'このセルは Panel / Bokeh を使います。\n\n'
+      + '最初の1回だけ、部品のダウンロード（数MB〜数十MB）が発生します。\n'
+      + '2回目以降は端末に保存されたものを使うため、通信は発生しません。\n\n'
+      + '学校のネットワークでは、クラス全員での一斉ダウンロードは避けてください。',
+    okText: '読み込む',
+    cancelText: 'やめる',
+  });
+  if (ok) richDownloadConfirmed = true;
+  return !!ok;
+}
+
 /** セル単体を実行 */
 async function runCell(id) {
   if (!pyodideReady) {
@@ -22,6 +51,10 @@ async function runCell(id) {
   // エディタの現在の内容を取得
   const code = editors[id] ? editors[id].getValue() : cell.content;
   if (!code.trim()) return;
+
+  // Panel / Bokeh を初めて使うセルは、部品の取得（初回だけの通信）の前に確認する。
+  // AI モデルの読み込みと同じ作法で、閉域網・従量課金の学校で不意の一斉ダウンロードを防ぐ。
+  if (!(await confirmRichDownloadIfNeeded(code))) return;
 
   isRunning = true;
   showStopButton(true);   // ヘッダーに停止ボタンを表示

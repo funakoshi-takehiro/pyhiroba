@@ -34,7 +34,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css?v=20260809a">
+  <link rel="stylesheet" href="css/style.css?v=20260811a">
   <style>
     /* --- このページ専用スタイル（配色は共通変数を使うのでダークモードにも自動対応） --- */
     .setup-hero p { font-size: 1.0625rem; color: var(--ink-2); max-width: 760px; }
@@ -186,6 +186,11 @@
             <tr>
               <td class="dom">huggingface.co</td>
               <td>プログラム実行画面で AI（言語モデル）を使う場合（1回あたり数百MB〜2GBと通信量が大きいためご注意ください）</td>
+              <td><span class="setup-tag opt">任意</span></td>
+            </tr>
+            <tr>
+              <td class="dom">cdn.holoviz.org</td>
+              <td>プログラム実行画面でグラフ・UI 部品（Panel／Bokeh）を使う場合（初回のみ数MB〜数十MBの取得が発生します）</td>
               <td><span class="setup-tag opt">任意</span></td>
             </tr>
           </tbody>
