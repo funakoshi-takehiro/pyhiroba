@@ -138,6 +138,20 @@ export const AI_MODELS = [
     dtype: 'q4',
     ready: true,
   },
+  {
+    // 文の埋め込み（feature-extraction）用。チャット生成用ではないので task で区別し、
+    // aiReadyModels()（チャットの選択肢）には出さない。多言語 MiniLM・接頭辞不要・
+    // mean pooling。実測で日本語の蔵書検索が効くことを確認済み（int8＝model_quantized.onnx）。
+    key: 'minilm',
+    id: 'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
+    revision: '2c4055b12046f11709e9df2c122e59ffbdc2f900',
+    label: '文の埋め込み（多言語MiniLM・384次元）',
+    approxMB: 118,
+    dtype: 'q8',                    // → onnx/model_quantized.onnx（int8・118MB。q4 は逆に肥大するため使わない）
+    task: 'feature-extraction',
+    dim: 384,
+    ready: true,
+  },
 ];
 
 /** 答えの前に「考えていること」を書くモデル（Qwen3 系）。生成時に抑える */
@@ -145,7 +159,14 @@ export const AI_THINKING_KEYS = new Set(['qwen3_06-q4', 'qwen3_06-q8', 'qwen3_17
 
 /** 画面の選択肢に出してよいモデル（実在を確認済みのもの） */
 export function aiReadyModels() {
-  return AI_MODELS.filter((m) => m.ready);
+  // チャット（生成）用だけを返す。埋め込みモデル（task: 'feature-extraction'）は
+  // ai.load() / 一覧 / おすすめに混ざらないよう、ここから除外する。
+  return AI_MODELS.filter((m) => m.ready && m.task !== 'feature-extraction');
+}
+
+/** 埋め込み（feature-extraction）に使えるモデル。チャット一覧とは別に持つ。 */
+export function aiEmbedModels() {
+  return AI_MODELS.filter((m) => m.ready && m.task === 'feature-extraction');
 }
 
 /** モデル配布元。transformers.js の既定値と同じだが、明示して固定する */
@@ -488,7 +509,8 @@ export async function aiDiagnose() {
 
 let _worker = null;
 let _loadedId = null;
-/** 進行中の依頼（load / generate）の解決関数を保持する */
+let _embedLoadedId = null;   // 埋め込みモデルを読み込み済みか（確認モーダルの出し分けに使う）
+/** 進行中の依頼（load / generate / embed）の解決関数を保持する */
 let _pending = null;
 
 /** 依頼中のものがあれば、その失敗として通知する */
@@ -505,7 +527,7 @@ function ensureWorker() {
   if (_worker) return _worker;
   let w;
   try {
-    w = new Worker(new URL('./ai-worker.js?v=20260809d', import.meta.url), { type: 'module' });
+    w = new Worker(new URL('./ai-worker.js?v=20260819d', import.meta.url), { type: 'module' });
   } catch (_) {
     throw new Error('お使いのブラウザでは、この機能に必要な仕組みが使えません。ブラウザを最新版に更新してからお試しください。');
   }
@@ -534,6 +556,10 @@ function ensureWorker() {
         _pending = null;
         if (p) p.resolve({ text: msg.text, ms: msg.ms, device: msg.device, interrupted: !!msg.interrupted });
         break;
+      case 'embedded':
+        _pending = null;
+        if (p) p.resolve({ vectors: msg.vectors || [], dim: msg.dim || 0, device: msg.device, model: msg.model });
+        break;
       case 'unloaded':
         _pending = null;
         if (p) p.resolve({});
@@ -553,7 +579,7 @@ function ensureWorker() {
     // 壊れたワーカーを抱えたままにせず破棄し、次回は起動からやり直す。
     rejectPending((e && e.message) || 'AIの実行部分を起動できませんでした。');
     try { w.terminate(); } catch (_) { /* 無視 */ }
-    if (_worker === w) { _worker = null; _loadedId = null; }
+    if (_worker === w) { _worker = null; _loadedId = null; _embedLoadedId = null; }
   };
 
   _worker = w;
@@ -631,6 +657,33 @@ export async function aiGenerate(prompt, opts = {}) {
   );
 }
 
+/**
+ * 文を埋め込みベクトルにする（feature-extraction）。入力も出力も端末の中だけで扱う。
+ * 初回のみモデルを取得する（呼び出し側で確認モーダルを出してから呼ぶこと）。
+ * @param {string[]} texts 埋め込む文の配列
+ * @param {Object} opts { model, onProgress }
+ * @returns {Promise<{vectors:number[][], dim:number, device:string, model:string}>}
+ */
+export async function aiEmbed(texts, opts = {}) {
+  const list = aiEmbedModels();
+  const spec = opts.model
+    ? AI_MODELS.find((m) => (m.key === opts.model || m.id === opts.model) && m.task === 'feature-extraction')
+    : list[0];
+  if (!spec) throw new Error('その埋め込みモデルは選べません: ' + String(opts.model));
+  const arr = Array.isArray(texts) ? texts : [texts];
+  const res = await request(
+    { type: 'embed', modelKey: spec.key, texts: arr.map((t) => String(t == null ? '' : t)), models: allowListForWorker() },
+    { onProgress: opts.onProgress },
+  );
+  _embedLoadedId = spec.key;
+  return { vectors: res.vectors, dim: res.dim, device: res.device, model: spec.key };
+}
+
+/** 埋め込みモデルを読み込み済みか（確認モーダルの出し分けに使う） */
+export function aiEmbedIsLoaded(modelKey) {
+  return _embedLoadedId === modelKey;
+}
+
 /** 生成を途中で止める（次の1文字が出る前に反映される） */
 export function aiStop() {
   if (_worker) _worker.postMessage({ type: 'stop' });
@@ -645,6 +698,7 @@ export async function aiUnload() {
     _worker = null;
   }
   _loadedId = null;
+  _embedLoadedId = null;
 }
 
 /** モデルを読み込み済みかどうか */

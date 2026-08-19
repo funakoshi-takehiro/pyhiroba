@@ -62,6 +62,9 @@ let loadedDevice = '';   // 実際に使っている計算方式（webgpu / wasm
 let loadedThinking = false;  // 答えの前に考えを書くモデルか（Qwen3 系）
 let stopper = null;      // 生成の中断に使う
 let interrupted = false; // 「停止」が押されたか
+let embedPipe = null;    // 埋め込み（feature-extraction）用の読み込み済みモデル（チャットとは別に持つ）
+let embedId = null;      // 読み込み済みの埋め込みモデルの key
+let embedDevice = '';    // 埋め込みで使っている計算方式（webgpu / wasm）
 const post = (msg) => self.postMessage(msg);
 
 /** WebGPU が使えるかを調べる。使えると生成が大幅に速くなる */
@@ -248,11 +251,76 @@ async function handleUnload() {
   post({ type: 'unloaded' });
 }
 
+/**
+ * 文を埋め込みベクトルにする（feature-extraction）。
+ * 初回のみモデルを取得し、以降は読み込み済みのものを使う。
+ * mean pooling + L2 正規化で返すので、そのまま内積＝コサイン類似度に使える。
+ * チャット用の pipe とは別に embedPipe を持ち、両方を同時に使えるようにする。
+ */
+async function handleEmbed(msg) {
+  ALLOWED_MODELS = msg.models || ALLOWED_MODELS;
+  const spec = ALLOWED_MODELS.find((m) => m.key === msg.modelKey);
+  if (!spec) throw new Error('この埋め込みモデルは許可されていません: ' + msg.modelKey);
+  const texts = Array.isArray(msg.texts) ? msg.texts.map((x) => String(x == null ? '' : x)) : [];
+  if (!texts.length) {
+    post({ type: 'embedded', vectors: [], dim: 0, device: embedDevice || 'wasm', model: spec.key });
+    return;
+  }
+
+  if (!embedPipe || embedId !== spec.key) {
+    post({ type: 'progress', pct: 0, text: '埋め込みモデルを準備しています…' });
+    const t = await loadLibrary();
+    const device = await pickDevice();
+    // 進捗（handleLoad と同じ作法。埋め込みは実質1ファイルなので合計をそのまま出す）
+    const parts = new Map();
+    let lastSent = 0;
+    const report = (force) => {
+      const now = Date.now();
+      if (!force && now - lastSent < 150) return;
+      lastSent = now;
+      let loaded = 0; let total = 0;
+      parts.forEach((v) => { loaded += v.loaded; total += v.total; });
+      const started = total >= 8 * 1024 * 1024;
+      post({
+        type: 'progress',
+        pct: started ? Math.min(99, Math.round((loaded / total) * 100)) : 0,
+        loaded: started ? loaded : 0,
+        total: started ? total : 0,
+        text: !started ? 'モデルの情報を受け取っています…'
+          : (loaded >= total ? '受け取りました。準備しています…' : 'モデルを受け取っています'),
+      });
+    };
+    embedPipe = await t.pipeline('feature-extraction', spec.id, {
+      revision: spec.revision,
+      dtype: spec.dtype || 'q8',
+      device,
+      progress_callback: (p) => {
+        if (!p || !p.file) return;
+        const cur = parts.get(p.file) || { loaded: 0, total: 0 };
+        if (p.status === 'progress' && p.total) { cur.total = p.total; cur.loaded = p.loaded || 0; }
+        else if (p.status === 'done') { cur.loaded = cur.total || cur.loaded; }
+        parts.set(p.file, cur);
+        report(p.status === 'done');
+      },
+    });
+    embedId = spec.key;
+    embedDevice = device;
+    post({ type: 'progress', pct: 100, text: '準備ができました' });
+  }
+
+  // mean pooling + L2 正規化。正規化済みなので内積がそのままコサイン類似度になる。
+  const out = await embedPipe(texts, { pooling: 'mean', normalize: true });
+  const vectors = out.tolist();
+  const dim = (vectors.length && Array.isArray(vectors[0])) ? vectors[0].length : 0;
+  post({ type: 'embedded', vectors, dim, device: embedDevice, model: spec.key });
+}
+
 self.onmessage = async (e) => {
   const msg = e.data || {};
   try {
     if (msg.type === 'load') await handleLoad(msg);
     else if (msg.type === 'generate') await handleGenerate(msg);
+    else if (msg.type === 'embed') await handleEmbed(msg);
     else if (msg.type === 'unload') await handleUnload();
     else if (msg.type === 'stop') {
       // 生成の途中でも受け取れる（推論はトークンごとに処理を譲るため）

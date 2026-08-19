@@ -15,13 +15,13 @@
 /** 取り次いでよい依頼の種類。ここに無いものは受け付けない。
  *  （Python から任意の処理を呼び出せる状態にしないため）
  *  ai-probe は ai.load("auto") が端末を尋ねるためのもの。 */
-const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models', 'ai-probe'];
+const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models', 'ai-probe', 'ai-embed'];
 
 /** ai.js は ESM のため、必要になったときだけ読み込む（使わない人には一切影響しない） */
 let _aiModule = null;
 async function loadAiModule() {
   // 相対パスは表示中のページ（/nb/）が基準になるため ../js/ を指す
-  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260810a');
+  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260819d');
   return _aiModule;
 }
 
@@ -186,6 +186,59 @@ async function handleWorkerAsk(msg) {
         },
       });
       reply(true, JSON.stringify({ text: res.text, ms: res.ms, device: res.device }));
+      return;
+    }
+
+    if (msg.kind === 'ai-embed') {
+      const list = mod.aiEmbedModels();
+      const spec = args.model
+        ? mod.AI_MODELS.find((m) => (m.key === args.model || m.id === args.model) && m.task === 'feature-extraction')
+        : list[0];
+      if (!spec) {
+        throw new Error('その埋め込みモデルは選べません: ' + String(args.model));
+      }
+      if (!spec.ready) {
+        throw new Error('「' + spec.label + '」は、この環境でまだ動作確認ができていません。');
+      }
+      const texts = Array.isArray(args.texts) ? args.texts : [];
+      // 空なら取得せずに空の結果を返す（次元はモデルの既知の値を使う）
+      if (!texts.length) {
+        reply(true, JSON.stringify({ vectors: [], dim: spec.dim || 0, device: 'wasm', model: spec.key }));
+        return;
+      }
+      // 一度に渡せる件数の上限（橋の JSON が重くなりすぎないように。教材の10件は当然OK）
+      if (texts.length > 256) {
+        throw new Error('一度に渡せるのは256件までです。分割してお試しください。');
+      }
+      // 初回のみ、大きなダウンロードの前に確認する（AIのモデルと同じ作法）
+      if (!mod.aiEmbedIsLoaded(spec.key)) {
+        const warning = await aiWeightWarning(mod, spec);
+        const ok = await showModal({
+          title: '文の埋め込みモデルを読み込みます',
+          message: `${spec.label}\n\n`
+            + `最初の1回だけ、約${spec.approxMB}MB のダウンロードが発生します。\n`
+            + '2回目以降は端末に保存されたものを使うため、通信は発生しません。\n\n'
+            + '学校のネットワークでは、クラス全員での一斉ダウンロードは避けてください。'
+            + warning,
+          okText: warning ? 'それでも読み込む' : '読み込む',
+          cancelText: 'やめる',
+          danger: !!warning,
+        });
+        if (!ok) throw new Error('読み込みをやめました。');
+      }
+      showAiProgress({ status: 'ai-loading', pct: 0, text: '埋め込みの準備を始めています' });
+      const res = await mod.aiEmbed(texts, {
+        model: spec.key,
+        onProgress: (pct, text, size) => {
+          showAiProgress({
+            status: 'ai-loading',
+            pct,
+            text,
+            sizeText: mod.aiFormatProgressSize(size && size.loaded, size && size.total),
+          });
+        },
+      });
+      reply(true, JSON.stringify({ vectors: res.vectors, dim: res.dim, device: res.device, model: res.model }));
       return;
     }
   } catch (e) {

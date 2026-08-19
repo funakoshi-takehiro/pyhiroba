@@ -787,7 +787,7 @@ let _activeHuiForm = null;
 //
 // 境界は文字列だけに保つ方針に合わせ、カンマ区切りの1つの文字列にする。
 // 逐次出力（ai-ask-start / ai-ask-next）に対応したら 'ai-stream' を足す。
-self.pyhirobaFeatures = 'forms,ai,ai-probe';
+self.pyhirobaFeatures = 'forms,ai,ai-probe,ai-embed';
 
 self.pyhirobaAsk = function (kind, argsJson) {
   return new Promise((resolve, reject) => {
