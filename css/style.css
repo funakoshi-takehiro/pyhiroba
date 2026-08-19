@@ -1540,41 +1540,67 @@ body {
   background: rgba(2,141,174,0.12);
 }
 
-/* ---------- コード折りたたみ（行番号の横の折り畳みボタン・VSCode風） ---------- */
+/* ---------- コード折りたたみ（行番号の横の折り畳みボタン・VSCode風） ----------
+   三角グリフ（▾▸）はフォント依存で野暮ったいので、細いシェブロンを CSS の
+   ボーダーで描く（外部・data URI を使わず CSP を緩めない）。色はテーマ変数に
+   追従し、ホバーと折りたたみ中はアクセント色で示す。 */
 .cell-editor .CodeMirror-foldgutter {
-  width: 1.1em;
+  width: 1.3em;
 }
 .cell-editor .CodeMirror-foldgutter-open,
 .cell-editor .CodeMirror-foldgutter-folded {
   cursor: pointer;
-  color: var(--ink-4);
+  position: relative;
 }
-.cell-editor .CodeMirror-foldgutter-open:after {
-  content: "\25BE";          /* ▾ 畳める行 */
-  opacity: 0.4;
+.cell-editor .CodeMirror-foldgutter-open::after,
+.cell-editor .CodeMirror-foldgutter-folded::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  border-right: 1.6px solid var(--ink-4);
+  border-bottom: 1.6px solid var(--ink-4);
+  opacity: 0.5;
+  transition: opacity .12s ease, border-color .12s ease;
 }
-.cell-editor .CodeMirror-foldgutter-folded:after {
-  content: "\25B8";          /* ▸ 畳んである行 */
-  color: var(--accent);
+/* 開いている（畳める）行: 下向きシェブロン ∨ */
+.cell-editor .CodeMirror-foldgutter-open::after {
+  transform: translate(-50%, -75%) rotate(45deg);
+}
+/* 畳んである行: 右向きシェブロン ＞（アクセント色で「ここは畳まれている」と示す） */
+.cell-editor .CodeMirror-foldgutter-folded::after {
+  transform: translate(-70%, -50%) rotate(-45deg);
+  border-color: var(--accent);
   opacity: 1;
 }
-.cell-editor .CodeMirror-foldgutter-open:hover:after,
-.cell-editor .CodeMirror-foldgutter-folded:hover:after {
-  color: var(--accent);
+.cell-editor .CodeMirror-foldgutter-open:hover::after,
+.cell-editor .CodeMirror-foldgutter-folded:hover::after {
+  border-color: var(--accent);
   opacity: 1;
 }
-/* 畳んだ箇所に出る目印（⋯）。クリックで開ける。 */
+/* 畳んだ跡の目印（⋯ N行を折りたたみ中）。クリックで開ける。
+   コードから浮かないよう、控えめなアクセントの丸タグにする。 */
 .cell-editor .CodeMirror-foldmarker {
+  display: inline-block;
   color: var(--accent-dk);
   background: var(--accent-soft);
   border: 1px solid var(--accent-border);
-  border-radius: 6px;
-  padding: 0 6px;
-  margin: 0 2px;
-  font-family: var(--font-code);
-  font-size: 0.85em;
-  line-height: 1;
+  border-radius: 999px;
+  padding: 0 9px;
+  margin: 0 5px;
+  font-family: var(--font-ui);
+  font-size: 0.76em;
+  font-weight: 600;
+  line-height: 1.55;
+  letter-spacing: 0.01em;
+  vertical-align: baseline;
   cursor: pointer;
+  transition: background .12s ease;
+}
+.cell-editor .CodeMirror-foldmarker:hover {
+  background: var(--accent-border);
 }
 
 /* ---------- シンタックスハイライト（ライトテーマ） ----------

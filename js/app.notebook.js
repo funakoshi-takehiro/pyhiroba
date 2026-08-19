@@ -401,7 +401,11 @@ function renderAll() {
           // インデント基準（Python向け）。畳んだ跡には ⋯ を表示する。
           foldGutter: true,
           gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
-          foldOptions: { rangeFinder: CodeMirror.fold.indent, widget: '⋯' },
+          foldOptions: {
+            rangeFinder: CodeMirror.fold.indent,
+            // 畳んだ跡に「何行を畳んでいるか」を出し、折りたたみ中だと一目で分かるようにする
+            widget: (from, to) => '⋯ ' + (to.line - from.line) + '行を折りたたみ中',
+          },
           extraKeys: {
             'Shift-Enter': () => runCell(cell.id),
             // Esc でエディタからフォーカスを外す（Tabが字下げに使われ抜けられない
