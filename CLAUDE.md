@@ -106,7 +106,7 @@ library-hiroba は Python から `js.pyhirobaFeatures` として読み、
 
 `ai` の移設・`ui` の同梱・`ui.form()` の往復は完了し、運営者が実機で確認済み
 （フォームから AI に聞くチャットまで動作）。library-hiroba は PyPI に公開済み
-（`library-hiroba` 0.4.0）で、Colab では `%pip install library-hiroba` が使える。
+（`library-hiroba` 0.6.0）で、Colab では `%pip install library-hiroba` が使える。
 
 **PyPI にあっても同梱はやめない。** 学校の閉域網では `!pip` が通らないため、
 `py/library_hiroba/` に置いて `import` だけで使えるようにしておく必要がある。
@@ -115,7 +115,7 @@ library-hiroba は Python から `js.pyhirobaFeatures` として読み、
 | 残り | 内容 |
 | --- | --- |
 | `revision` の固定 | いまは全モデル `'main'`。運営者の確認で取得したコミットIDへ固定したい（配布元の差し替えを防ぐため）。ただし固定すると端末のキャッシュが効かなくなり再取得になるので、様子を見て行う |
-| 同梱版の 0.5.x への同期 | **いまは上げない。** 0.5.0 / 0.5.1 の `ai.talk().form()` は、PyHiroba でも動くのに「Colab でだけ動きます」という誤った警告を出す（`_ai.py` の `in_browser()` で判定しているため）。あちらが `js.pyhirobaFeatures` を見る形に直した版が PyPI に出てから同期する。本体が使っている口（`get_form` / `pending_html` / `submit` / `data-hui-*`）は 0.4.0 から変わっていないので、置き換えと版数の書き換えだけで済む |
+| 同梱版の同期 | **0.6.0 に同期済み**（`ai.embed` / `ai.search` 入り）。0.5.0 / 0.5.1 の誤警告（PyHiroba でも動くのに「Colab でだけ動きます」）は、あちらが `host_supports()`（＝`js.pyhirobaFeatures` を見る）に直した 0.5.2 以降で解消。本体が使う口（`get_form` / `pending_html` / `submit` / `data-hui-*`）は 0.4.0 から不変。**残**: 実機で `from library_hiroba import ai` の import（`_ai` の読み込み時に `threading.Lock()` が走る）と、`ai.embed` / `ai.search` の通し確認 → 本番反映 |
 
 書けたところから返す仕組み（`ai-ask-start` / `ai-ask-next`）は**任意**で、未実装。
 未対応なら library-hiroba が自動的に `ai-ask`（全文返し）に落ちるため、動作に支障はない。

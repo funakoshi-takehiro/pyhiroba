@@ -684,6 +684,103 @@ class Chat(Container):
         return f'<div class="hui-chat">{"".join(rows)}</div>'
 
 
+class Conversation(Widget):
+    """会話をためておいて、吹き出しで表示する部品。
+
+    :class:`Chat` は渡された分をその場で描くだけなので、往復するたびに
+    ``{"role": ..., "content": ...}`` の辞書を自分で組み立てて持ち回ることになる。
+    こちらは足していける入れ物で、表示は ``Chat`` に任せる。
+    """
+
+    css_keys = Chat.css_keys
+
+    def __init__(self, messages: Sequence[object] | None = None, names: dict | None = None):
+        self._messages: list[dict] = []
+        self.names = dict(names or {})
+        for message in messages or []:
+            if isinstance(message, dict):
+                self._add(message.get("role", "assistant"), message.get("content", ""))
+            else:
+                self._add(*message)
+
+    def _add(self, role: object, content: object) -> Conversation:
+        # 足した時点で確かめる。表示のときまで持ち越すと、どの行が悪いのか分からなくなる
+        role = str(role)
+        if role not in Chat.ROLES:
+            raise ValueError(
+                f"role は {list(Chat.ROLES)} のいずれかにしてください（指定値: {role!r}）"
+            )
+        self._messages.append({"role": role, "content": content})
+        return self
+
+    def say(self, content: object) -> Conversation:
+        """利用者の発言を足す（右に出る）。"""
+        return self._add("user", content)
+
+    def reply(self, content: object) -> Conversation:
+        """AI やボットの発言を足す（左に出る）。"""
+        return self._add("assistant", content)
+
+    def note(self, content: object) -> Conversation:
+        """発言ではない補足を足す（真ん中に出る）。"""
+        return self._add("note", content)
+
+    def clear(self) -> Conversation:
+        """会話を空に戻す。"""
+        self._messages.clear()
+        return self
+
+    @property
+    def messages(self) -> list[dict]:
+        """いままでの会話。``ui.chat()`` にそのまま渡せる。
+
+        写しを返すので、これを直接 append しても会話は増えない
+        （増やすときは :meth:`say` / :meth:`reply` / :meth:`note` を使う）。
+        """
+        return [dict(message) for message in self._messages]
+
+    def __len__(self) -> int:
+        return len(self._messages)
+
+    def _chat(self) -> Chat:
+        return Chat(self._messages, names=self.names)
+
+    # 中身が空のあいだも表示できるようにする（Chat は空を受け付けない）。
+    # 最初のセルで作って、次のセルから足していく書き方を通すため。
+    def _iter_css_keys(self) -> list[str]:
+        if not self._messages:
+            return list(self.css_keys)
+        return self._chat()._iter_css_keys()
+
+    def _iter_extra_css(self) -> list[str]:
+        if not self._messages:
+            return super()._iter_extra_css()
+        return self._chat()._iter_extra_css()
+
+    def fragment(self) -> str:
+        if not self._messages:
+            return '<div class="hui-chat"></div>'
+        return self._chat().fragment()
+
+
+def conversation(messages=None, names=None) -> Conversation:
+    """会話をためておく入れ物。セルに置くと吹き出しで表示される。
+
+    >>> talk = ui.conversation(names={"assistant": "ボット"})
+    >>> talk.say("こんにちは")
+    >>> talk.reply("やあ！")
+    >>> talk
+
+    ``ui.chat()`` との違いは、**あとから足せる**こと。往復するたびに辞書を
+    組み立てる代わりに、``say()``（利用者）と ``reply()``（AI・ボット）を呼ぶ。
+    ``note()`` は発言ではない補足で、真ん中に出る。
+
+    ``content`` には文字列のほか、他の部品もそのまま入れられる。
+    ``ai.talk()`` はこれを内側で使っている。
+    """
+    return Conversation(messages, names=names)
+
+
 def chat(messages, names=None) -> Chat:
     """会話を吹き出しで表示する。
 

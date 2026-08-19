@@ -142,6 +142,81 @@ MODELS = {
 
 DEFAULT_MODEL = "qwen05"
 
+# 次の1文字を待つ上限（秒）。ここを無しにすると永久に待つため、生成側が黙って
+# 止まったときに「考え中」から抜けられなくなる。1文字あたりの上限なので、
+# CPU だけで大きめのモデルを動かす場合を見込んで長めにとる。
+STREAM_TIMEOUT_SECONDS = 300.0
+
+# 上の上限を、この長さに区切って待つ。1回の待ちを短くしておかないと、生成が
+# 詰まったときに待ち役のスレッドが解放されず、後片付けでぶら下がる
+# （run_in_executor の既定スレッドは終了時に join されるため）。
+STREAM_POLL_SECONDS = 1.0
+
+# ---------------------------------------------------------------------------
+# 埋め込み（文を数のならびにする）モデル
+# ---------------------------------------------------------------------------
+# **チャットの MODELS とは別にする。** 同じ辞書に入れると、次の3つが壊れる。
+#   - ai.models() の一覧に、生成できないモデルが「選べるもの」として並ぶ
+#   - ai.load("minilm") が通り、生成用でないモデルが _pipe に載って ask() が壊れる
+#   - recommend() が rank を見るので、条件次第で埋め込みモデルを薦めてしまう
+#
+# colab_id と browser_repo は**同じモデルの別形式**でなければいけない
+# （チャット側と同じ約束。テストで名前の一致を確かめている）。
+EMBED_MODELS = {
+    "minilm": {
+        "label": "多言語 MiniLM（文の意味をベクトルにする）",
+        "colab_id": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        "browser_repo": "Xenova/paraphrase-multilingual-MiniLM-L12-v2",
+        "approx_mb": {"browser": 118, "colab": 480},
+        "dim": 384,
+    },
+}
+
+DEFAULT_EMBED_MODEL = "minilm"
+
+# 一度に本体へ渡す文の数。本体は 257 件以上を断るので、こちらで分けてから渡す。
+# 素通しすると、同じコードが PyHiroba では失敗して Colab では通ってしまう。
+EMBED_BATCH = 256
+
+
+def resolve_embed(name: str | None) -> str:
+    """埋め込みモデルの名前を確かめる。``ai.load()`` とは別の一覧を見る。"""
+    if name is None:
+        return DEFAULT_EMBED_MODEL
+    name = str(name)
+    if name in EMBED_MODELS:
+        return name
+    raise ValueError(
+        f"その埋め込みモデルは選べません: {name}"
+        f"（選べるのは {list(EMBED_MODELS)}）"
+    )
+
+
+def dot(a, b) -> float:
+    """内積。ベクトルが L2 正規化済みなら、これがそのままコサイン類似度になる。
+
+    numpy は使わない。10冊×384次元なら掛け算 3840 回で、追加の依存を増やす
+    ほどではないため（利用者が教材の中で numpy を使うのは自由）。
+    """
+    return float(sum(x * y for x, y in zip(a, b)))
+
+
+def check_normalized(vector) -> None:
+    """本体が返したベクトルの長さが 1 か確かめる。
+
+    正規化されていないと内積がコサイン類似度にならず、**近い順が静かに狂う**。
+    気付けないまま教材が「なぜかおかしい」状態になるので、ここで止める。
+    """
+    if not vector:
+        return
+    length = sum(x * x for x in vector) ** 0.5
+    if not 0.9 <= length <= 1.1:
+        raise RuntimeError(
+            f"PyHiroba 本体から返ったベクトルが正規化されていません（長さ {length:.3f}）。"
+            "本体側の不具合の可能性があります。"
+        )
+
+
 # ブラウザ固有の名前 → 共通の名前
 _VARIANT_TO_BASE = {
     variant: base for base, spec in MODELS.items() for variant in spec["browser_variants"]
@@ -445,6 +520,203 @@ def _unfinished_tag_length(text: str) -> int:
     return 0
 
 
+class Talk:
+    """AI との会話。前のやりとりを覚えていて、続きが通じる。
+
+        talk = ai.talk()
+        await talk.ask("日本で一番高い山は？")
+        await talk.ask("その高さは？")      # 「その」が山を指すと分かる
+
+    ``ask()`` と ``stream()`` は :class:`Conversation` を返すので、セル最後の
+    式に置けば吹き出しで表示される。
+
+    :meth:`Ai.ask` が受け取るのは1回分の文章だけで、前に何を話したかは覚えて
+    いない。ここが引き受けているのは、その差を埋める3つの後始末:
+
+    1. 直前 ``keep`` 往復ぶんを添えて渡す（記憶）
+    2. 答えたあとにモデルが自分で書き足した会話の続きを切り落とす
+    3. 少しずつ届く答えを、そのつど吹き出しに組み直す
+    """
+
+    #: 添える指示。何も言わないと、小さなモデルは延々と書き続けがち
+    DEFAULT_INSTRUCTION = "これまでの会話です。AI として、最後の質問に日本語で短く答えてください。"
+
+    #: モデルが勝手に会話を続けたときの切れ目
+    CONTINUATIONS = ("あなた:", "あなた：", "\nAI:")
+
+    #: 一文字も返らなかったときに出す言葉。空の吹き出しは故障に見える
+    NO_ANSWER = "（答えが返りませんでした。max_tokens を増やすか、別のモデルを試してみてください）"
+
+    def __init__(
+        self,
+        ai: Ai,
+        keep: int = 4,
+        max_tokens: int = 96,
+        names: dict | None = None,
+        instruction: str | None = None,
+    ) -> None:
+        if keep < 1:
+            raise ValueError(f"keep は1以上にしてください（指定値: {keep!r}）")
+        check_max_tokens(max_tokens)
+        from . import ui
+
+        self._ai = ai
+        self.keep = keep
+        self.max_tokens = max_tokens
+        self.instruction = self.DEFAULT_INSTRUCTION if instruction is None else instruction
+        self.conversation = ui.conversation(names=names)
+
+    def __repr__(self) -> str:
+        return f"<library_hiroba.Talk 発言 {len(self.conversation)} 件>"
+
+    def _repr_html_(self) -> str:
+        return self.conversation._repr_html_()
+
+    def clear(self) -> Talk:
+        """会話をやり直す。"""
+        self.conversation.clear()
+        return self
+
+    @property
+    def messages(self) -> list[dict]:
+        """いままでの会話。``ui.chat()`` にそのまま渡せる。"""
+        return self.conversation.messages
+
+    def _prompt(self, message: object) -> str:
+        """直前のやりとりを添えた、モデルに渡す文章を作る。"""
+        recent = self.messages[-self.keep * 2 :]
+        lines = [self.instruction, ""]
+        for said in recent:
+            who = "あなた" if said["role"] == "user" else "AI"
+            lines.append(f"{who}: {said['content']}")
+        lines.append(f"あなた: {message}")
+        lines.append("AI:")
+        return "\n".join(lines)
+
+    def _clean(self, text: str) -> str:
+        """モデルが書き足した会話の続きを切り落とす。"""
+        for marker in self.CONTINUATIONS:
+            if marker in text:
+                text = text.split(marker)[0]
+        return text.strip()
+
+    async def ask(self, message: object):
+        """1往復して、会話ぜんぶを返す。"""
+        prompt = self._prompt(message)
+        self.conversation.say(message)
+        answer = await self._ai.ask(prompt, max_tokens=self.max_tokens)
+        self.conversation.reply(self._clean(answer) or self.NO_ANSWER)
+        return self.conversation
+
+    #: 待っているあいだ、経過を出し直す間隔（秒）
+    TICK_SECONDS = 1.0
+
+    def _waiting(self, seconds: float = 0.0):
+        """答えを待つあいだ、AI の側に出しておくもの。
+
+        **経過した秒数を出す。** 止まっているのか進んでいるのかが、これでしか
+        分からない。動かない「考え中」は、故障と見分けが付かない。
+
+        読み込みと生成も分けて言う。初回の読み込みは数分かかることがある。
+        """
+        from . import ui
+
+        passed = f"{int(seconds)}秒" if seconds >= 1 else ""
+        if self._ai.is_loaded():
+            return ui.thinking(f"考え中 {passed}".strip())
+        return ui.thinking(f"モデルを読み込んでいます（初回は数分かかります）{passed}")
+
+    async def stream(self, message: object):
+        """同じことを、書けたところから少しずつ返す。
+
+        書きかけは会話に入れず、**その回だけの写しに載せて**返す。入れてしまうと
+        次の質問に渡す記憶が、書きかけの文で埋まる。
+        """
+        import asyncio
+        import time
+
+        from . import ui
+
+        prompt = self._prompt(message)
+        self.conversation.say(message)
+
+        def view(content):
+            return ui.conversation(
+                [*self.messages, {"role": "assistant", "content": content}],
+                names=self.conversation.names,
+            )
+
+        # 打った内容を、答えを待たずに先に返す。ここを待ってから出すと、
+        # 画面には「考え中」しか無い時間が続き、送れたのかどうかも分からない
+        started = time.monotonic()
+        yield view(self._waiting())
+
+        text = ""
+        # 1文字ずつ待つあいだも、経過を出し直す。じっと動かない「考え中」は
+        # 故障と見分けが付かず、実際それで何度も止まったと判断された。
+        # __anext__ を task にして待つ（wait_for は待ちきれないと相手を
+        # 取り消してしまい、途中まで進んだ生成が壊れる）
+        source = self._ai.stream(prompt, max_tokens=self.max_tokens).__aiter__()
+        while True:
+            coming = asyncio.ensure_future(source.__anext__())
+            try:
+                while not (await asyncio.wait({coming}, timeout=self.TICK_SECONDS))[0]:
+                    if not self._clean(text):
+                        yield view(self._waiting(time.monotonic() - started))
+                chunk = coming.result()
+            except StopAsyncIteration:
+                break
+            except BaseException:
+                coming.cancel()
+                raise
+            text += chunk
+            partial = self._clean(text)
+            if partial:
+                yield view(partial)
+        # 一文字も出ないまま終わることがある（考えている途中だけを書いて
+        # 字数が尽きた場合など）。空の吹き出しは故障に見えるので、そう言う
+        self.conversation.reply(self._clean(text) or self.NO_ANSWER)
+        yield self.conversation
+
+    def form(self, placeholder: str = "メッセージを入力", submit_label: str = "送信", **kwargs):
+        """入力欄・送信ボタン・吹き出しをまとめて出す。
+
+        >>> chat = ai.talk()
+        >>> chat.form()
+
+        ``ui.form()`` は入力欄の name をそのままキーワード引数にするため、
+        :meth:`stream` の引数名と揃っている必要がある。ここが両方を持つので、
+        使う側で名前を合わせなくてよい。
+
+        フォームに対応していない古い PyHiroba で開いた場合だけ、注意書きを
+        添えて出す。対応済みの本体（``pyhirobaFeatures`` に ``forms`` がある）
+        と Colab では、そのまま出す。
+        """
+        from . import ui
+
+        built = ui.form(
+            self.stream,
+            ui.field("message", label="", placeholder=placeholder),
+            submit_label=submit_label,
+            clear_on_submit=True,
+            **kwargs,
+        )
+        if not in_browser() or host_supports("forms"):
+            return built
+        # 押しても何も起きないフォームだけを出すと、書いた人は自分の誤りを疑う。
+        # 判定に in_browser() を使ってはいけない（PyHiroba なら常に真なので、
+        # フォームが動く本体にも警告を出してしまう）
+        return ui.stack(
+            ui.alert(
+                "この入力欄は、いまお使いの PyHiroba では動きません。"
+                "本体が新しくなると動くようになります。"
+                "それまでは await talk.ask(...) の形で書いてください。",
+                kind="warning",
+            ),
+            built,
+        )
+
+
 class ThinkingFilter:
     """少しずつ届く文字から、考えている途中を取り除いて渡す。
 
@@ -520,6 +792,33 @@ def in_browser() -> bool:
     return hasattr(js, "pyhirobaAsk")
 
 
+def host_features() -> set[str]:
+    """本体が「対応している」と名乗っている機能の名前。
+
+    本体が ``self.pyhirobaFeatures = 'forms,ai,ai-probe'`` の形で出す文字列を
+    読む。無い版では空になる。
+
+    ``in_browser()`` では代わりにならない。あれは ``pyhirobaAsk`` があるかしか
+    答えず、**AI が動くことと、フォームが動くことは別**だから。実際、フォームが
+    使えるようになった本体でも ``in_browser()`` は真のままで、library-hiroba は
+    「PyHiroba では動きません」と出し続けていた。
+
+    名前は「,」区切りの完全一致で見る。部分一致にすると ``ai-probe`` しか
+    無いときに ``ai`` が真になってしまう。
+    """
+    try:
+        import js
+    except ImportError:
+        return set()
+    listed = getattr(js, "pyhirobaFeatures", "") or ""
+    return {name.strip() for name in str(listed).split(",") if name.strip()}
+
+
+def host_supports(feature: str) -> bool:
+    """本体がその機能に対応していると名乗っているか。"""
+    return feature in host_features()
+
+
 # ---------------------------------------------------------------------------
 
 
@@ -527,8 +826,25 @@ class Ai:
     """小さな言語モデルを動かす。PyHiroba と Colab で同じ使い方ができる。"""
 
     def __init__(self) -> None:
+        import threading
+
         self._pipe = None
         self._name: str | None = None
+        # 埋め込みは生成とは別のモデルなので、別に持つ（load() とも無関係）
+        self._embedder = None
+        self._embed_name: str | None = None
+        # 生成が同時に2本走らないようにする（下の _stream_with_transformers 参照）
+        self._generating = threading.Lock()
+
+    def is_loaded(self) -> bool:
+        """モデルの準備ができているか。
+
+        まだなら、最初の :meth:`ask` / :meth:`stream` の中で読み込みが走る。
+        初回は数分かかることがあるので、待たせる側はこれを見て言葉を変える。
+        """
+        if in_browser():
+            return self._name is not None
+        return self._pipe is not None
 
     async def models(self) -> list[dict]:
         """選べるモデルの一覧（名前と目安の通信量）。
@@ -561,6 +877,33 @@ class Ai:
         found = await self.environment()
         name, reason = choose(found)
         return Recommendation(name, reason, found)
+
+    def talk(
+        self,
+        keep: int = 4,
+        max_tokens: int = 96,
+        names: dict | None = None,
+        instruction: str | None = None,
+    ) -> Talk:
+        """会話を始める。前のやりとりを覚えているので、続きが通じる。
+
+        >>> talk = ai.talk()
+        >>> await talk.ask("日本で一番高い山は？")
+        >>> await talk.ask("その高さは？")
+
+        ``ui.chat()`` が「渡した会話を表示する」のに対し、こちらは「会話をする」。
+        ``await`` が要るのは :meth:`Talk.ask` のほうで、ここには要らない。
+        モデルは最初の :meth:`Talk.ask` で自動的に読み込まれる。
+
+        - ``keep``: 覚えておく往復の数。小さなモデルは長い文章が苦手なので、
+          話がかみ合わなくなってきたら減らす
+        - ``max_tokens``: 1回の答えの長さ
+        - ``names``: 表示名（``{"user": "生徒", "assistant": "先生"}``）
+        - ``instruction``: 会話の先頭に添える指示
+        """
+        return Talk(
+            self, keep=keep, max_tokens=max_tokens, names=names, instruction=instruction
+        )
 
     async def load(self, model: str | None = None) -> str:
         """モデルを読み込む。初回だけ時間と通信量がかかる。
@@ -608,6 +951,55 @@ class Ai:
         async for chunk in self._stream_with_transformers(prompt, max_tokens):
             yield chunk
 
+    async def embed(self, texts: object, model: str | None = None):
+        """文を、意味を表す数のならび（ベクトル）にする。
+
+        >>> await ai.embed("怖い本")                    # list[float]（384 個）
+        >>> await ai.embed(["怖い本", "料理の本"])        # list[list[float]]
+
+        ``texts`` が文字列なら1本ぶん、リストなら同じ順で返す。
+        **L2 正規化済み**なので、近さは内積で測れる（＝コサイン類似度）。
+
+        ``ai.load()`` は要らない。埋め込みは生成とは別のモデルで、最初に呼んだ
+        ときに読み込まれる（PyHiroba では本体が確認を出す）。
+
+        件数が多いときは自動で分けて渡すので、上限を気にしなくてよい。
+        """
+        one = isinstance(texts, str)
+        items = [texts] if one else [str(text) for text in texts]
+        name = resolve_embed(model)
+        if not items:
+            return []
+        vectors = await self._embed_all(items, name)
+        return vectors[0] if one else vectors
+
+    async def search(self, query: object, documents, top_k: int | None = None):
+        """``query`` に意味が近いものを ``documents`` から探して、近い順に返す。
+
+        >>> hits = await ai.search("怖い本を教えて", [b["desc"] for b in books], top_k=3)
+        >>> for hit in hits:
+        ...     print(books[hit["index"]]["title"], round(hit["score"], 3))
+
+        返すのは ``{"index", "score", "text"}`` の並び（``score`` の大きい順）。
+        ``score`` は −1〜1 で、1 に近いほど意味が近い。
+        """
+        docs = [str(document) for document in documents]
+        if top_k is not None and (isinstance(top_k, bool) or not isinstance(top_k, int)):
+            raise ValueError(f"top_k には整数を指定してください（指定値: {top_k!r}）")
+        if top_k is not None and top_k < 1:
+            raise ValueError(f"top_k には 1 以上を指定してください（指定値: {top_k!r}）")
+        if not docs:
+            return []
+        # 質問と文書をまとめて1回で渡す。別々に呼ぶと往復が2回になる
+        vectors = await self.embed([str(query), *docs])
+        asked, rest = vectors[0], vectors[1:]
+        found = [
+            {"index": i, "score": dot(asked, vector), "text": docs[i]}
+            for i, vector in enumerate(rest)
+        ]
+        found.sort(key=lambda hit: hit["score"], reverse=True)
+        return found if top_k is None else found[:top_k]
+
     # --- ブラウザ経路（PyHiroba 本体との契約） -----------------------------
     #
     # 本体のワーカーが js.pyhirobaAsk(kind, argsJson) -> Promise<resultJson> を用意する。
@@ -623,7 +1015,12 @@ class Ai:
 
         import js
 
-        raw = await js.pyhirobaAsk(kind, args_json)
+        # 本体が断ったとき（Promise の reject）は、理由が日本語で入っている。
+        # 包まずに通すと JsException のまま出て、何が起きたのか読み取れない
+        try:
+            raw = await js.pyhirobaAsk(kind, args_json)
+        except Exception as error:  # 伝わり方は本体・Pyodide 次第
+            raise RuntimeError(f"PyHiroba 本体が {kind} を断りました: {error}") from error
         # 本体が壊れた応答を返したときに、JSONDecodeError や
         # 「'list' object has no attribute 'get'」のような、利用者には意味の
         # 分からない例外で止まらないようにする。原因の見当がつく文言にする。
@@ -696,6 +1093,12 @@ class Ai:
 
         if self._name is None:
             await self.load()
+        # 本体が対応機能を名乗っているなら、それに従う（毎回失敗すると分かって
+        # いる往復を省ける）。何も名乗らない古い本体には、今までどおり聞いてみる
+        named = host_features()
+        if named and "ai-stream" not in named:
+            yield await self._ask_in_browser(prompt, max_tokens)
+            return
         try:
             started = await self._call_host(
                 "ai-ask-start", json.dumps({"prompt": str(prompt), "max_tokens": max_tokens})
@@ -719,6 +1122,81 @@ class Ai:
             chunk = thinking.feed(part.get("text", ""))
             if chunk:
                 yield chunk
+
+    # --- 埋め込みの中身（経路ごと） ----------------------------------------
+
+    async def _embed_all(self, items: list[str], name: str) -> list[list[float]]:
+        """本体の上限に合わせて分けて渡し、つなげて返す。
+
+        本体は 257 件以上を断る。素通しすると、同じコードが PyHiroba では
+        失敗して Colab では通る、という「同じコードが両方で動く」の反例になる。
+        """
+        vectors: list[list[float]] = []
+        for start in range(0, len(items), EMBED_BATCH):
+            chunk = items[start : start + EMBED_BATCH]
+            if in_browser():
+                vectors.extend(await self._embed_in_browser(chunk, name))
+            else:
+                vectors.extend(self._embed_with_transformers(chunk, name))
+        return vectors
+
+    async def _embed_in_browser(self, texts: list[str], name: str) -> list[list[float]]:
+        import json
+
+        if not host_supports("ai-embed"):
+            raise RuntimeError(
+                "お使いの PyHiroba は、まだ文のベクトル化に対応していません。"
+                "本体が新しくなると使えるようになります。"
+            )
+        result = await self._call_host(
+            "ai-embed", json.dumps({"model": name, "texts": texts})
+        )
+        vectors = result.get("vectors")
+        if not isinstance(vectors, list) or len(vectors) != len(texts):
+            raise RuntimeError(
+                f"PyHiroba 本体が返したベクトルの数が合いません"
+                f"（{len(texts)} 文に対して {len(vectors) if isinstance(vectors, list) else '?'} 本）。"
+            )
+        vectors = [[float(value) for value in vector] for vector in vectors]
+        # 1本だけ検算する。正規化されていないと近い順が静かに狂うため
+        check_normalized(vectors[0] if vectors else None)
+        return vectors
+
+    def _embed_with_transformers(self, texts: list[str], name: str) -> list[list[float]]:
+        """平均プーリング＋L2 正規化を自前で行う。
+
+        ``sentence-transformers`` は使わない。あれは transformers>=5 を要求し、
+        scikit-learn と scipy まで連れてくるが、ここでやることは十数行で済む。
+        本体と同じ処理を自分で書くぶん、両経路の一致も保証しやすい。
+        """
+        import torch
+
+        tokenizer, model = self._load_embedder(name)
+        batch = tokenizer(texts, padding=True, truncation=True, return_tensors="pt")
+        with torch.no_grad():
+            output = model(**batch)
+        # 埋め込みは「文全体の平均」。padding の分を平均に混ぜないよう mask で消す
+        mask = batch["attention_mask"].unsqueeze(-1).to(output.last_hidden_state.dtype)
+        pooled = (output.last_hidden_state * mask).sum(1) / mask.sum(1).clamp(min=1e-9)
+        return torch.nn.functional.normalize(pooled, p=2, dim=1).tolist()
+
+    def _load_embedder(self, name: str):
+        """埋め込み用のモデルを読む（1回だけ）。生成用の _pipe とは別物。"""
+        if self._embed_name == name and self._embedder is not None:
+            return self._embedder
+        try:
+            from transformers import AutoModel, AutoTokenizer
+        except ImportError as error:
+            raise ImportError(
+                "transformers と torch が必要です。次の行を先に実行してください:\n"
+                '    !pip install -q -U "library-hiroba[ai]"'
+            ) from error
+        repo = EMBED_MODELS[name]["colab_id"]
+        model = AutoModel.from_pretrained(repo)
+        model.eval()
+        self._embedder = (AutoTokenizer.from_pretrained(repo), model)
+        self._embed_name = name
+        return self._embedder
 
     # --- Colab 経路（transformers + torch） --------------------------------
 
@@ -791,6 +1269,7 @@ class Ai:
         """
         import asyncio
         import threading
+        from queue import Empty
 
         try:
             from transformers import TextIteratorStreamer
@@ -799,11 +1278,25 @@ class Ai:
             yield self._ask_with_transformers(prompt, max_tokens)
             return
 
+        # timeout を渡さないと、次の1文字を「永久に」待つ。生成側が黙って
+        # 止まった場合、画面は考え中のまま構造上ぜったいに抜けられなくなる。
+        # ここは1文字あたりの上限なので、CPU だけの環境でも十分に長くとる。
         streamer = TextIteratorStreamer(
-            self._pipe.tokenizer, skip_prompt=True, skip_special_tokens=True
+            self._pipe.tokenizer,
+            skip_prompt=True,
+            skip_special_tokens=True,
+            timeout=STREAM_POLL_SECONDS,
         )
         messages = [{"role": "user", "content": str(prompt)}]
         failure: list[BaseException] = []
+
+        # 同じ pipeline を2本のスレッドから同時に叩かない。transformers の
+        # pipeline はスレッド安全ではなく、フォームの送信中にノートブックの
+        # セルからもう1回聞くと、両方が壊れて片方が返らなくなる
+        if not self._generating.acquire(blocking=False):
+            raise RuntimeError(
+                "前の生成がまだ終わっていません。終わるのを待ってから、もう一度試してください。"
+            )
 
         def generate() -> None:
             try:
@@ -815,6 +1308,8 @@ class Ai:
             except BaseException as error:  # noqa: BLE001 — 呼び出し側へ運ぶ
                 failure.append(error)
                 streamer.end()
+            finally:
+                self._generating.release()
 
         worker = threading.Thread(target=generate, daemon=True)
         worker.start()
@@ -823,8 +1318,21 @@ class Ai:
         iterator = iter(streamer)
         stop = object()
         thinking = ThinkingFilter()
+        silent = 0.0
         while True:
-            piece = await loop.run_in_executor(None, lambda: next(iterator, stop))
+            try:
+                piece = await loop.run_in_executor(None, lambda: next(iterator, stop))
+            except Empty:
+                # まだ1文字も来ていない。短く区切って待ち直し、通算で上限を超えたら諦める
+                silent += STREAM_POLL_SECONDS
+                if silent < STREAM_TIMEOUT_SECONDS:
+                    continue
+                raise TimeoutError(
+                    f"モデルが {STREAM_TIMEOUT_SECONDS:.0f} 秒のあいだ何も返しませんでした。"
+                    "軽いモデル（ai.load('llmjp150m')）を試すか、"
+                    "セッションを再起動してからやり直してください。"
+                ) from None
+            silent = 0.0
             if piece is stop:
                 break
             chunk = thinking.feed(piece)

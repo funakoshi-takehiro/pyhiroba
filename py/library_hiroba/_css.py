@@ -490,6 +490,8 @@ COMPONENT_CSS = {
 .hui-form-out:not(:empty) { margin-top: 12px; }""",
     "chat": """\
 .hui-chat { display: flex; flex-direction: column; gap: 10px; margin: 10px 0; }
+/* ui.conversation() は空から始まる。何も無いあいだは場所を取らない */
+.hui-chat:empty { margin: 0; }
 .hui-msg { display: flex; flex-direction: column; max-width: 82%; }
 .hui-msg-name { font-size: 0.8em; color: var(--hui-ink-3); margin-bottom: 2px; }
 .hui-msg-body {
@@ -557,6 +559,64 @@ COMPONENT_CSS = {
 .hui-stack { display: flex; flex-direction: column; margin: 10px 0; }
 .hui-stack > * { margin: 0; }
 .hui-stack > .hui-badge, .hui-stack > .hui-stat { align-self: flex-start; }""",
+    # Colab・Jupyter の ipywidgets 経路で使う。あちらは HTML を出さず ipywidgets の
+    # 部品を並べるため、上の .hui-form などが一切当たらず、素の見た目のまま出る。
+    # ipywidgets は <input> を <div class="widget-text"> で包むので、add_class() で
+    # 付けた印は外側にしか付かない。中の input・button を選び直す必要がある。
+    # !important は、ipywidgets 自身の CSS（.jupyter-button など）に勝つため。
+    "widgets": """\
+.hui-wform {
+  border: 1px solid var(--hui-line);
+  border-radius: var(--hui-radius);
+  background: var(--hui-paper);
+  box-shadow: var(--hui-shadow);
+  color: var(--hui-ink);
+  padding: 16px 18px;
+  margin: 10px 0;
+  width: auto;
+}
+.hui-wform .widget-label { color: var(--hui-ink-3); font-size: 0.88em; }
+.hui-wfield { width: 100% !important; margin-bottom: 10px; }
+.hui-wfield input[type="text"],
+.hui-wfield input[type="number"],
+.hui-wfield textarea,
+.hui-wfield select {
+  width: 100% !important;
+  box-sizing: border-box;
+  font-family: inherit !important;
+  font-size: 1em !important;
+  color: var(--hui-ink) !important;
+  background: var(--hui-paper) !important;
+  border: 1px solid var(--hui-line) !important;
+  border-radius: var(--hui-radius-sm) !important;
+  padding: 8px 12px !important;
+  box-shadow: none !important;
+}
+.hui-wfield input:focus, .hui-wfield textarea:focus, .hui-wfield select:focus {
+  outline: 2px solid var(--hui-accent) !important;
+  outline-offset: 1px;
+  border-color: var(--hui-accent) !important;
+}
+.hui-wsubmit {
+  font-family: inherit !important;
+  font-size: 0.95em !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.01em;
+  color: var(--hui-on-accent) !important;
+  background: var(--hui-accent) !important;
+  border: 1px solid var(--hui-accent) !important;
+  border-radius: 999px !important;
+  padding: 8px 22px !important;
+  width: auto !important;
+  height: auto !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .hui-wsubmit:hover { background: var(--hui-accent-ink) !important; }
+}
+.hui-wsubmit:focus-visible { outline: 2px solid var(--hui-accent); outline-offset: 2px; }
+.hui-wout:empty { display: none; }""",
 }
 
 BASE_CSS = _minify(BASE_CSS)

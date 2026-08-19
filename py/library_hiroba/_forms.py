@@ -21,6 +21,14 @@ from collections.abc import Sequence
 from typing import Callable, Union
 
 from ._core import Widget, esc, esc_attr, unique_name
+from ._css import COMPONENT_CSS, base_css
+
+
+def _add_class(widget: object, name: str) -> None:
+    """ipywidgets の部品に CSS クラスを付ける。付けられない相手なら何もしない。"""
+    adder = getattr(widget, "add_class", None)
+    if callable(adder):
+        adder(name)
 
 FieldLike = Union["Field", str]
 
@@ -32,6 +40,40 @@ _REGISTRY_LIMIT = 64
 
 # 表示待ちの処理。回収されないよう、終わるまでここで持つ（display_result 参照）
 _PENDING: set = set()
+
+# 別スレッドで走らせている処理。テストから終わりを待てるようにしておく
+_WORKERS: set = set()
+
+
+def run_detached(coro) -> None:
+    """コルーチンを、自前のループを持つ別スレッドで最後まで走らせる。
+
+    ノートブックのループに載せる（``ensure_future``）やり方は Colab で動かない。
+    セルの実行が終わっているあいだ本体がループを回しておらず、予約したタスクが
+    順番待ちのまま止まるためで、``asyncio.get_running_loop()`` は
+    ``running=True`` と答えるので気付きにくい。
+    """
+    import threading
+
+    async def guarded() -> None:
+        # ここで受け止めないと、スレッドの中で消える（show_each 側でも受けているが、
+        # 念のため。表に出ないまま終わるのがいちばん困る）
+        try:
+            await coro
+        except Exception:  # noqa: BLE001
+            import traceback
+
+            traceback.print_exc()
+
+    def target() -> None:
+        try:
+            asyncio.run(guarded())
+        finally:
+            _WORKERS.discard(threading.current_thread())
+
+    worker = threading.Thread(target=target, daemon=True, name="hui-form")
+    _WORKERS.add(worker)
+    worker.start()
 
 # pending を書かなかったときの印。None は「出さない」の指定に使うため、
 # 「指定なし」と区別できる別の値が要る。
@@ -175,6 +217,23 @@ def as_field(item: FieldLike) -> Field:
     return item if isinstance(item, Field) else Field(str(item))
 
 
+def put_into(into: object, item: object) -> None:
+    """ipywidgets の ``Output`` へ、表示するものを1つ書き込む。
+
+    ``with into:`` で囲んで ``display()`` する書き方は使わない。あの捕捉は
+    「いまセルを実行している文脈」に紐づくため、``await`` をまたいで別のタスク
+    から使うと届け先を見失う。ボタンを押しても何も出ない、という形で表に出る。
+
+    ``outputs`` に入れ替えるやり方なら、いつ・どのタスクから呼んでも同じ場所に
+    出る。前の中身と置き換わるので、少しずつ書き足す表示もそのまま作れる。
+    """
+    if hasattr(item, "_repr_html_"):
+        data = {"text/html": item._repr_html_(), "text/plain": repr(item)}
+    else:
+        data = {"text/plain": repr(item)}
+    into.outputs = ({"output_type": "display_data", "data": data, "metadata": {}},)
+
+
 def display_result(result: object, into: object = None, pending: object = None) -> None:
     """``handler`` の返り値を表示する。
 
@@ -191,14 +250,19 @@ def display_result(result: object, into: object = None, pending: object = None) 
 
     ``into`` に ipywidgets の Output を渡すと、その中に表示する（待っている
     あいだにセルの実行が終わっても、結果がフォームの下に出るようにするため）。
+    書き込みは :func:`put_into` が行う。3つの形すべてで ``into`` を見るので、
+    Colab では待つ・待たないにかかわらず、結果はフォームの下に出る。
     """
-    from IPython.display import clear_output, display
+    from IPython.display import display
 
     waits = inspect.isawaitable(result)
     streams = inspect.isasyncgen(result)
     if not waits and not streams:
         # 待たないなら「考え中」を出す意味がない
-        display(result)
+        if into is not None:
+            put_into(into, result)
+        else:
+            display(result)
         return
 
     async def steps():
@@ -212,21 +276,16 @@ def display_result(result: object, into: object = None, pending: object = None) 
             yield await result
 
     async def show_each() -> None:
-        if into is not None:
-            # Output の中に居続ける。handler が途中で失敗しても、その内容が
-            # フォームの下にそのまま表示される（Output が拾って見せてくれる）。
-            with into:
-                async for item in steps():
-                    # wait=True なので、次が届くまで前の表示は消えない（ちらつかない）
-                    clear_output(wait=True)
-                    display(item)
-            return
-        # Output が無い場合。差し替えが要るときだけ取っ手を使う
-        # （cell 全体を消すと、フォーム自体まで消えてしまうため）。
-        # 1回しか出さないなら、ふつうに display する。
-        replaces = streams or pending is not None
-        handle = None
         try:
+            if into is not None:
+                async for item in steps():
+                    put_into(into, item)
+                return
+            # Output が無い場合。差し替えが要るときだけ取っ手を使う
+            # （cell 全体を消すと、フォーム自体まで消えてしまうため）。
+            # 1回しか出さないなら、ふつうに display する。
+            replaces = streams or pending is not None
+            handle = None
             async for item in steps():
                 if not replaces:
                     display(item)
@@ -237,18 +296,40 @@ def display_result(result: object, into: object = None, pending: object = None) 
         except Exception:  # noqa: BLE001 — 黙って消えるほうが困る
             import traceback
 
-            traceback.print_exc()
+            text = traceback.format_exc()
+            if into is not None:
+                # 出せる場所が Output しかない。print では拾われずに消える
+                into.outputs = ({"output_type": "stream", "name": "stderr", "text": text},)
+            else:
+                traceback.print_exc()
 
     try:
         asyncio.get_running_loop()
+        running = True
     except RuntimeError:
+        running = False
+
+    if not running:
         # ノートブックの外（素の Python）。回っているループが無いので自分で回す
         asyncio.run(show_each())
+    elif into is not None:
+        # ボタンの押下から呼ばれている（ipywidgets 経路）。
+        #
+        # ここで ensure_future を使ってはいけない。Colab はセルの実行が終わって
+        # いるあいだループを回しておらず、予約したタスクは順番待ちのまま止まる。
+        # ループ自体は running=True と答えるので気付きにくい（tools/
+        # check_form_colab.py で実測: 押下処理は走り、Output への書き込みも届く
+        # のに、予約したタスクだけが走らない）。「押しても何も起きない」の正体。
+        #
+        # 自前のループを別スレッドで回せば、本体がループを回しているかに関係なく
+        # 最後まで走る。表示は Output の outputs へ入れるだけで、別スレッドから
+        # でも届く（display() と違い、セルの実行文脈に紐づかないため）。
+        run_detached(show_each())
     else:
-        # ノートブックの中。ループに載せて、届いたものから順に表示する。
+        # ループが回っていて、出す先が Output ではない場合。display() は実行中の
+        # セルに紐づくので、別スレッドへ逃がさずこのループに載せる。
         # 参照を持たないと、待っている最中に回収されて結果が出ないことがある
-        # （ループはタスクを弱参照でしか持たない）。AI の返事は数秒かかるので、
-        # 終わるまで手元で持っておき、終わったら捨てる。
+        # （ループはタスクを弱参照でしか持たない）。
         task = asyncio.ensure_future(show_each())
         _PENDING.add(task)
         task.add_done_callback(_PENDING.discard)
@@ -301,6 +382,16 @@ class Form(Widget):
             f"</div>"
         )
 
+    def _widget_style_block(self) -> str:
+        """ipywidgets 経路で出す ``<style>``。
+
+        あちらは HTML ではなく ipywidgets の部品を並べるため、部品側の
+        ``<style>`` が出てこない。ここで一度だけ出す。``widgets`` の分は
+        ipywidgets を相手にした上書きなので、HTML 経路には含めない。
+        """
+        parts = [base_css(), COMPONENT_CSS["form"], COMPONENT_CSS["widgets"]]
+        return "<style>" + "\n".join(parts) + "</style>"
+
     def _repr_html_(self) -> str:
         # PyHiroba 経路（IPython が無い環境）ではこちらが使われる。
         # 本体がボタンの押下を受け取ったときに引けるよう、ここで登録する。
@@ -328,23 +419,23 @@ class Form(Widget):
         for field in self.fields:
             label = field.label
             if field.kind == "choice":
-                controls[field.name] = widgets.Dropdown(
+                control = widgets.Dropdown(
                     options=field.choices,
                     value=str(field.default) if str(field.default) in field.choices else None,
                     description=label,
                 )
             elif field.kind == "number":
-                controls[field.name] = widgets.FloatText(
-                    value=float(field.default or 0), description=label
-                )
+                control = widgets.FloatText(value=float(field.default or 0), description=label)
             elif field.kind == "multiline":
-                controls[field.name] = widgets.Textarea(
+                control = widgets.Textarea(
                     value=str(field.default), placeholder=field.placeholder, description=label
                 )
             else:
-                controls[field.name] = widgets.Text(
+                control = widgets.Text(
                     value=str(field.default), placeholder=field.placeholder, description=label
                 )
+            _add_class(control, "hui-wfield")
+            controls[field.name] = control
         return widgets, controls
 
     def _display_with_ipywidgets(self) -> bool:
@@ -352,10 +443,13 @@ class Form(Widget):
         if built is None:
             return False
         widgets, controls = built
-        from IPython.display import clear_output, display
+        from IPython.display import display
 
-        button = widgets.Button(description=self.submit_label, button_style="primary")
+        # button_style は ipywidgets の既定色。こちらの CSS で塗るので使わない
+        button = widgets.Button(description=self.submit_label)
+        _add_class(button, "hui-wsubmit")
         output = widgets.Output()
+        _add_class(output, "hui-wout")
 
         clearable = {f.name for f in self.fields if f.kind in ("text", "multiline")}
 
@@ -364,13 +458,32 @@ class Form(Widget):
             if self.clear_on_submit:
                 for name in clearable:
                     controls[name].value = ""
-            with output:
-                clear_output(wait=True)
-                display_result(self.handler(**values), into=output, pending=self.pending)
+            # display_result まで含めて囲む。ipywidgets の押下処理から出た例外は
+            # 呼び出し元に戻る先が無く、Colab では画面にもログにも出ないまま消える
+            # （押しても何も起きない、という形だけが残る）
+            try:
+                # handler を直に呼ばず submit() を通す。欄の種類に合わせた変換が
+                # ここにあり、飛ばすと Colab だけ handler に違う型が渡る
+                result = self.submit(**values)
+                display_result(result, into=output, pending=self.pending)
+            except Exception:  # noqa: BLE001 — 入力の誤りも、出さないと直せない
+                import traceback
+
+                output.outputs = (
+                    {"output_type": "stream", "name": "stderr", "text": traceback.format_exc()},
+                )
 
         button.on_click(on_click)
+        # ipywidgets の部品には .hui-... の CSS が付いてこないので、ここで一度だけ出す
+        # （HTML を出さない経路なので、部品側の <style> も出ない）
+        style = widgets.HTML(self._widget_style_block())
         header = [widgets.HTML(f"<b>{esc(self.title)}</b>")] if self.title is not None else []
-        display(widgets.VBox([*header, *controls.values(), button, output]))
+        box = widgets.VBox([style, *header, *controls.values(), button, output])
+        # 配色・角丸・書体は base_css が .hui に載せている。ここを付け忘れると
+        # var(--hui-accent) がどこにも無い変数になり、色も枠も無い素の見た目に戻る
+        _add_class(box, "hui")
+        _add_class(box, "hui-wform")
+        display(box)
         return True
 
     def _run_with_input(self) -> None:
