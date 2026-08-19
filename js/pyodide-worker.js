@@ -675,7 +675,22 @@ async function runCode(runId, code) {
       postMessage({ type: 'pip', runId, pkg });
       try {
         pyodide.globals.set('_pip_pkg', pkg);
-        await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg)');
+        if (item.kind === 'bokeh') {
+          // holoviz の bokeh wheel は、ブラウザでは使わない tornado を外している一方で、
+          // bokeh-sampledata（約17MBのサンプルデータ・授業には不要）を必須依存として
+          // 付けている。micropip はこの解決に失敗し、bokeh の導入ごと落ちてしまう
+          // （その結果 Pyodide 同梱の古い bokeh に落ち、描画も panel も動かなくなる）。
+          // bokeh 本来の実行時依存はすべて Pyodide に同梱されているため、それらを先に
+          // 読み込み、wheel は deps=False で入れて bokeh-sampledata を引かせない。
+          await pyodide.loadPackage(
+            ['contourpy', 'numpy', 'jinja2', 'pandas', 'pillow', 'pyyaml', 'xyzservices', 'packaging'],
+          );
+          await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg, deps=False)');
+        } else {
+          // panel は deps=True のまま。bokeh は上で導入済みなので満たされ、
+          // bokeh の依存（＝bokeh-sampledata）を再解決することはない。
+          await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg)');
+        }
         pipResults.push({ pkg: pkg, ok: true });
         if (item.kind === 'bokeh') richBokehPackageReady = true;
         if (item.kind === 'panel') richPanelPackageReady = true;
