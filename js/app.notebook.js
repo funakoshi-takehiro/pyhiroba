@@ -404,7 +404,7 @@ function renderAll() {
           foldOptions: {
             rangeFinder: CodeMirror.fold.indent,
             // 畳んだ跡に「何行を畳んでいるか」を出し、折りたたみ中だと一目で分かるようにする
-            widget: (from, to) => '⋯ ' + (to.line - from.line) + '行を折りたたみ中',
+            widget: (from, to) => (to.line - from.line) + '行を折りたたみ中',
           },
           extraKeys: {
             'Shift-Enter': () => runCell(cell.id),
