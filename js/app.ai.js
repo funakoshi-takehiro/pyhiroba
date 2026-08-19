@@ -21,7 +21,7 @@ const AI_ASK_KINDS = ['ai-load', 'ai-ask', 'ai-models', 'ai-probe', 'ai-embed'];
 let _aiModule = null;
 async function loadAiModule() {
   // 相対パスは表示中のページ（/nb/）が基準になるため ../js/ を指す
-  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260819d');
+  if (!_aiModule) _aiModule = await import('../js/ai.js?v=20260819e');
   return _aiModule;
 }
 

@@ -144,7 +144,11 @@ export const AI_MODELS = [
     // mean pooling。実測で日本語の蔵書検索が効くことを確認済み（int8＝model_quantized.onnx）。
     key: 'minilm',
     id: 'Xenova/paraphrase-multilingual-MiniLM-L12-v2',
-    revision: '2c4055b12046f11709e9df2c122e59ffbdc2f900',
+    // 他モデルと同じく main。SHA 固定にすると、ブラウザのワーカーでは
+    // transformers.js が config を resolve/main/ で取りに行き、通信ガードに弾かれる
+    // （remotePathTemplate の {revision} に pipeline の revision が反映されないため）。
+    // revision の固定は全モデル共通の将来課題として、様子を見て別途行う。
+    revision: 'main',
     label: '文の埋め込み（多言語MiniLM・384次元）',
     approxMB: 118,
     dtype: 'q8',                    // → onnx/model_quantized.onnx（int8・118MB。q4 は逆に肥大するため使わない）
