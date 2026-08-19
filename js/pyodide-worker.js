@@ -675,20 +675,36 @@ async function runCode(runId, code) {
       postMessage({ type: 'pip', runId, pkg });
       try {
         pyodide.globals.set('_pip_pkg', pkg);
-        if (item.kind === 'bokeh') {
-          // holoviz の bokeh wheel は、ブラウザでは使わない tornado を外している一方で、
-          // bokeh-sampledata（約17MBのサンプルデータ・授業には不要）を必須依存として
-          // 付けている。micropip はこの解決に失敗し、bokeh の導入ごと落ちてしまう
-          // （その結果 Pyodide 同梱の古い bokeh に落ち、描画も panel も動かなくなる）。
-          // bokeh 本来の実行時依存はすべて Pyodide に同梱されているため、それらを先に
-          // 読み込み、wheel は deps=False で入れて bokeh-sampledata を引かせない。
-          await pyodide.loadPackage(
-            ['contourpy', 'numpy', 'jinja2', 'pandas', 'pillow', 'pyyaml', 'xyzservices', 'packaging'],
-          );
-          await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg, deps=False)');
+        if (item.kind === 'bokeh' || item.kind === 'panel') {
+          // Panel/Bokeh の依存解決には落とし穴が2つある。どちらも「holoviz が Pyodide 用に
+          // 再梱包した wheel」に起因する。
+          //  1) holoviz の bokeh wheel は、ブラウザでは使わない tornado を外している一方で、
+          //     bokeh-sampledata（約17MBのサンプルデータ・授業には不要）を必須依存として
+          //     独自に付けている。micropip はこの解決に失敗し、bokeh の導入ごと落ちる。
+          //  2) panel を deps=True で入れると、micropip が panel→bokeh の依存木をたどり直し、
+          //     やはり bokeh-sampledata を引いて失敗する。
+          // そこで wheel は両方 deps=False で入れ、実行時依存はこちらで用意する。
+          // bokeh/panel の実行時依存は「Pyodide 同梱」と「PyPI の pure-python」だけで、
+          // bokeh-sampledata は要らない。
+          if (item.kind === 'bokeh') {
+            // Pyodide 同梱の依存を先読み（bokeh・panel の両方が使う）
+            await pyodide.loadPackage(
+              ['contourpy', 'numpy', 'jinja2', 'pandas', 'pillow', 'pyyaml', 'xyzservices', 'packaging', 'typing-extensions'],
+            );
+            await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg, deps=False)');
+          } else {
+            // panel の PyPI 依存（すべて pure-python。bokeh-sampledata は含まない）を
+            // 先に入れてから、panel 本体を deps=False で入れる。
+            pyodide.globals.set('_pip_deps_json', JSON.stringify(
+              ['param', 'pyviz-comms', 'bleach', 'linkify-it-py', 'markdown', 'markdown-it-py', 'mdit-py-plugins', 'tqdm', 'requests'],
+            ));
+            await pyodide.runPythonAsync(
+              'import micropip, json as _json\n'
+              + 'await micropip.install(_json.loads(_pip_deps_json))\n'
+              + 'await micropip.install(_pip_pkg, deps=False)\n',
+            );
+          }
         } else {
-          // panel は deps=True のまま。bokeh は上で導入済みなので満たされ、
-          // bokeh の依存（＝bokeh-sampledata）を再解決することはない。
           await pyodide.runPythonAsync('import micropip\nawait micropip.install(_pip_pkg)');
         }
         pipResults.push({ pkg: pkg, ok: true });
