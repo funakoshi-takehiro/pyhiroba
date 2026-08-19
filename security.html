@@ -93,7 +93,7 @@
       <div class="sec-card">
         <div class="sec-card-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
         <h3>プログラムは、隔離された場所で動く</h3>
-        <p>生徒が書いたプログラムは、ブラウザの中の隔離された領域（サンドボックス）で実行されます。そのため、たとえ問題のあるプログラムが紛れ込んでいても、パソコン本体のファイルやほかのアプリ、ほかのサイトの情報に直接手を出すことはできません。グラフや UI の部品（Panel／Bokeh）の画面も、本体から切り離した専用の枠の中だけで動かし、PyHiroba 本体には触れられないようにしています。</p>
+        <p>生徒が書いたプログラムは、ブラウザの中の隔離された領域（サンドボックス）で実行されます。問題のあるプログラムが紛れ込んでも、パソコン本体やほかのアプリ・サイトには手を出せません。グラフや UI の部品（Panel／Bokeh）も同じ枠の中で隔離します。</p>
       </div>
 
       <div class="sec-card">
@@ -123,7 +123,7 @@
       <div class="sec-card">
         <div class="sec-card-ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
         <h3>通信は暗号化、部品は信頼できる配布元だけ</h3>
-        <p>すべての通信は暗号化（HTTPS）されています。動作に必要な外部の部品（ライブラリ）は、決まった信頼できる配布元だけに限定しています。Python の実行環境など主要な部品は、内容がすり替えられていないかを照合してから使います。AI（言語モデル）や、グラフ・UI の部品（Panel／Bokeh）は、運営者があらかじめ指定した配布元と部品だけを取得する仕組みにしています。</p>
+        <p>すべての通信は暗号化（HTTPS）されています。動作に必要な外部の部品は信頼できる決まった配布元だけに限定し、主要なものは内容のすり替えが無いか照合してから使います。AI やグラフ・UI の部品も、指定した配布元だけから取得します。</p>
       </div>
 
       <div class="sec-card">

@@ -350,17 +350,6 @@
         <p>import と書くだけで、自動的に読み込まれます（インストールは不要です）。</p>
         <code>numpy, pandas, matplotlib, scikit-learn, scipy, sympy,<br>Pillow, cv2（画像処理）, requests, random, math ...</code>
       </section>
-
-      <section class="help-sec">
-        <h3>AIと画面部品（試験公開）</h3>
-        <p>小さな言語モデルを、この画面の中だけで動かせます。入力した文章が外部に送られることはありません。初回だけモデルを受け取るため、時間と通信量がかかります。</p>
-        <code>from library_hiroba import ai, ui<br><br>await ai.load()<br>print(await ai.ask("日本の四季について、2行で書いて"))</code>
-        <p>答えの内容が事実と違うことがよくあるため、調べものには使わないでください。</p>
-        <p><code>ui</code> を使うと、カードやクイズなどの部品をセルの下に表示できます。<code>ui.form()</code> で入力欄とボタンを出せば、打ち込んだ内容を Python の関数で受け取れます。</p>
-        <code>ui.form(lambda q: ui.card(q, "答え"), "質問")</code>
-        <p>Google Colab でも、次の1行を先に実行すれば<strong>同じコードが動きます</strong>。</p>
-        <code>%pip install library-hiroba</code>
-      </section>
     </div>
   </div>
 
