@@ -60,7 +60,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="../css/style.css?v=20260811a">
+  <link rel="stylesheet" href="../css/style.css?v=20260819a">
 
   <!-- 実行環境の読み込み失敗・非対応ブラウザ時の案内（同一オリジンで確実に表示できるようインライン化） -->
   <style>
@@ -435,6 +435,10 @@
   <script src="../vendor/codemirror/python.min.js?v=20260725a"></script>
   <!-- 入力補助（かっこ・引用符の自動補完）。CodeMirror 公式アドオン・本体と同じ 5.65.16 -->
   <script src="../vendor/codemirror/closebrackets.js?v=20260807a"></script>
+  <!-- コード折りたたみ（関数・ブロックを畳む）。CodeMirror 公式アドオン・本体と同じ 5.65.16 -->
+  <script src="../vendor/codemirror/foldcode.js?v=20260819a"></script>
+  <script src="../vendor/codemirror/foldgutter.js?v=20260819a"></script>
+  <script src="../vendor/codemirror/indent-fold.js?v=20260819a"></script>
   <script src="../vendor/marked/marked.min.js?v=20260725a"></script>
   <!-- DOMPurify（Markdown / HTML出力のXSS無害化）。自ホスト。
        .github/workflows/update-dompurify.yml が毎週最新3.x系へ自動更新（ファイル差し替え）する。
@@ -477,8 +481,8 @@
   <script src="../js/modal.js?v=20260809d"></script>
   <script src="../js/app.core.js?v=20260811c"></script>
   <script src="../js/app.lessons.js?v=20260722a"></script>
-  <script src="../js/app.io.js?v=20260811a"></script>
-  <script src="../js/app.notebook.js?v=20260811a"></script>
+  <script src="../js/app.io.js?v=20260819a"></script>
+  <script src="../js/app.notebook.js?v=20260819a"></script>
   <script src="../js/app.rich-output.js?v=20260811a"></script>
   <script src="../js/app.exec.js?v=20260811a"></script>
   <script src="../js/app.ai.js?v=20260810a"></script>

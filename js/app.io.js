@@ -91,7 +91,11 @@ function loadIpynb(json) {
     const pyMeta = (c.metadata && c.metadata.pyhiroba) || {};
     const collapsed = readCollapsedMeta(c.metadata, pyMeta);
     if (c.cell_type === 'code') {
-      cells.push({ id: nextId++, type: 'code', content: src, slides: [], collapsed });
+      // コード折りたたみ位置（PyHiroba独自メタデータ。Colab/Jupyter は無視するので無害）
+      const folds = Array.isArray(pyMeta.folds)
+        ? pyMeta.folds.filter((n) => Number.isInteger(n) && n >= 0)
+        : [];
+      cells.push({ id: nextId++, type: 'code', content: src, slides: [], collapsed, folds });
     } else if (c.cell_type === 'markdown') {
       cells.push(markdownToCell(src, pyMeta.cellType, collapsed));
     }
@@ -356,6 +360,12 @@ function buildIpynbJson() {
       const pyMeta = {};
       if (cell.collapsed) pyMeta.collapsed = true;
       if (cell.type === 'image' || cell.type === 'slide') pyMeta.cellType = cell.type;
+      // コードセル内の折りたたみ位置（開いているエディタがあれば最新を反映）
+      if (cell.type === 'code') {
+        const ed = editors[cell.id];
+        const folds = ed ? getEditorFolds(ed) : (cell.folds || []);
+        if (folds && folds.length) pyMeta.folds = folds;
+      }
       const metadata = Object.keys(pyMeta).length ? { pyhiroba: pyMeta } : {};
       if (cell.collapsed) writeCollapsedMeta(metadata);
       if (cell.type === 'code') {

@@ -271,6 +271,20 @@ function saveAllEditors() {
   cells.forEach(c => saveEditorContent(c.id));
 }
 
+/** エディタの現在の折りたたみ位置（各foldの開始行・0始まり）を返す。.ipynb 保存に使う。 */
+function getEditorFolds(cm) {
+  const lines = [];
+  try {
+    cm.getAllMarks().forEach((m) => {
+      if (m.__isFold) {
+        const r = m.find();
+        if (r) lines.push(r.from.line);
+      }
+    });
+  } catch (_) { /* 破棄済みエディタは無視 */ }
+  return lines.sort((a, b) => a - b);
+}
+
 /** 指定セルにフォーカスを当てる */
 function focusCell(id) {
   setTimeout(() => {
@@ -383,6 +397,11 @@ function renderAll() {
           // 入力補助（かっこ・引用符の自動補完）。既定はオフで、フッターの
           // 「入力補助」ボタンから切り替える。候補一覧を出すコード補完は無効のまま。
           autoCloseBrackets: isInputAssistOn(),
+          // コード折りたたみ：行番号の横に折り畳みボタンを出し、関数やブロックを畳める。
+          // インデント基準（Python向け）。畳んだ跡には ⋯ を表示する。
+          foldGutter: true,
+          gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+          foldOptions: { rangeFinder: CodeMirror.fold.indent, widget: '⋯' },
           extraKeys: {
             'Shift-Enter': () => runCell(cell.id),
             // Esc でエディタからフォーカスを外す（Tabが字下げに使われ抜けられない
@@ -398,6 +417,21 @@ function renderAll() {
           }
         });
         editors[cell.id] = editor;
+
+        // 保存されている折りたたみ状態を復元する（.ipynb のダウンロード→インポートでも保つ）
+        if (Array.isArray(cell.folds) && cell.folds.length) {
+          editor.operation(() => {
+            cell.folds.forEach((ln) => {
+              if (Number.isInteger(ln) && ln >= 0 && ln < editor.lineCount()) {
+                try { editor.foldCode(CodeMirror.Pos(ln, 0)); } catch (_) { /* 畳めない位置は無視 */ }
+              }
+            });
+          });
+        }
+        // 折りたたみの変更をセルに記録（保存で使う。表示状態なので未保存にはしない）
+        const syncFolds = () => { cell.folds = getEditorFolds(editor); };
+        editor.on('fold', syncFolds);
+        editor.on('unfold', syncFolds);
 
         // スクリーンリーダー用に「何番目のセルのコードか」を伝える（CodeMirror内部の入力欄に付与）
         try { editor.getInputField().setAttribute('aria-label', `セル${idx + 1}のコード`); } catch (_) { /* 取得できない環境では無視 */ }

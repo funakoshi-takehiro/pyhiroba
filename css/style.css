@@ -1540,6 +1540,43 @@ body {
   background: rgba(2,141,174,0.12);
 }
 
+/* ---------- コード折りたたみ（行番号の横の折り畳みボタン・VSCode風） ---------- */
+.cell-editor .CodeMirror-foldgutter {
+  width: 1.1em;
+}
+.cell-editor .CodeMirror-foldgutter-open,
+.cell-editor .CodeMirror-foldgutter-folded {
+  cursor: pointer;
+  color: var(--ink-4);
+}
+.cell-editor .CodeMirror-foldgutter-open:after {
+  content: "\25BE";          /* ▾ 畳める行 */
+  opacity: 0.4;
+}
+.cell-editor .CodeMirror-foldgutter-folded:after {
+  content: "\25B8";          /* ▸ 畳んである行 */
+  color: var(--accent);
+  opacity: 1;
+}
+.cell-editor .CodeMirror-foldgutter-open:hover:after,
+.cell-editor .CodeMirror-foldgutter-folded:hover:after {
+  color: var(--accent);
+  opacity: 1;
+}
+/* 畳んだ箇所に出る目印（⋯）。クリックで開ける。 */
+.cell-editor .CodeMirror-foldmarker {
+  color: var(--accent-dk);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  padding: 0 6px;
+  margin: 0 2px;
+  font-family: var(--font-code);
+  font-size: 0.85em;
+  line-height: 1;
+  cursor: pointer;
+}
+
 /* ---------- シンタックスハイライト（ライトテーマ） ----------
    文字列は緑、メソッド・関数名は青と系統を分け、見分けやすくする。
    色はいずれも白背景でコントラスト比 4.5:1 以上（WCAG AA）を満たす値を選んでいる。 */
@@ -1583,6 +1620,7 @@ body {
   border-top: 1px solid var(--line);
   background: #fafaf8;
   min-height: 0;
+  padding-bottom: 6px;
 }
 .cell-output:empty { display: none; }
 /* 実行済みマーク（出力エリア上部） */
@@ -1594,7 +1632,7 @@ body {
   font-weight: 700;
   border-radius: 999px;
   padding: 2px 10px;
-  margin: 10px 16px 0;
+  margin: 12px 16px 0;
   line-height: calc(1.6 * var(--line-scale, 1));
   letter-spacing: 0.02em;
 }
@@ -1809,7 +1847,7 @@ body {
 }
 .output-rich-shell,
 .output-rich {
-  margin-top: 14px;
+  margin: 14px 16px;
   border: 1px solid var(--line-2);
   border-radius: 16px;
   background: var(--paper);
@@ -2069,9 +2107,9 @@ body {
 .output-pip {
   font-size: 0.8125rem;
   line-height: calc(1.7 * var(--line-scale, 1));
-  padding: 9px 13px;
+  padding: 9px 14px;
   border-radius: 9px;
-  margin-bottom: 8px;
+  margin: 8px 16px;
 }
 .output-pip.is-ok {
   background: var(--accent-soft);
