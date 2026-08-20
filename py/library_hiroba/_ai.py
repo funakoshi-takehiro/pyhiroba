@@ -192,12 +192,55 @@ def resolve_embed(name: str | None) -> str:
     )
 
 
+# 一度に受け取る文の上限。教室で使う数（10〜100冊）からは十分に離してあるが、
+# 際限なく受けるとブラウザが何分も固まったまま落ちる。理由を言って先に止める。
+EMBED_LIMIT = 10000
+
+
+def as_texts(value: object, argument: str) -> list[str]:
+    """文の並びとして受け取れる形にそろえる。
+
+    **黙って別の意味になる書き方を、ここで止める。** 文字列をそのまま渡すと
+    1文字ずつに分かれ、辞書を渡すとキーだけが使われる。どちらも例外にならず、
+    「なぜか結果がおかしい」とだけ見える。
+    """
+    if isinstance(value, str):
+        raise ValueError(
+            f"{argument} には文のリストを渡してください。"
+            "文字列をそのまま渡すと、1文字ずつ別の文として扱われます"
+            '（1文だけなら ["…"] のように包んでください）'
+        )
+    if isinstance(value, dict):
+        raise ValueError(
+            f"{argument} に辞書を渡すと、キーだけが使われて中身が消えます。"
+            'リストにしてください（例: [b["desc"] for b in books]）'
+        )
+    try:
+        items = [str(item) for item in value]
+    except TypeError:
+        raise ValueError(
+            f"{argument} には文のリストを渡してください"
+            f"（渡されたのは {type(value).__name__}）"
+        ) from None
+    if len(items) > EMBED_LIMIT:
+        raise ValueError(
+            f"一度に渡せるのは {EMBED_LIMIT} 件までです（渡されたのは {len(items)} 件）。"
+            "分けて呼んでください。"
+        )
+    return items
+
+
 def dot(a, b) -> float:
     """内積。ベクトルが L2 正規化済みなら、これがそのままコサイン類似度になる。
 
     numpy は使わない。10冊×384次元なら掛け算 3840 回で、追加の依存を増やす
     ほどではないため（利用者が教材の中で numpy を使うのは自由）。
+
+    長さが違うものは比べない。``zip`` は黙って短いほうに切りそろえるので、
+    そのままだと**近い順だけが静かに狂う**。
     """
+    if len(a) != len(b):
+        raise ValueError(f"長さの違うベクトルは比べられません（{len(a)} と {len(b)}）")
     return float(sum(x * y for x, y in zip(a, b)))
 
 
@@ -835,6 +878,9 @@ class Ai:
         self._embed_name: str | None = None
         # 生成が同時に2本走らないようにする（下の _stream_with_transformers 参照）
         self._generating = threading.Lock()
+        # 埋め込みモデルの読み込み用。生成とは別のモデルなので鍵も分ける。
+        # 共用にすると、生成中の embed() が待たされてノートブックが止まる
+        self._loading_embedder = threading.Lock()
 
     def is_loaded(self) -> bool:
         """モデルの準備ができているか。
@@ -966,7 +1012,7 @@ class Ai:
         件数が多いときは自動で分けて渡すので、上限を気にしなくてよい。
         """
         one = isinstance(texts, str)
-        items = [texts] if one else [str(text) for text in texts]
+        items = [texts] if one else as_texts(texts, "texts")
         name = resolve_embed(model)
         if not items:
             return []
@@ -983,7 +1029,7 @@ class Ai:
         返すのは ``{"index", "score", "text"}`` の並び（``score`` の大きい順）。
         ``score`` は −1〜1 で、1 に近いほど意味が近い。
         """
-        docs = [str(document) for document in documents]
+        docs = as_texts(documents, "documents")
         if top_k is not None and (isinstance(top_k, bool) or not isinstance(top_k, int)):
             raise ValueError(f"top_k には整数を指定してください（指定値: {top_k!r}）")
         if top_k is not None and top_k < 1:
@@ -1157,8 +1203,25 @@ class Ai:
                 f"PyHiroba 本体が返したベクトルの数が合いません"
                 f"（{len(texts)} 文に対して {len(vectors) if isinstance(vectors, list) else '?'} 本）。"
             )
-        vectors = [[float(value) for value in vector] for vector in vectors]
-        # 1本だけ検算する。正規化されていないと近い順が静かに狂うため
+        try:
+            vectors = [[float(value) for value in vector] for vector in vectors]
+        except (TypeError, ValueError) as error:
+            raise RuntimeError(
+                f"PyHiroba 本体が返したベクトルに、数でないものが混じっています（{error}）。"
+                "本体側の不具合の可能性があります。"
+            ) from error
+        # **全部の長さを見る。** 本体は配布元を版で固定しておらず、上流でモデルが
+        # 差し替わると黙って別のベクトルが返る。1本目だけ見ていると、途中から
+        # 長さの違うものが混じったときに素通りし、dot() が zip で切りそろえて
+        # 近い順だけが静かに狂う
+        expected = EMBED_MODELS[name]["dim"]
+        for number, vector in enumerate(vectors, start=1):
+            if len(vector) != expected:
+                raise RuntimeError(
+                    f"{number}本目のベクトルの長さが {len(vector)} です（{expected} のはず）。"
+                    "配布元のモデルが差し替わったか、本体側の不具合の可能性があります。"
+                )
+        # 正規化されていないと内積がコサイン類似度にならず、近い順が狂う
         check_normalized(vectors[0] if vectors else None)
         return vectors
 
@@ -1182,6 +1245,12 @@ class Ai:
 
     def _load_embedder(self, name: str):
         """埋め込み用のモデルを読む（1回だけ）。生成用の _pipe とは別物。"""
+        # フォームの別スレッドとセルがかち合っても、同じモデルを二重に読まない。
+        # 生成用の鍵とは分ける（共用だと生成が終わるまで embed が待たされる）
+        with self._loading_embedder:
+            return self._load_embedder_locked(name)
+
+    def _load_embedder_locked(self, name: str):
         if self._embed_name == name and self._embedder is not None:
             return self._embedder
         try:
